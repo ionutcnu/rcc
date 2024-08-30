@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 
+
 export default function Header() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [isSticky, setIsSticky] = useState(false);
@@ -56,10 +57,10 @@ export default function Header() {
                     {/* Language Switcher */}
                     <div className="flex items-center space-x-2">
                         <button
-                            onClick={() => handleLanguageSwitch("DE")}
+                            onClick={() => handleLanguageSwitch("RO")}
                             className={`hover:text-gray-400 ${language === "DE" ? "font-bold" : ""}`}
                         >
-                            DE
+                            RO
                         </button>
                         <span>|</span>
                         <button

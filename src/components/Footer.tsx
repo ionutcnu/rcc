@@ -1,3 +1,5 @@
+import {FaFacebookF, FaTwitter, FaInstagram, FaTiktok} from "react-icons/fa";
+
 export default function Footer() {
     return (
         <footer className="bg-gray-200 text-black p-6">
@@ -41,16 +43,23 @@ export default function Footer() {
                     </ul>
                 </div>
             </div>
-            <div className="mt-4 flex justify-between items-center">
-                <p>&copy; 2024 www.rcc.org</p>
-                <div className="space-x-4">
-                    <a href="#" className="hover:text-gray-400">Facebook</a>
-                    <a href="#" className="hover:text-gray-400">Twitter</a>
-                    <a href="#" className="hover:text-gray-400">Instagram</a>
-                </div>
-
-
-            </div>
+<div className="mt-4 flex justify-between items-left">
+    <p>&copy; 2024 www.rcc.org</p>
+    <div className="flex space-x-4">
+        <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400">
+            <FaFacebookF />
+        </a>
+        <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400">
+            <FaTwitter />
+        </a>
+        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400">
+            <FaInstagram />
+        </a>
+        <a href="https://tiktock.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400">
+            <FaTiktok />
+        </a>
+    </div>
+</div>
         </footer>
     );
 }

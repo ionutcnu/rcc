@@ -16,7 +16,11 @@
   }
 }
 .swiper-pagination {
-  bottom: 50px !important; /* Adjust this value as needed */
+  bottom: 50px !important;
+}
+
+.swiper-button-next, .swiper-button-prev {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 body {
@@ -37,4 +41,84 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Modern CSS Reset */
+
+/* Box sizing border-box for all elements */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margin */
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+/* Remove default padding */
+ul,
+ol,
+figure,
+blockquote {
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove list styles (bullet points and numbers) */
+
+/* Remove default styles for headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Set root font size to 16px (adjust as needed) */
+html {
+  font-size: 16px;
+}
+
+/* Remove text decoration for links */
+a {
+  text-decoration: none;
+  color: inherit; /* Inherit color from parent element */
+  background: none; /* Remove background */
+}
+
+/* Remove outline on focus */
+:focus {
+  outline: none;
+}
+
+.custom-prev,
+.custom-next {
+  border: 2px solid #6a0dad;
+  color: #6a0dad;
+  background-color: rgba(255, 255, 255, 0.8);
+  transition: background-color 0.3s ease;
+}
+
+.custom-prev:hover,
+.custom-next:hover {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.custom-prev svg,
+.custom-next svg {
+  stroke: #6a0dad;
 }

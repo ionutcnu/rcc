@@ -27,6 +27,11 @@ export default function HeroSlideshow() {
                 autoplay={{ delay: 5000, disableOnInteraction: false }}
                 modules={[Navigation, Pagination, Autoplay]}
                 className="w-full h-full"
+                style={{
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    backgroundSize: 'cover',
+                }}
             >
                 <SwiperSlide>
                     <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200">
