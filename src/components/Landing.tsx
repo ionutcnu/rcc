@@ -34,20 +34,25 @@ export default function HeroSlideshow() {
                 }}
             >
                 <SwiperSlide>
-                    <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200">
+                    <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200 border-4 border-gray-300">
                         <img
                             src={isMobile ? "/Cats/Garfield.jpeg" : "/Cats/Glori.jpeg"}
                             alt="1"
                             className="object-cover w-full h-full"
                         />
-                        <div
-                            className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center text-white text-4xl">
-                            <div className="text-center">
-                                <h1>some text</h1>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center text-white p-4">
+                                <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
+                                <p className="mt-4">THE JOURNEY STARTS HERE</p>
+                                <div className="mt-6 flex justify-center">
+                                 {/* <button className="bg-orange-500 text-white py-2 px-4 rounded mr-4"> </button> */}
+
+                                </div>
                             </div>
                         </div>
                     </div>
                 </SwiperSlide>
+
 
                 <SwiperSlide>
                     <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200">
@@ -56,10 +61,14 @@ export default function HeroSlideshow() {
                             alt="2"
                             className="object-cover w-full h-full"
                         />
-                        <div
-                            className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center text-white text-4xl">
-                            <div className="text-center">
-                                <h1>some text</h1>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center text-white p-4">
+                                <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
+                                <p className="mt-4">THE JOURNEY STARTS HERE</p>
+                                <div className="mt-6 flex justify-center">
+                                    {/* <button className="bg-orange-500 text-white py-2 px-4 rounded mr-4"> </button> */}
+
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -69,23 +78,26 @@ export default function HeroSlideshow() {
                     <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200">
                         <img
                             src={isMobile ? "/Cats/catm3.jpg" : "/Cats/catd3.jpg"}
-                            alt="2"
+                            alt="3"
                             className="object-cover w-full h-full"
                         />
-                        <div
-                            className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center text-white text-4xl">
-                            <div className="text-center">
-                                <h1>some text</h1>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center text-white p-4">
+                                <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
+                                <p className="mt-4">THE JOURNEY STARTS HERE</p>
+                                <div className="mt-6 flex justify-center">
+                                    {/* <button className="bg-orange-500 text-white py-2 px-4 rounded mr-4"> </button> */}
+
+                                </div>
                             </div>
                         </div>
                     </div>
                 </SwiperSlide>
-
             </Swiper>
 
             <style jsx>{`
                 .swiper-pagination-bullets {
-                    bottom: 100px !important; 
+                    bottom: 100px !important;
                 }
             `}</style>
         </section>

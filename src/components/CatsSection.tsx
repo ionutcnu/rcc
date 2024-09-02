@@ -2,42 +2,21 @@
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/swiper-bundle.css';
 import Particles from "@/components/Particles";
-import { Navigation, Pagination } from 'swiper/modules';
+import { useRef } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
 
 export default function CatsSection() {
+    const router = useRouter();
     const cats = [
-        {
-            name: "Gura mare",
-            description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!",
-            image: "/Cats/cat1.jpg",
-        },
-        {
-            name: "Veve",
-            description: "She's grumpy and always demands food, but also likes to cuddle in the couch or bed.",
-            image: "/Cats/cat3.jpg",
-        },
-        {
-            name: "Ollie",
-            description: "He likes to run around and play hide-and-seek. He also loves head and belly rubs!",
-            image: "/Cats/cat1.jpg",
-        },
-        {
-            name: "Misty",
-            description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!",
-            image: "/Cats/cat2.jpg",
-        },
-        {
-            name: "Misty",
-            description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!",
-            image: "/Cats/cat3.jpg",
-        },
-        {
-            name: "Misty",
-            description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!",
-            image: "/Cats/cat1.jpg,",
-        }
-
+        { id: 1, name: "Gura Mare", alias: "Gura", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/Cats/cat1.jpg" },
+        { id: 2, name: "Veve", alias: "Veve", description: "She's grumpy and always demands food, but also likes to cuddle in the couch or bed.", image: "/Cats/cat3.jpg" },
+        { id: 3, name: "Ollie", alias: "Ollie", description: "He likes to run around and play hide-and-seek. He also loves head and belly rubs!", image: "/Cats/cat1.jpg" },
+        { id: 4, name: "Misty", alias: "Misty", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/Cats/cat2.jpg" },
     ];
+
+    const swiperRef = useRef(null);
 
     return (
         <section className="relative bg-[#1C1C21] text-white py-16">
@@ -47,28 +26,66 @@ export default function CatsSection() {
                 <p className="text-xl mb-12">Hello we need a new home</p>
 
                 <Swiper
+                    ref={swiperRef}
                     spaceBetween={30}
-                    slidesPerView={3}
-                    navigation={true}
+                    slidesPerView={1} // Default to [catId] slide
+                    breakpoints={{
+                        1024: {
+                            slidesPerView: 3, // Show 3 slides on desktop
+                        },
+                    }}
                     pagination={{ clickable: true }}
                     className="w-full h-full"
                 >
-                    {cats.map((cat, index) => (
-                        <SwiperSlide key={index}>
-                            <div className="bg-white text-black rounded-lg overflow-hidden shadow-lg">
-                                <img
-                                    src={cat.image}
-                                    alt={cat.name}
-                                    className="object-cover h-56 w-full"
-                                />
-                                <div className="p-6">
-                                    <h3 className="text-2xl font-bold mb-2">{cat.name}</h3>
-                                    <p className="text-gray-700">{cat.description}</p>
+                    {cats.map((cat) => (
+                        <SwiperSlide key={cat.alias}>
+                            <Link href={`/cats/${cat.alias}`}>
+                                <div className="bg-white text-black rounded-lg overflow-hidden shadow-lg cursor-pointer">
+                                    <img
+                                        src={cat.image}
+                                        alt={cat.name}
+                                        className="object-cover h-56 w-full"
+                                    />
+                                    <div className="p-6">
+                                        <h3 className="text-2xl font-bold mb-2">{cat.name}</h3>
+                                        <p className="text-gray-700">{cat.description}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            </Link>
                         </SwiperSlide>
                     ))}
                 </Swiper>
+
+                <div className="mt-4 flex justify-center">
+                    <button
+                        className="text-alabaster-600 bg-alabaster-900 hover:bg-seance-700 border border-alabaster-900 rounded-full h-12 w-12 flex items-center justify-center"
+                        onClick={() => swiperRef.current?.swiper?.slidePrev()}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-6 w-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <button
+                        className="text-alabaster-600 bg-alabaster-900 hover:bg-seance-700 border border-alabaster-900 rounded-full h-12 w-12 flex items-center justify-center ml-4"
+                        onClick={() => swiperRef.current?.swiper?.slideNext()}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-6 w-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
 
                 <p className="mt-12 text-lg">
                     Rescued from the streets of Spain, these felines are treated with love, care, and full vaccinations.
