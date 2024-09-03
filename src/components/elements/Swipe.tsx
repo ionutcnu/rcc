@@ -42,7 +42,7 @@ export default function HeroSlideshow() {
                         />
                         <div className="absolute inset-0 flex items-center justify-center">
                             <div className="text-center text-white p-4">
-                                <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
+                                <h1 className="text-4xl font-bold">MAREAN ZUKERBERG</h1>
                                 <p className="mt-4">THE JOURNEY STARTS HERE</p>
                                 <div className="mt-6 flex justify-center">
                                  {/* <button className="bg-orange-500 text-white py-2 px-4 rounded mr-4"> </button> */}
