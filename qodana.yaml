@@ -2,7 +2,7 @@
 #               Qodana analysis is configured by qodana.yaml file               #
 #             https://www.jetbrains.com/help/qodana/qodana-yaml.html            #
 #-------------------------------------------------------------------------------#
-version: "[catId].0"
+version: "[catId].1"
 
 #Specify inspection profile for code analysis
 profile:

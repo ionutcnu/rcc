@@ -4,11 +4,11 @@ import 'swiper/swiper-bundle.css';
 import Particles from "./Particles";
 import { useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+
 
 
 export default function CatsSection() {
-    const router = useRouter();
+
     const cats = [
         { id: 1, name: "Gura Mare", alias: "Gura", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/Cats/cat1.jpg" },
         { id: 2, name: "Veve", alias: "Veve", description: "She's grumpy and always demands food, but also likes to cuddle in the couch or bed.", image: "/Cats/cat3.jpg" },
