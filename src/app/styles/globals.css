@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -121,4 +123,8 @@ a {
 .custom-prev svg,
 .custom-next svg {
   stroke: #6a0dad;
+}
+
+body {
+  font-family: 'Patrick Hand', cursive;
 }

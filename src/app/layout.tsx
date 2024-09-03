@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+import "./styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "RCC",
+  title: "Red Cat Cuasar",
   description: "Red Cat Cuasar",
 };
+
+
 
 export default function RootLayout({
   children,
@@ -15,8 +17,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
-    </html>
+      <html lang="en">
+      <head>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap"
+            rel="stylesheet"
+        />
+      </head>
+      <body className="font-patrick">{children}</body>
+      </html>
   );
 }

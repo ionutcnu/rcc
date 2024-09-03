@@ -86,17 +86,19 @@ export default function Header() {
 
             {/* Mobile Menu */}
             {menuOpen && (
-                <motion.nav
+                <motion.div
                     initial="hidden"
                     animate="visible"
                     exit="hidden"
                     variants={menuVariants}
-                    className="md:hidden mt-4 flex flex-col items-end space-y-4"
+                    className="md:hidden fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 z-20 flex flex-col items-end p-4"
                 >
-                    <Link href="/about" className="block  text-lg hover:text-gray-400">About</Link>
-                    <Link href="/services" className="block text-lg hover:text-gray-400">Services</Link>
-                    <Link href="/contact" className="block text-lg hover:text-gray-400">Contact</Link>
-                </motion.nav>
+                    <nav className="mt-4 flex flex-col items-end space-y-4">
+                        <Link href="/about" className="block text-lg text-white hover:text-gray-400">About</Link>
+                        <Link href="/services" className="block text-lg text-white hover:text-gray-400">Services</Link>
+                        <Link href="/contact" className="block text-lg text-white hover:text-gray-400">Contact</Link>
+                    </nav>
+                </motion.div>
             )}
         </motion.header>
     );
