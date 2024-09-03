@@ -15,7 +15,7 @@ export default function CatProfile() {
                <div className="bg-[#A3947C] text-center py-20">
                    <h1 className="text-5xl font-bold"></h1>
                    <p className="text-xl mt-4">
-                       She's grumpy and always demands food, but also likes to cuddle in the couch or bed.
+                       She&apos;s grumpy and always demands food, but also likes to cuddle in the couch or bed.
                    </p>
                </div>
 

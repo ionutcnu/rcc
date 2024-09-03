@@ -4,10 +4,10 @@ import 'swiper/swiper-bundle.css';
 import Particles from "./Particles";
 import { useRef } from 'react';
 import Link from 'next/link';
-
-
+import SwiperCore from 'swiper';
 
 export default function CatsSection() {
+    const swiperRef = useRef<SwiperCore>();
 
     const cats = [
         { id: 1, name: "Gura Mare", alias: "Gura", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/Cats/cat1.jpg" },
@@ -15,8 +15,6 @@ export default function CatsSection() {
         { id: 3, name: "Ollie", alias: "Ollie", description: "He likes to run around and play hide-and-seek. He also loves head and belly rubs!", image: "/Cats/cat1.jpg" },
         { id: 4, name: "Misty", alias: "Misty", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/Cats/cat2.jpg" },
     ];
-
-    const swiperRef = useRef(null);
 
     return (
         <section className="relative bg-[#1C1C21] text-white py-16">
@@ -26,12 +24,14 @@ export default function CatsSection() {
                 <p className="text-xl mb-12">Hello we need a new home</p>
 
                 <Swiper
-                    ref={swiperRef}
+                    onSwiper={(swiper) => {
+                        swiperRef.current = swiper;
+                    }}
                     spaceBetween={30}
-                    slidesPerView={1} // Default to [catId] slide
+                    slidesPerView={1}
                     breakpoints={{
                         1024: {
-                            slidesPerView: 3, // Show 3 slides on desktop
+                            slidesPerView: 3,
                         },
                     }}
                     pagination={{ clickable: true }}
@@ -59,7 +59,7 @@ export default function CatsSection() {
                 <div className="mt-4 flex justify-center">
                     <button
                         className="text-alabaster-600 bg-alabaster-900 hover:bg-seance-700 border border-alabaster-900 rounded-full h-12 w-12 flex items-center justify-center"
-                        onClick={() => swiperRef.current?.swiper?.slidePrev()}
+                        onClick={() => swiperRef.current?.slidePrev()}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -73,7 +73,7 @@ export default function CatsSection() {
                     </button>
                     <button
                         className="text-alabaster-600 bg-alabaster-900 hover:bg-seance-700 border border-alabaster-900 rounded-full h-12 w-12 flex items-center justify-center ml-4"
-                        onClick={() => swiperRef.current?.swiper?.slideNext()}
+                        onClick={() => swiperRef.current?.slideNext()}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"

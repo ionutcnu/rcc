@@ -52,7 +52,7 @@ export default function ContactPage() {
                     </div>
                     <div className="w-full md:w-6/12 bg-[#2A2A2E] p-8 rounded-lg shadow-lg">
                         <h2 className="text-2xl font-semibold">From screening to owner in 5 days</h2>
-                        <p className="mt-4">Reach out and let's start  your  journey today.</p>
+                        <p className="mt-4">Reach out and let&apos;s start  your  journey today.</p>
                         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                             <div className="flex flex-wrap -mx-2">
                                 <div className="w-full md:w-1/2 px-2 mb-4">
