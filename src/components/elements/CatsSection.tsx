@@ -1,4 +1,5 @@
 "use client";
+import { cats } from '@/app/data/catsData';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/swiper-bundle.css';
 import Particles from "./Particles";
@@ -9,12 +10,12 @@ import SwiperCore from 'swiper';
 export default function CatsSection() {
     const swiperRef = useRef<SwiperCore>();
 
-    const cats = [
-        { id: 1, name: "Gura Mare", alias: "Gura", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/Cats/cat1.jpg" },
-        { id: 2, name: "Veve", alias: "Veve", description: "She's grumpy and always demands food, but also likes to cuddle in the couch or bed.", image: "/Cats/cat3.jpg" },
-        { id: 3, name: "Ollie", alias: "Ollie", description: "He likes to run around and play hide-and-seek. He also loves head and belly rubs!", image: "/Cats/cat1.jpg" },
-        { id: 4, name: "Misty", alias: "Misty", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/Cats/cat2.jpg" },
-    ];
+    // const cats = [
+    //     { id: 1, name: "Gura Mare", alias: "Gura", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/pages/cats/cat1.jpg" },
+    //     { id: 2, name: "Veve", alias: "Veve", description: "She's grumpy and always demands food, but also likes to cuddle in the couch or bed.", image: "/pages/cats/cat3.jpg" },
+    //     { id: 3, name: "Ollie", alias: "Ollie", description: "He likes to run around and play hide-and-seek. He also loves head and belly rubs!", image: "/pages/cats/cat1.jpg" },
+    //     { id: 4, name: "Misty", alias: "Misty", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/pages/cats/cat2.jpg" },
+    // ];
 
     return (
         <section className="relative bg-[#1C1C21] text-white py-16">
@@ -39,7 +40,7 @@ export default function CatsSection() {
                 >
                     {cats.map((cat) => (
                         <SwiperSlide key={cat.alias}>
-                            <Link href={`/cats/${cat.alias}`}>
+                            <Link href={`/pages/cats/${cat.alias}`} key={cat.id}>
                                 <div className="bg-white text-black rounded-lg overflow-hidden shadow-lg cursor-pointer">
                                     <img
                                         src={cat.image}
@@ -91,7 +92,7 @@ export default function CatsSection() {
                     Rescued from the streets of Spain, these felines are treated with love, care, and full vaccinations.
                 </p>
                 <p className="text-lg">They’re now healthy and excited to meet their new owners!</p>
-                <a href="/cats" className="text-yellow-500 mt-4 inline-block text-lg hover:underline">
+                <a href="/pages/cats" className="text-yellow-500 mt-4 inline-block text-lg hover:underline">
                     See all cats &gt;
                 </a>
             </div>
