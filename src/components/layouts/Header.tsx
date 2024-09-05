@@ -51,7 +51,7 @@ export default function Header() {
                     <nav className="hidden md:flex space-x-6">
                         <Link href="/" className="hover:text-gray-400" >Home</Link>
                         <Link href="/cats" className="hover:text-gray-400" >Cats</Link>
-                        <Link href="/contact" className="hover:text-gray-400 ">Contact</Link>
+                        <Link href="/pages/contact" className="hover:text-gray-400 ">Contact</Link>
                     </nav>
 
                     {/* Language Switcher */}

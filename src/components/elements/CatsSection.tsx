@@ -10,12 +10,7 @@ import SwiperCore from 'swiper';
 export default function CatsSection() {
     const swiperRef = useRef<SwiperCore>();
 
-    // const cats = [
-    //     { id: 1, name: "Gura Mare", alias: "Gura", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/pages/cats/cat1.jpg" },
-    //     { id: 2, name: "Veve", alias: "Veve", description: "She's grumpy and always demands food, but also likes to cuddle in the couch or bed.", image: "/pages/cats/cat3.jpg" },
-    //     { id: 3, name: "Ollie", alias: "Ollie", description: "He likes to run around and play hide-and-seek. He also loves head and belly rubs!", image: "/pages/cats/cat1.jpg" },
-    //     { id: 4, name: "Misty", alias: "Misty", description: "Very active and playful, Misty is your trusting buddy when it comes to keeping rats away!", image: "/pages/cats/cat2.jpg" },
-    // ];
+
 
     return (
         <section className="relative bg-[#1C1C21] text-white py-16">
