@@ -38,7 +38,7 @@ export default function CatsSection() {
                             <Link href={`/pages/cats/${cat.alias}`} key={cat.id}>
                                 <div className="bg-white text-black rounded-lg overflow-hidden shadow-lg cursor-pointer">
                                     <img
-                                        src={cat.image}
+                                        src={cat.mainImage}
                                         alt={cat.name}
                                         className="object-cover h-56 w-full"
                                     />

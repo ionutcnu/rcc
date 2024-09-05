@@ -94,12 +94,6 @@ export default function HeroSlideshow() {
                     </div>
                 </SwiperSlide>
             </Swiper>
-
-            <style jsx>{`
-                .swiper-pagination-bullets {
-                    bottom: 100px !important;
-                }
-            `}</style>
         </section>
     );
 }
