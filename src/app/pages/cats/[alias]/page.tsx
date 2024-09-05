@@ -178,7 +178,7 @@ export default function CatProfile() {
                             loop={true}
                             navigation={true}  // Ensure navigation arrows work
                             pagination={{ clickable: true }}  // Ensure bullet pagination works
-                            modules={[Navigation, Pagination]}  // Apply modules to the modal swiper
+                            modules={[Navigation]}  // Apply modules to the modal swiper
                             className="fullscreen-carousel"
                             onSlideChange={handleModalSlideChange}  // Pause videos when slide changes
                         >
