@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Header from "@/components/layouts/Header";
 import { cats } from '@/app/data/catsData';
@@ -13,10 +13,6 @@ export default function CatProfile() {
     const { alias } = useParams();
     const cat = cats.find((c) => c.alias === alias);
 
-    const [selectedImage, setSelectedImage] = useState(cat?.images[0]);  // Default to the first image
-    const [isModalOpen, setIsModalOpen] = useState(false);  // State to manage modal visibility
-    const [selectedImageIndex, setSelectedImageIndex] = useState(0);  // Track the index of the selected image
-
     if (!cat) {
         return (
             <div>
@@ -26,13 +22,54 @@ export default function CatProfile() {
         );
     }
 
-    const openModal = (index:number) => {
-        setSelectedImageIndex(index);  // Set the starting image for the modal
+    // Merge videos and images into one media array with type specification
+    const media = [
+        ...cat.videos.map((video) => ({ type: 'video', src: video })),
+        ...cat.images.map((image) => ({ type: 'image', src: image }))
+    ];
+
+    const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);  // Default to the first media (video or image)
+    const [selectedMedia, setSelectedMedia] = useState(media[0] || null);  // Default to the first media object
+    const [isModalOpen, setIsModalOpen] = useState(false);  // State to manage modal visibility
+    const swiperRef = useRef(null); // To store the Swiper instance
+    const videoRefs = useRef([]);  // Store references to the video elements for pausing
+
+    // Update selectedMedia whenever selectedMediaIndex changes
+    useEffect(() => {
+        if (media[selectedMediaIndex]) {
+            setSelectedMedia(media[selectedMediaIndex]);
+        }
+    }, [selectedMediaIndex]);
+
+    // Handle Slide Change and Update Main Media
+    const handleSlideChange = (swiper) => {
+        const newIndex = swiper.realIndex;
+        setSelectedMediaIndex(newIndex);
+    };
+
+    const openModal = (index: number) => {
+        setSelectedMediaIndex(index);  // Set the starting media for the modal
         setIsModalOpen(true);  // Open the modal
     };
 
     const closeModal = () => {
         setIsModalOpen(false);  // Close the modal
+    };
+
+    // Prevent video autoplay when clicking on the video frame and open modal instead
+    const handleVideoFrameClick = (e) => {
+        e.preventDefault();
+        openModal(selectedMediaIndex);
+    };
+
+    // Pause any non-active videos when the Swiper changes slides in fullscreen mode
+    const handleModalSlideChange = (swiper) => {
+        const currentIndex = swiper.realIndex;
+        videoRefs.current.forEach((video, index) => {
+            if (video && !video.paused && index !== currentIndex) {
+                video.pause();  // Pause any video that isn't in the center
+            }
+        });
     };
 
     return (
@@ -46,7 +83,7 @@ export default function CatProfile() {
 
                 {/* Responsive layout for mobile: stack text above images */}
                 <div className="container mx-auto py-10 px-4 flex flex-col lg:flex-row lg:gap-16 lg:py-16 lg:px-8">
-                    <div className="lg:w-1/2 lg:order-2">  {/* Text remains on right on larger screens */}
+                    <div className="lg:w-1/2 lg:order-2">
                         <div className="text-left mb-6 lg:mb-0">
                             <h2 className="text-2xl lg:text-3xl font-bold mb-4">{cat.name} Is Ready for Adoption</h2>
                             <h3 className="text-lg lg:text-xl font-semibold mb-2">ABOUT:</h3>
@@ -58,38 +95,61 @@ export default function CatProfile() {
                         </div>
                     </div>
 
-                    <div className="lg:w-1/2 lg:order-1">  {/* Image remains on left on larger screens */}
-                        {/* Main Image with onClick to open modal */}
+                    <div className="lg:w-1/2 lg:order-1">
+                        {/* Main Media (Image or Video) with onClick to open modal */}
                         <div className="w-full h-[350px] lg:h-[500px] mx-auto relative">
-                            <Image
-                                src={selectedImage || cat.images[0]}  // Ensure fallback to first image if selectedImage is undefined
-                                alt={cat.name}
-                                className="rounded-lg shadow-lg object-cover cursor-pointer"
-                                layout="fill"
-                                onClick={() => openModal(cat.images.indexOf(selectedImage || cat.images[0]))}  // Fallback to first image if undefined
-                            />
+                            {selectedMedia?.type === 'video' ? (
+                                <video
+                                    key={selectedMedia.src} // Key added to force re-render between videos
+                                    controls
+                                    className="rounded-lg shadow-lg w-full h-full object-cover cursor-pointer main-video"
+                                    onClick={handleVideoFrameClick}  // Open modal on video frame click
+                                >
+                                    <source src={selectedMedia.src} type="video/mp4" />
+                                    Your browser does not support the video tag.
+                                </video>
+                            ) : selectedMedia ? (
+                                <Image
+                                    src={selectedMedia.src}
+                                    alt={cat.name}
+                                    className="rounded-lg shadow-lg object-cover cursor-pointer"
+                                    layout="fill"
+                                    onClick={() => openModal(selectedMediaIndex)}  // Open modal on click
+                                />
+                            ) : null }
                         </div>
 
-                        {/* Swiper Carousel for Additional Images */}
+                        {/* Swiper Carousel for Additional Media */}
                         <Swiper
+                            ref={swiperRef}
                             spaceBetween={10}
                             slidesPerView={3}
                             loop={true}
                             navigation={true}  // Fix navigation arrows
-                            pagination={{clickable: true}}  // Fix bullet pagination
+                            pagination={{ clickable: true }}  // Fix bullet pagination
                             modules={[Navigation, Pagination]}  // Ensure modules are applied correctly
                             className="mt-4 small-carousel"  // Unique class for small carousel
+                            onSlideChange={handleSlideChange}  // Update the large media on slide change
                         >
-                            {cat.images.map((image, index) => (
+                            {media.map((item, index) => (
                                 <SwiperSlide key={index} className="flex items-center justify-center">
                                     <div className="w-[100px] h-[100px] lg:w-[150px] lg:h-[150px]">
-                                        <Image
-                                            src={image}
-                                            alt={`${cat.name} image ${index + 1}`}
-                                            className="rounded-lg object-cover w-full h-full cursor-pointer"
-                                            layout="fill"
-                                            onClick={() => openModal(index)}  // Open modal when thumbnail clicked
-                                        />
+                                        {item.type === 'video' ? (
+                                            <video
+                                                className="rounded-lg w-full h-full object-cover cursor-pointer"
+                                                onClick={() => setSelectedMediaIndex(index)}  // Update large media when clicked
+                                            >
+                                                <source src={item.src} type="video/mp4" />
+                                            </video>
+                                        ) : (
+                                            <Image
+                                                src={item.src}
+                                                alt={`${cat.name} media ${index + 1}`}
+                                                className="rounded-lg object-cover w-full h-full cursor-pointer"
+                                                layout="fill"
+                                                onClick={() => setSelectedMediaIndex(index)}  // Update large media when clicked
+                                            />
+                                        )}
                                     </div>
                                 </SwiperSlide>
                             ))}
@@ -98,7 +158,7 @@ export default function CatProfile() {
                 </div>
             </div>
 
-            {/* Modal for Full-Screen Image Scrolling */}
+            {/* Modal for Full-Screen Media (Image and Video) Scrolling */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
                     <div className="relative w-full h-full">
@@ -110,24 +170,36 @@ export default function CatProfile() {
                             &times;
                         </button>
 
-                        {/* Fullscreen Swiper Carousel */}
+                        {/* Fullscreen Swiper for Modal */}
                         <Swiper
                             spaceBetween={10}
                             slidesPerView={1}
-                            initialSlide={selectedImageIndex}  // Start at the clicked image
+                            initialSlide={selectedMediaIndex}  // Start at the clicked media
                             loop={true}
                             navigation={true}  // Ensure navigation arrows work
                             pagination={{ clickable: true }}  // Ensure bullet pagination works
                             modules={[Navigation, Pagination]}  // Apply modules to the modal swiper
-                            className="fullscreen-carousel"  // Unique class for the modal carousel
+                            className="fullscreen-carousel"
+                            onSlideChange={handleModalSlideChange}  // Pause videos when slide changes
                         >
-                            {cat.images.map((image, index) => (
+                            {media.map((item, index) => (
                                 <SwiperSlide key={index}>
-                                    <img
-                                        src={image}
-                                        alt={`Slide ${index}`}
-                                        className="w-full h-screen object-contain"
-                                    />
+                                    {item.type === 'video' ? (
+                                        <video
+                                            ref={(el) => videoRefs.current[index] = el}  // Store ref for pausing
+                                            controls
+                                            className="w-full h-screen object-contain"
+                                        >
+                                            <source src={item.src} type="video/mp4" />
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    ) : (
+                                        <img
+                                            src={item.src}
+                                            alt={`Slide ${index}`}
+                                            className="w-full h-screen object-contain"
+                                        />
+                                    )}
                                 </SwiperSlide>
                             ))}
                         </Swiper>

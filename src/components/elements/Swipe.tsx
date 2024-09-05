@@ -36,7 +36,7 @@ export default function HeroSlideshow() {
                 <SwiperSlide>
                     <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200 border-4 border-gray-300">
                         <img
-                            src={isMobile ? "/Cats/Garfield.jpeg" : "/Cats/Glori.jpeg"}
+                            src={isMobile ? "/Cats/Images/Garfield.jpeg" : "/Cats/Images/Glori.jpeg"}
                             alt="1"
                             className="object-cover w-full h-full"
                         />
@@ -57,7 +57,7 @@ export default function HeroSlideshow() {
                 <SwiperSlide>
                     <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200">
                         <img
-                            src={isMobile ? "/Cats/catm.jpg" : "/Cats/catd.jpg"}
+                            src={isMobile ? "/Cats/Images/catm.jpg" : "/Cats/Images/catd.jpg"}
                             alt="2"
                             className="object-cover w-full h-full"
                         />
@@ -77,7 +77,7 @@ export default function HeroSlideshow() {
                 <SwiperSlide>
                     <div className="relative flex items-center justify-center h-[870px] mt-[50px] bg-gray-200">
                         <img
-                            src={isMobile ? "/Cats/catm3.jpg" : "/Cats/catd3.jpg"}
+                            src={isMobile ? "/Cats/Images/catm3.jpg" : "/Cats/Images/catd3.jpg"}
                             alt="3"
                             className="object-cover w-full h-full"
                         />
