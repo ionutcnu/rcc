@@ -6,18 +6,16 @@ import { cats } from '@/app/data/catsData';
 import Image from 'next/image';
 import Footer from "@/components/layouts/Footer";
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination} from 'swiper/modules';
+import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/swiper-bundle.css';
-
 
 export default function CatProfile() {
     const { alias } = useParams();
-
-    // Find the matching cat by alias
     const cat = cats.find((c) => c.alias === alias);
 
-    // State to store the currently selected image
     const [selectedImage, setSelectedImage] = useState(cat?.images[0]);  // Default to the first image
+    const [isModalOpen, setIsModalOpen] = useState(false);  // State to manage modal visibility
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);  // Track the index of the selected image
 
     if (!cat) {
         return (
@@ -27,6 +25,15 @@ export default function CatProfile() {
             </div>
         );
     }
+
+    const openModal = (index: number) => {
+        setSelectedImageIndex(index);  // Set the starting image for the modal
+        setIsModalOpen(true);  // Open the modal
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);  // Close the modal
+    };
 
     return (
         <>
@@ -39,13 +46,14 @@ export default function CatProfile() {
 
                 <div className="container mx-auto py-16 px-8 flex flex-col lg:flex-row gap-16">
                     <div className="lg:w-1/2">
-                        {/* Main Image with Fixed Dimensions */}
+                        {/* Main Image with onClick to open modal */}
                         <div className="w-[500px] h-[500px] mx-auto relative">
                             <Image
-                                src={selectedImage || ''}  // Fallback to placeholder if undefined
+                                src={selectedImage || ''}
                                 alt={cat.name}
-                                className="rounded-lg shadow-lg object-cover"
+                                className="rounded-lg shadow-lg object-cover cursor-pointer"  // Add cursor pointer
                                 layout="fill"
+                                onClick={() => openModal(cat.images.indexOf(selectedImage))}  // Open modal when big image is clicked
                             />
                         </div>
 
@@ -54,33 +62,31 @@ export default function CatProfile() {
                             spaceBetween={10}
                             slidesPerView={3}
                             loop={true}
-                            navigation={true}  // Enable navigation arrows
-                            pagination={{clickable: true}}  // Enable bullet pagination
-                            modules={[Navigation, Pagination]}  // Use Swiper's Navigation and Pagination modules
-                            className="mt-4"
+                            navigation={true}  // Fix navigation arrows
+                            pagination={{ clickable: true }}  // Fix bullet pagination
+                            modules={[Navigation, Pagination]}  // Ensure modules are applied correctly
+                            className="mt-4 small-carousel"  // Unique class for small carousel
                         >
-                            {cat.images.slice(1).map((image, index) => (
+                            {cat.images.map((image, index) => (
                                 <SwiperSlide key={index} className="flex items-center justify-center">
                                     <div className="w-[150px] h-[150px]">
                                         <Image
                                             src={image}
                                             alt={`${cat.name} image ${index + 1}`}
                                             className="rounded-lg object-cover w-full h-full cursor-pointer"
-                                            layout="fill"  // Ensuring it fills the container
-                                            onClick={() => setSelectedImage(image)}  // Set the clicked image as the selected image
+                                            layout="fill"
+                                            onClick={() => openModal(index)}  // Open modal when thumbnail clicked
                                         />
                                     </div>
                                 </SwiperSlide>
                             ))}
                         </Swiper>
+                    </div>
 
-
-                </div>
-
-                <div className="lg:w-1/2 text-left">
-                    <h2 className="text-3xl font-bold mb-4">{cat.name} Is Ready for Adoption</h2>
-                    <h3 className="text-xl font-semibold mb-2">ABOUT:</h3>
-                    <p className="text-gray-400 leading-relaxed mb-6">{cat.description}</p>
+                    <div className="lg:w-1/2 text-left">
+                        <h2 className="text-3xl font-bold mb-4">{cat.name} Is Ready for Adoption</h2>
+                        <h3 className="text-xl font-semibold mb-2">ABOUT:</h3>
+                        <p className="text-gray-400 leading-relaxed mb-6">{cat.description}</p>
                         <h3 className="text-xl font-semibold mb-2">COLOR:</h3>
                         <p className="text-gray-400 mb-4">{cat.color}</p>
                         <h3 className="text-xl font-semibold mb-2">GENDER:</h3>
@@ -88,8 +94,45 @@ export default function CatProfile() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal for Full-Screen Image Scrolling */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
+                    <div className="relative w-full h-full">
+                        {/* Close Button */}
+                        <button
+                            className="absolute top-4 right-4 text-white text-2xl z-50"
+                            onClick={closeModal}
+                        >
+                            &times;
+                        </button>
+
+                        {/* Fullscreen Swiper Carousel */}
+                        <Swiper
+                            spaceBetween={10}
+                            slidesPerView={1}
+                            initialSlide={selectedImageIndex}  // Start at the clicked image
+                            loop={true}
+                            navigation={true}  // Ensure navigation arrows work
+                            pagination={{ clickable: true }}  // Ensure bullet pagination works
+                            modules={[Navigation, Pagination]}  // Apply modules to the modal swiper
+                            className="fullscreen-carousel"  // Unique class for the modal carousel
+                        >
+                            {cat.images.map((image, index) => (
+                                <SwiperSlide key={index}>
+                                    <img
+                                        src={image}
+                                        alt={`Slide ${index}`}
+                                        className="w-full h-screen object-contain"
+                                    />
+                                </SwiperSlide>
+                            ))}
+                        </Swiper>
+                    </div>
+                </div>
+            )}
+
             <Footer />
         </>
-
     );
 }
