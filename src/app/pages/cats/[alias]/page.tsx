@@ -26,7 +26,7 @@ export default function CatProfile() {
         );
     }
 
-    const openModal = (index: number) => {
+    const openModal = (index:number) => {
         setSelectedImageIndex(index);  // Set the starting image for the modal
         setIsModalOpen(true);  // Open the modal
     };
@@ -40,20 +40,33 @@ export default function CatProfile() {
             <Header />
             <div className="bg-[#1C1C21] text-white min-h-screen">
                 <div className="bg-gray-200 text-center py-20 mt-18">
-                    <h1 className="text-5xl text-black font-bold">{cat.name}</h1>
-                    <p className="text-xl text-blue-950 mt-xl-4">{cat.description}</p>
+                    <h1 className="text-4xl lg:text-5xl text-black font-bold">{cat.name}</h1>
+                    <p className="text-lg lg:text-xl text-blue-950 mt-4">{cat.description}</p>
                 </div>
 
-                <div className="container mx-auto py-16 px-8 flex flex-col lg:flex-row gap-16">
-                    <div className="lg:w-1/2">
+                {/* Responsive layout for mobile: stack text above images */}
+                <div className="container mx-auto py-10 px-4 flex flex-col lg:flex-row lg:gap-16 lg:py-16 lg:px-8">
+                    <div className="lg:w-1/2 lg:order-2">  {/* Text remains on right on larger screens */}
+                        <div className="text-left mb-6 lg:mb-0">
+                            <h2 className="text-2xl lg:text-3xl font-bold mb-4">{cat.name} Is Ready for Adoption</h2>
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">ABOUT:</h3>
+                            <p className="text-gray-400 leading-relaxed mb-6">{cat.description}</p>
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">COLOR:</h3>
+                            <p className="text-gray-400 mb-4">{cat.color}</p>
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">GENDER:</h3>
+                            <p className="text-gray-400 mb-4">{cat.gender}</p>
+                        </div>
+                    </div>
+
+                    <div className="lg:w-1/2 lg:order-1">  {/* Image remains on left on larger screens */}
                         {/* Main Image with onClick to open modal */}
-                        <div className="w-[500px] h-[500px] mx-auto relative">
+                        <div className="w-full h-[350px] lg:h-[500px] mx-auto relative">
                             <Image
-                                src={selectedImage || ''}
+                                src={selectedImage || cat.images[0]}  // Ensure fallback to first image if selectedImage is undefined
                                 alt={cat.name}
-                                className="rounded-lg shadow-lg object-cover cursor-pointer"  // Add cursor pointer
+                                className="rounded-lg shadow-lg object-cover cursor-pointer"
                                 layout="fill"
-                                onClick={() => openModal(cat.images.indexOf(selectedImage))}  // Open modal when big image is clicked
+                                onClick={() => openModal(cat.images.indexOf(selectedImage || cat.images[0]))}  // Fallback to first image if undefined
                             />
                         </div>
 
@@ -63,13 +76,13 @@ export default function CatProfile() {
                             slidesPerView={3}
                             loop={true}
                             navigation={true}  // Fix navigation arrows
-                            pagination={{ clickable: true }}  // Fix bullet pagination
+                            pagination={{clickable: true}}  // Fix bullet pagination
                             modules={[Navigation, Pagination]}  // Ensure modules are applied correctly
                             className="mt-4 small-carousel"  // Unique class for small carousel
                         >
                             {cat.images.map((image, index) => (
                                 <SwiperSlide key={index} className="flex items-center justify-center">
-                                    <div className="w-[150px] h-[150px]">
+                                    <div className="w-[100px] h-[100px] lg:w-[150px] lg:h-[150px]">
                                         <Image
                                             src={image}
                                             alt={`${cat.name} image ${index + 1}`}
@@ -81,16 +94,6 @@ export default function CatProfile() {
                                 </SwiperSlide>
                             ))}
                         </Swiper>
-                    </div>
-
-                    <div className="lg:w-1/2 text-left">
-                        <h2 className="text-3xl font-bold mb-4">{cat.name} Is Ready for Adoption</h2>
-                        <h3 className="text-xl font-semibold mb-2">ABOUT:</h3>
-                        <p className="text-gray-400 leading-relaxed mb-6">{cat.description}</p>
-                        <h3 className="text-xl font-semibold mb-2">COLOR:</h3>
-                        <p className="text-gray-400 mb-4">{cat.color}</p>
-                        <h3 className="text-xl font-semibold mb-2">GENDER:</h3>
-                        <p className="text-gray-400 mb-4">{cat.gender}</p>
                     </div>
                 </div>
             </div>
