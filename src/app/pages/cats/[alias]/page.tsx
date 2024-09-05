@@ -24,8 +24,8 @@ export default function CatProfile() {
 
     // Merge videos and images into one media array with type specification
     const media = [
-        ...cat.videos.map((video) => ({ type: 'video', src: video })),
-        ...cat.images.map((image) => ({ type: 'image', src: image }))
+        ...(cat.videos || []).map((video) => ({ type: 'video', src: video })),
+        ...(cat.images || []).map((image) => ({ type: 'image', src: image }))
     ];
 
     const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);  // Default to the first media (video or image)
