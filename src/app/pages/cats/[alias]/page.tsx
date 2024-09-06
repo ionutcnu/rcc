@@ -13,36 +13,27 @@ export default function CatProfile() {
     const { alias } = useParams();
     const cat = cats.find((c) => c.alias === alias);
 
-    if (!cat) {
-        return (
-            <div>
-                <Header />
-                <p className="text-white">Cat not found.</p>
-            </div>
-        );
-    }
-
     // Merge videos and images into one media array with type specification
     const media = [
-        ...(cat.videos || []).map((video) => ({ type: 'video', src: video })),
-        ...(cat.images || []).map((image) => ({ type: 'image', src: image }))
+        ...(cat?.videos || []).map((video) => ({ type: 'video', src: video })),
+        ...(cat?.images || []).map((image) => ({ type: 'image', src: image }))
     ];
-
+    const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
     const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);  // Default to the first media (video or image)
     const [selectedMedia, setSelectedMedia] = useState(media[0] || null);  // Default to the first media object
     const [isModalOpen, setIsModalOpen] = useState(false);  // State to manage modal visibility
-    const swiperRef = useRef(null); // To store the Swiper instance
-    const videoRefs = useRef([]);  // Store references to the video elements for pausing
+    const swiperRef = useRef(null);  // To store the Swiper instance
+    // Store references to the video elements for pausing
 
-    // Update selectedMedia whenever selectedMediaIndex changes
+    // Update selectedMedia whenever selectedMediaIndex or media changes
     useEffect(() => {
-        if (media[selectedMediaIndex]) {
+        if (media.length > 0 && media[selectedMediaIndex]) {
             setSelectedMedia(media[selectedMediaIndex]);
         }
-    }, [selectedMediaIndex]);
+    }, [selectedMediaIndex, media]);
 
     // Handle Slide Change and Update Main Media
-    const handleSlideChange = (swiper) => {
+    const handleSlideChange = (swiper: any) => {
         const newIndex = swiper.realIndex;
         setSelectedMediaIndex(newIndex);
     };
@@ -57,20 +48,31 @@ export default function CatProfile() {
     };
 
     // Prevent video autoplay when clicking on the video frame and open modal instead
-    const handleVideoFrameClick = (e) => {
+    const handleVideoFrameClick = (e: React.MouseEvent) => {
         e.preventDefault();
         openModal(selectedMediaIndex);
     };
 
     // Pause any non-active videos when the Swiper changes slides in fullscreen mode
-    const handleModalSlideChange = (swiper) => {
+    const handleModalSlideChange = (swiper: any) => {
         const currentIndex = swiper.realIndex;
-        videoRefs.current.forEach((video, index) => {
+        videoRefs.current.forEach((video: HTMLVideoElement | null, index: number) => {
             if (video && !video.paused && index !== currentIndex) {
                 video.pause();  // Pause any video that isn't in the center
             }
         });
     };
+
+    // Return early if cat is not found, but ensure hooks are still called before this point
+    if (!cat) {
+        return (
+            <>
+                <Header />
+                <p className="text-white">Cat not found.</p>
+                <Footer />
+            </>
+        );
+    }
 
     return (
         <>
@@ -100,7 +102,7 @@ export default function CatProfile() {
                         <div className="w-full h-[350px] lg:h-[500px] mx-auto relative">
                             {selectedMedia?.type === 'video' ? (
                                 <video
-                                    key={selectedMedia.src} // Key added to force re-render between videos
+                                    key={selectedMedia.src}  // Key added to force re-render between videos
                                     controls
                                     className="rounded-lg shadow-lg w-full h-full object-cover cursor-pointer main-video"
                                     onClick={handleVideoFrameClick}  // Open modal on video frame click
@@ -116,7 +118,7 @@ export default function CatProfile() {
                                     layout="fill"
                                     onClick={() => openModal(selectedMediaIndex)}  // Open modal on click
                                 />
-                            ) : null }
+                            ) : null}
                         </div>
 
                         {/* Swiper Carousel for Additional Media */}
@@ -185,13 +187,15 @@ export default function CatProfile() {
                             {media.map((item, index) => (
                                 <SwiperSlide key={index}>
                                     {item.type === 'video' ? (
-                                        <video
-                                            ref={(el) => videoRefs.current[index] = el}  // Store ref for pausing
-                                            controls
-                                            className="w-full h-screen object-contain"
-                                        >
-                                            <source src={item.src} type="video/mp4" />
-                                            Your browser does not support the video tag.
+                                            <video
+                                                ref={(el) => {
+                                                if (el) videoRefs.current[index] = el;
+                                            }}
+                                                controls
+                                                className="w-full h-screen object-contain"
+                                                >
+                                        <source src={item.src} type="video/mp4" />
+                                        Your browser does not support the video tag.
                                         </video>
                                     ) : (
                                         <img
