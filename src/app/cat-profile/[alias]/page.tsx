@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Header from "@/components/layouts/Header";
 import { cats } from '@/app/data/catsData';
@@ -13,17 +13,17 @@ export default function CatProfile() {
     const { alias } = useParams();
     const cat = cats.find((c) => c.alias === alias);
 
-    // Merge videos and images into one media array with type specification
-    const media = [
+    // Use useMemo to memoize the media array
+    const media = useMemo(() => [
         ...(cat?.videos || []).map((video) => ({ type: 'video', src: video })),
         ...(cat?.images || []).map((image) => ({ type: 'image', src: image }))
-    ];
+    ], [cat]);
+
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
     const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);  // Default to the first media (video or image)
     const [selectedMedia, setSelectedMedia] = useState(media[0] || null);  // Default to the first media object
     const [isModalOpen, setIsModalOpen] = useState(false);  // State to manage modal visibility
     const swiperRef = useRef(null);  // To store the Swiper instance
-    // Store references to the video elements for pausing
 
     // Update selectedMedia whenever selectedMediaIndex or media changes
     useEffect(() => {
@@ -187,15 +187,15 @@ export default function CatProfile() {
                             {media.map((item, index) => (
                                 <SwiperSlide key={index}>
                                     {item.type === 'video' ? (
-                                            <video
-                                                ref={(el) => {
+                                        <video
+                                            ref={(el) => {
                                                 if (el) videoRefs.current[index] = el;
                                             }}
-                                                controls
-                                                className="w-full h-screen object-contain"
-                                                >
-                                        <source src={item.src} type="video/mp4" />
-                                        Your browser does not support the video tag.
+                                            controls
+                                            className="w-full h-screen object-contain"
+                                        >
+                                            <source src={item.src} type="video/mp4" />
+                                            Your browser does not support the video tag.
                                         </video>
                                     ) : (
                                         <img
