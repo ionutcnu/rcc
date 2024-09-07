@@ -20,26 +20,20 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v4
         with:
-          node-version: "latest" # Use an LTS version like 16.x or 18.x
+          node-version: "latest"
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build project
-        run: npm run build
-
-      # If using standalone mode for Next.js (optional, otherwise remove this)
-      - name: Prepare for Azure Deployment (Standalone Mode)
+      - name: npm install, build, and test
         run: |
-          cp -r .next build
-          cp -r public build/public
-          cp -r node_modules build/node_modules
-          echo "Standalone build prepared."
+          npm install
+          npm run build
+          mv ./build/static ./build/standalone/build
+          mv ./public ./build/standalone
 
       - name: "Deploy to Azure Web App"
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.WEBAPP_NAME }}
           slot-name: "Production"
           publish-profile: ${{ env.APPLICATION_PUBLISH_PROFILE }}
-          package: ./build  # Deploy the standalone build folder or adjust as needed
+          package: ./build/standalone
