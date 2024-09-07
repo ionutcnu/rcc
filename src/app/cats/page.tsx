@@ -6,9 +6,7 @@ import Footer from "@/components/layouts/Footer";
 import { cats } from "@/app/data/catsData";
 import Spotlight, { SpotlightCard } from "@/components/elements/Spotlight"; // Adjust the path if necessary
 
-// Import Font Awesome Components
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEye } from '@fortawesome/free-solid-svg-icons';
+
 
 type Cat = {
     id: number;
@@ -49,7 +47,7 @@ export default function AllCats() {
     });
 
     const redirectToProfile = (alias: string) => {
-        window.location.href = `/pages/catProfile/${alias}`;
+        window.location.href = `/cat-profile/${alias}`;
     };
 
     // Get all unique years from cats data
@@ -134,17 +132,18 @@ export default function AllCats() {
                                             <h2 className="text-lg font-bold text-center mb-1">{cat.name}</h2>
 
                                             {/* Hover content (hidden by default, visible on hover) */}
-                                            <div className="absolute inset-0 bg-black bg-opacity-75 text-white p-4 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
+                                            <div
+                                                className="absolute inset-0 bg-black bg-opacity-75 text-white p-4 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
                                                 <p className="mb-1">{cat.description}</p>
                                                 <p className="mb-1">Gender: {cat.gender}</p>
                                                 <p className="mb-1">Color: {cat.color}</p>
                                                 <p className="mb-1">Year of Birth: {cat.yearOfBirth}</p>
                                                 <div className="flex justify-center">
                                                     <button
-                                                        className="text-indigo-500 hover:text-indigo-600 px-4 py-1.5 rounded-full text-sm transition-colors duration-300 flex items-center"
+                                                        className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm transition-colors duration-300"
                                                         onClick={() => redirectToProfile(cat.alias)}
                                                     >
-                                                        <FontAwesomeIcon icon={faEye} className="text-lg" />
+                                                        View Profile
                                                     </button>
                                                 </div>
                                             </div>
