@@ -41,7 +41,7 @@ export default function Footer() {
         <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400">
             <FaInstagram />
         </a>
-        <a href="https://tiktock.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400">
+        <a href="https://tiktck.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400">
             <FaTiktok />
         </a>
     </div>
