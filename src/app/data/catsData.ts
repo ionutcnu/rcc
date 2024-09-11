@@ -16,7 +16,14 @@ export const cats = [
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "White",
         gender: "Female",
-        yearOfBirth: 2017
+        yearOfBirth: 2017,
+        isVaccinated: true,
+        isMicrochipped: true,
+        breed: "Persian",
+        category: "Domestic",
+        motherName: "Mina",
+        fatherName: "Rocco",
+        price: 500
     },
     {
         id: 2,
@@ -28,7 +35,14 @@ export const cats = [
         images: ["/Cats/cat1.jpg", "/Cats/catm.jpg", "/Cats/cat3.jpg"],
         gender: "Female",
         color: "Orange",
-        yearOfBirth: 2016
+        yearOfBirth: 2016,
+        isVaccinated: false,
+        isMicrochipped: true,
+        breed: "Siamese",
+        category: "Domestic",
+        motherName: "Luna",
+        fatherName: "Felix",
+        price: 450
     },
     {
         id: 3,
@@ -40,7 +54,14 @@ export const cats = [
         images: ["/Cats/cat1.jpg", "/Cats/catm.jpg", "/Cats/cat3.jpg"],
         gender: "Male",
         color: "Orange and black",
-        yearOfBirth: 2015
+        yearOfBirth: 2015,
+        isVaccinated: true,
+        isMicrochipped: false,
+        breed: "Bengal",
+        category: "Wild",
+        motherName: "Mira",
+        fatherName: "Tiger",
+        price: 600
     },
     {
         id: 4,
@@ -52,7 +73,14 @@ export const cats = [
         images: ["/Cats/cat1.jpg", "/Cats/catm.jpg", "/Cats/cat3.jpg"],
         gender: "Male",
         color: "Brown",
-        yearOfBirth: 2014
+        yearOfBirth: 2014,
+        isVaccinated: true,
+        isMicrochipped: true,
+        breed: "Maine Coon",
+        category: "Wild",
+        motherName: "Bella",
+        fatherName: "Rocky",
+        price: 700
     },
     {
         id: 5,
@@ -68,7 +96,14 @@ export const cats = [
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "White",
         gender: "Female",
-        yearOfBirth: 2018
+        yearOfBirth: 2018,
+        isVaccinated: true,
+        isMicrochipped: true,
+        breed: "Ragdoll",
+        category: "Domestic",
+        motherName: "Snowflake",
+        fatherName: "Blizzard",
+        price: 550
     },
     {
         id: 6,
@@ -84,7 +119,14 @@ export const cats = [
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Gray",
         gender: "Male",
-        yearOfBirth: 2016
+        yearOfBirth: 2016,
+        isVaccinated: false,
+        isMicrochipped: true,
+        breed: "Scottish Fold",
+        category: "Domestic",
+        motherName: "Sandy",
+        fatherName: "Rex",
+        price: 480
     },
     {
         id: 7,
@@ -100,7 +142,14 @@ export const cats = [
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Brown",
         gender: "Male",
-        yearOfBirth: 2017
+        yearOfBirth: 2017,
+        isVaccinated: true,
+        isMicrochipped: true,
+        breed: "Abyssinian",
+        category: "Domestic",
+        motherName: "Cinnamon",
+        fatherName: "Latte",
+        price: 520
     },
     {
         id: 8,
@@ -116,7 +165,14 @@ export const cats = [
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Golden",
         gender: "Female",
-        yearOfBirth: 2015
+        yearOfBirth: 2015,
+        isVaccinated: true,
+        isMicrochipped: false,
+        breed: "British Shorthair",
+        category: "Domestic",
+        motherName: "Queenie",
+        fatherName: "King",
+        price: 600
     },
     {
         id: 9,
@@ -132,7 +188,14 @@ export const cats = [
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Black",
         gender: "Male",
-        yearOfBirth: 2014
+        yearOfBirth: 2014,
+        isVaccinated: true,
+        isMicrochipped: true,
+        breed: "Bombay",
+        category: "Wild",
+        motherName: "Night",
+        fatherName: "Phantom",
+        price: 640
     },
     {
         id: 10,
@@ -148,6 +211,13 @@ export const cats = [
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "White with black spots",
         gender: "Female",
-        yearOfBirth: 2018
+        yearOfBirth: 2018,
+        isVaccinated: false,
+        isMicrochipped: true,
+        breed: "Siberian",
+        category: "Domestic",
+        motherName: "Daisy",
+        fatherName: "Buddy",
+        price: 530
     }
 ];

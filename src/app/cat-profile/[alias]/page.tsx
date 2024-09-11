@@ -88,12 +88,35 @@ export default function CatProfile() {
                     <div className="lg:w-1/2 lg:order-2">
                         <div className="text-left mb-6 lg:mb-0">
                             <h2 className="text-2xl lg:text-3xl font-bold mb-4">{cat.name} Is Ready for Adoption</h2>
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">PRICE:</h3>
+                            <p className="text-gray-400 mb-4">${cat.price}</p>
                             <h3 className="text-lg lg:text-xl font-semibold mb-2">ABOUT:</h3>
                             <p className="text-gray-400 leading-relaxed mb-6">{cat.description}</p>
                             <h3 className="text-lg lg:text-xl font-semibold mb-2">COLOR:</h3>
                             <p className="text-gray-400 mb-4">{cat.color}</p>
                             <h3 className="text-lg lg:text-xl font-semibold mb-2">GENDER:</h3>
                             <p className="text-gray-400 mb-4">{cat.gender}</p>
+
+                            {/* New Fields */}
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">BREED:</h3>
+                            <p className="text-gray-400 mb-4">{cat.breed}</p>
+
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">CATEGORY:</h3>
+                            <p className="text-gray-400 mb-4">{cat.category}</p>
+
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">VACCINATED:</h3>
+                            <p className="text-gray-400 mb-4">{cat.isVaccinated ? "Yes" : "No"}</p>
+
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">MICROCHIPPED:</h3>
+                            <p className="text-gray-400 mb-4">{cat.isMicrochipped ? "Yes" : "No"}</p>
+
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">MOTHER NAME:</h3>
+                            <p className="text-gray-400 mb-4">{cat.motherName}</p>
+
+                            <h3 className="text-lg lg:text-xl font-semibold mb-2">FATHER NAME:</h3>
+                            <p className="text-gray-400 mb-4">{cat.fatherName}</p>
+
+
                         </div>
                     </div>
 
