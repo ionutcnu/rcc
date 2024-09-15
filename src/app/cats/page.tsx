@@ -6,8 +6,6 @@ import Footer from "@/components/layouts/Footer";
 import { cats } from "@/app/data/catsData";
 import Spotlight, { SpotlightCard } from "@/components/elements/Spotlight"; // Adjust the path if necessary
 
-
-
 type Cat = {
     id: number;
     alias: string;
@@ -111,11 +109,11 @@ export default function AllCats() {
 
                         {/* Cat Cards */}
                         <div className="w-full md:w-4/5">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 {filteredCats.map((cat: Cat) => (
                                     <Spotlight key={cat.id}>
                                         <SpotlightCard
-                                            className="bg-white shadow-md rounded-lg p-3 hover:shadow-lg transition-shadow duration-300 relative group"
+                                            className="bg-white shadow-md rounded-lg p-4 hover:shadow-lg transition-shadow duration-300 relative group"
                                         >
                                             <div
                                                 className="cursor-pointer"
@@ -124,28 +122,29 @@ export default function AllCats() {
                                                 <img
                                                     src={cat.mainImage}
                                                     alt={cat.name}
-                                                    className="w-full h-36 object-cover rounded-lg mb-3 transition-transform duration-300 hover:scale-105"
+                                                    className="w-full h-48 object-cover rounded-lg mb-3 transition-transform duration-300 hover:scale-105"
                                                 />
                                             </div>
 
-                                            {/* Name (always visible) */}
+                                            {/* Name */}
                                             <h2 className="text-lg font-bold text-center mb-1">{cat.name}</h2>
 
-                                            {/* Hover content (hidden by default, visible on hover) */}
-                                            <div
-                                                className="absolute inset-0 bg-black bg-opacity-75 text-white p-4 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
+                                            {/* Original Details with Reduced Spacing */}
+                                            <div className="text-gray-700 text-center text-sm">
+                                                <p className="mb-1"><strong>Gender:</strong> {cat.gender}</p>
+                                                <p className="mb-1"><strong>Color:</strong> {cat.color}</p>
+                                                <p className="mb-1"><strong>Year of Birth:</strong> {cat.yearOfBirth}</p>
                                                 <p className="mb-1">{cat.description}</p>
-                                                <p className="mb-1">Gender: {cat.gender}</p>
-                                                <p className="mb-1">Color: {cat.color}</p>
-                                                <p className="mb-1">Year of Birth: {cat.yearOfBirth}</p>
-                                                <div className="flex justify-center">
-                                                    <button
-                                                        className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm transition-colors duration-300"
-                                                        onClick={() => redirectToProfile(cat.alias)}
-                                                    >
-                                                        View Profile
-                                                    </button>
-                                                </div>
+                                            </div>
+
+                                            {/* View Profile Button */}
+                                            <div className="flex justify-center mt-3">
+                                                <button
+                                                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1 rounded-full text-sm transition-colors duration-300"
+                                                    onClick={() => redirectToProfile(cat.alias)}
+                                                >
+                                                    View Profile
+                                                </button>
                                             </div>
                                         </SpotlightCard>
                                     </Spotlight>

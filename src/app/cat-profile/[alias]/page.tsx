@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Footer from "@/components/layouts/Footer";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
+import ParentInfoPopup from '@/components/elements/ParentInfoModal'; // Import the updated ParentInfoPopup component
 import 'swiper/swiper-bundle.css';
 
 export default function CatProfile() {
@@ -22,7 +23,7 @@ export default function CatProfile() {
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
     const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);  // Default to the first media (video or image)
     const [selectedMedia, setSelectedMedia] = useState(media[0] || null);  // Default to the first media object
-    const [isModalOpen, setIsModalOpen] = useState(false);  // State to manage modal visibility
+    const [isModalOpen, setIsModalOpen] = useState(false);  // State to manage media modal visibility
     const swiperRef = useRef(null);  // To store the Swiper instance
 
     // Update selectedMedia whenever selectedMediaIndex or media changes
@@ -32,13 +33,11 @@ export default function CatProfile() {
         }
     }, [selectedMediaIndex, media]);
 
-    // Handle Slide Change and Update Main Media
-    const handleSlideChange = (swiper: any) => {
-        const newIndex = swiper.realIndex;
-        setSelectedMediaIndex(newIndex);
-    };
-
     const openModal = (index: number) => {
+        // Pause the video if it's playing in the small frame before opening the modal
+        if (selectedMedia?.type === 'video' && videoRefs.current[index] && !videoRefs.current[index]?.paused) {
+            videoRefs.current[index]?.pause();
+        }
         setSelectedMediaIndex(index);  // Set the starting media for the modal
         setIsModalOpen(true);  // Open the modal
     };
@@ -53,6 +52,12 @@ export default function CatProfile() {
         openModal(selectedMediaIndex);
     };
 
+    // Handle Slide Change and Update Main Media
+    const handleSlideChange = (swiper: any) => {
+        const newIndex = swiper.realIndex;
+        setSelectedMediaIndex(newIndex);
+    };
+
     // Pause any non-active videos when the Swiper changes slides in fullscreen mode
     const handleModalSlideChange = (swiper: any) => {
         const currentIndex = swiper.realIndex;
@@ -63,7 +68,7 @@ export default function CatProfile() {
         });
     };
 
-    // Return early if cat is not found, but ensure hooks are still called before this point
+    // Return early if cat is not found
     if (!cat) {
         return (
             <>
@@ -88,35 +93,49 @@ export default function CatProfile() {
                     <div className="lg:w-1/2 lg:order-2">
                         <div className="text-left mb-6 lg:mb-0">
                             <h2 className="text-2xl lg:text-3xl font-bold mb-4">{cat.name} Is Ready for Adoption</h2>
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">PRICE:</h3>
-                            <p className="text-gray-400 mb-4">${cat.price}</p>
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">ABOUT:</h3>
-                            <p className="text-gray-400 leading-relaxed mb-6">{cat.description}</p>
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">COLOR:</h3>
-                            <p className="text-gray-400 mb-4">{cat.color}</p>
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">GENDER:</h3>
-                            <p className="text-gray-400 mb-4">{cat.gender}</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Left column */}
+                                <div>
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">PRICE:</h3>
+                                    <p className="text-2xl lg:text-3xl text-blue-500 font-bold mb-4">€{cat.price}</p>
 
-                            {/* New Fields */}
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">BREED:</h3>
-                            <p className="text-gray-400 mb-4">{cat.breed}</p>
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">COLOR:</h3>
+                                    <p className="text-gray-400 mb-4">{cat.color}</p>
 
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">CATEGORY:</h3>
-                            <p className="text-gray-400 mb-4">{cat.category}</p>
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">GENDER:</h3>
+                                    <p className="text-gray-400 mb-4">{cat.gender}</p>
 
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">VACCINATED:</h3>
-                            <p className="text-gray-400 mb-4">{cat.isVaccinated ? "Yes" : "No"}</p>
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">BREED:</h3>
+                                    <p className="text-gray-400 mb-4">{cat.breed}</p>
+                                </div>
 
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">MICROCHIPPED:</h3>
-                            <p className="text-gray-400 mb-4">{cat.isMicrochipped ? "Yes" : "No"}</p>
+                                {/* Right column */}
+                                <div>
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">CATEGORY:</h3>
+                                    <p className="text-gray-400 mb-4">{cat.category}</p>
 
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">MOTHER NAME:</h3>
-                            <p className="text-gray-400 mb-4">{cat.motherName}</p>
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">VACCINATED:</h3>
+                                    <p className="text-gray-400 mb-4">{cat.isVaccinated ? "Yes" : "No"}</p>
 
-                            <h3 className="text-lg lg:text-xl font-semibold mb-2">FATHER NAME:</h3>
-                            <p className="text-gray-400 mb-4">{cat.fatherName}</p>
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">MICROCHIPPED:</h3>
+                                    <p className="text-gray-400 mb-4">{cat.isMicrochipped ? "Yes" : "No"}</p>
 
-
+                                    {/* Contact Information */}
+                                    <h3 className="text-lg lg:text-xl font-semibold mb-2">CONTACT:</h3>
+                                    <p className="text-gray-400 mb-4">Phone: +1 (555) 123-4567</p>
+                                </div>
+                            </div>
+                            <div className="mt-4">
+                                {/* Genealogical Tree Button */}
+                                <ParentInfoPopup
+                                    motherName={cat.motherName || "Unknown Mother"}
+                                    motherImage={cat.motherImage || "/default-mother.jpg"}
+                                    motherDescription={cat.motherDescription || "No description available"}
+                                    fatherName={cat.fatherName || "Unknown Father"}
+                                    fatherImage={cat.fatherImage || "/default-father.jpg"}
+                                    fatherDescription={cat.fatherDescription || "No description available"}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -127,6 +146,9 @@ export default function CatProfile() {
                                 <video
                                     key={selectedMedia.src}  // Key added to force re-render between videos
                                     controls
+                                    ref={(el) => {
+                                        if (el) videoRefs.current[selectedMediaIndex] = el;
+                                    }}  // Store video ref
                                     className="rounded-lg shadow-lg w-full h-full object-cover cursor-pointer main-video"
                                     onClick={handleVideoFrameClick}  // Open modal on video frame click
                                 >
@@ -203,7 +225,7 @@ export default function CatProfile() {
                             loop={true}
                             navigation={true}  // Ensure navigation arrows work
                             pagination={{ clickable: true }}  // Ensure bullet pagination works
-                            modules={[Navigation]}  // Apply modules to the modal swiper
+                            modules={[Navigation]}
                             className="fullscreen-carousel"
                             onSlideChange={handleModalSlideChange}  // Pause videos when slide changes
                         >

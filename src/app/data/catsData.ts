@@ -23,6 +23,10 @@ export const cats = [
         category: "Domestic",
         motherName: "Mina",
         fatherName: "Rocco",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat1.jpg",
+        motherDescription: "lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum",
+        fatherDescription: "lorem ipsum",
         price: 500
     },
     {
