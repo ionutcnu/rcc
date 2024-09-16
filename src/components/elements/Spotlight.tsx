@@ -77,5 +77,19 @@ export function SpotlightCard({
                                   children,
                                   className = ''
                               }: SpotlightCardProps) {
-    return <div className={`relative h-full bg-slate-800 rounded-3xl p-px before:absolute before:w-80 before:h-80 before:-left-40 before:-top-40 before:bg-slate-400 before:rounded-full before:opacity-0 before:pointer-events-none before:transition-opacity before:duration-500 before:translate-x-[var(--mouse-x)] before:translate-y-[var(--mouse-y)] before:group-hover:opacity-100 before:z-10 before:blur-[100px] after:absolute after:w-96 after:h-96 after:-left-48 after:-top-48 after:bg-indigo-500 after:rounded-full after:opacity-0 after:pointer-events-none after:transition-opacity after:duration-500 after:translate-x-[var(--mouse-x)] after:translate-y-[var(--mouse-y)] after:hover:opacity-10 after:z-30 after:blur-[100px] overflow-hidden ${className}`}>{children}</div>
+    return (
+        <div className={`relative h-full bg-slate-800 rounded-3xl p-px overflow-hidden 
+      before:absolute before:w-40 before:h-40 before:-left-20 before:-top-20 before:bg-blue-500 
+      before:rounded-full before:opacity-0 before:pointer-events-none before:transition-opacity 
+      before:duration-500 before:translate-x-[var(--mouse-x)] before:translate-y-[var(--mouse-y)] 
+      before:group-hover:opacity-100 before:z-10 before:blur-[60px] 
+      after:absolute after:w-48 after:h-48 after:-left-24 after:-top-24 after:bg-blue-500 
+      after:rounded-full after:opacity-0 after:pointer-events-none after:transition-opacity 
+      after:duration-500 after:translate-x-[var(--mouse-x)] after:translate-y-[var(--mouse-y)] 
+      after:hover:opacity-20 after:z-30 after:blur-[60px] 
+      group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-blue-500/50 
+      transition-transform duration-300 ease-in-out ${className}`}>
+            {children}
+        </div>
+    );
 }

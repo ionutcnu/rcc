@@ -35,10 +35,10 @@ export const cats = [
         name: "Berberita",
         description: "Se urca in copac dupa ghinde",
         mainImage: "/Cats/Images/cat1.jpg",
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/catm.jpg", "/Cats/Images/cat3.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
-        images: ["/Cats/cat1.jpg", "/Cats/catm.jpg", "/Cats/cat3.jpg"],
-        gender: "Female",
         color: "Orange",
+        gender: "Female",
         yearOfBirth: 2016,
         isVaccinated: false,
         isMicrochipped: true,
@@ -46,6 +46,10 @@ export const cats = [
         category: "Domestic",
         motherName: "Luna",
         fatherName: "Felix",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Very playful and loves to climb trees.",
+        fatherDescription: "Likes chasing birds.",
         price: 450
     },
     {
@@ -54,10 +58,10 @@ export const cats = [
         name: "Mancau",
         description: "Mananca si doarme, atata stie",
         mainImage: "/Cats/Images/cat1.jpg",
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/catm.jpg", "/Cats/Images/cat3.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
-        images: ["/Cats/cat1.jpg", "/Cats/catm.jpg", "/Cats/cat3.jpg"],
-        gender: "Male",
         color: "Orange and black",
+        gender: "Male",
         yearOfBirth: 2015,
         isVaccinated: true,
         isMicrochipped: false,
@@ -65,6 +69,10 @@ export const cats = [
         category: "Wild",
         motherName: "Mira",
         fatherName: "Tiger",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Loves hunting.",
+        fatherDescription: "Strong and independent.",
         price: 600
     },
     {
@@ -73,10 +81,10 @@ export const cats = [
         name: "LONUT",
         description: "Born to be wild, forced to hello LONUT",
         mainImage: "/Cats/Images/cat3.jpg",
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/catm.jpg", "/Cats/Images/cat3.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
-        images: ["/Cats/cat1.jpg", "/Cats/catm.jpg", "/Cats/cat3.jpg"],
-        gender: "Male",
         color: "Brown",
+        gender: "Male",
         yearOfBirth: 2014,
         isVaccinated: true,
         isMicrochipped: true,
@@ -84,6 +92,10 @@ export const cats = [
         category: "Wild",
         motherName: "Bella",
         fatherName: "Rocky",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Gentle giant.",
+        fatherDescription: "Fierce and strong.",
         price: 700
     },
     {
@@ -92,11 +104,7 @@ export const cats = [
         name: "Snowball",
         description: "Fluffy and white, enjoys chasing snowflakes",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: [
-            "/Cats/Images/cat1.jpg",
-            "/Cats/Images/cat3.jpg",
-            "/Cats/Images/catm.jpg"
-        ],
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "White",
         gender: "Female",
@@ -107,6 +115,10 @@ export const cats = [
         category: "Domestic",
         motherName: "Snowflake",
         fatherName: "Blizzard",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Soft and calm.",
+        fatherDescription: "Loves cold weather.",
         price: 550
     },
     {
@@ -115,11 +127,7 @@ export const cats = [
         name: "Tiger",
         description: "Loves to pounce and play, fearless hunter",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: [
-            "/Cats/Images/cat1.jpg",
-            "/Cats/Images/cat3.jpg",
-            "/Cats/Images/catm.jpg"
-        ],
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Gray",
         gender: "Male",
@@ -130,6 +138,10 @@ export const cats = [
         category: "Domestic",
         motherName: "Sandy",
         fatherName: "Rex",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Curious and playful.",
+        fatherDescription: "Strong and silent.",
         price: 480
     },
     {
@@ -138,11 +150,7 @@ export const cats = [
         name: "Mocha",
         description: "Energetic and loves to run around the house",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: [
-            "/Cats/Images/cat1.jpg",
-            "/Cats/Images/cat3.jpg",
-            "/Cats/Images/catm.jpg"
-        ],
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Brown",
         gender: "Male",
@@ -153,6 +161,10 @@ export const cats = [
         category: "Domestic",
         motherName: "Cinnamon",
         fatherName: "Latte",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Sweet and loving.",
+        fatherDescription: "Energetic and fun.",
         price: 520
     },
     {
@@ -161,11 +173,7 @@ export const cats = [
         name: "Princess",
         description: "Regal and majestic, enjoys being pampered",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: [
-            "/Cats/Images/cat1.jpg",
-            "/Cats/Images/cat3.jpg",
-            "/Cats/Images/catm.jpg"
-        ],
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Golden",
         gender: "Female",
@@ -176,6 +184,10 @@ export const cats = [
         category: "Domestic",
         motherName: "Queenie",
         fatherName: "King",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Elegant and sophisticated.",
+        fatherDescription: "Royal and proud.",
         price: 600
     },
     {
@@ -184,11 +196,7 @@ export const cats = [
         name: "Shadow",
         description: "Quiet and mysterious, prefers the dark corners",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: [
-            "/Cats/Images/cat1.jpg",
-            "/Cats/Images/cat3.jpg",
-            "/Cats/Images/catm.jpg"
-        ],
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Black",
         gender: "Male",
@@ -199,6 +207,10 @@ export const cats = [
         category: "Wild",
         motherName: "Night",
         fatherName: "Phantom",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Stealthy and quiet.",
+        fatherDescription: "Lurks in the shadows.",
         price: 640
     },
     {
@@ -207,11 +219,7 @@ export const cats = [
         name: "Mittens",
         description: "Loves to cuddle, especially during cold nights",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: [
-            "/Cats/Images/cat1.jpg",
-            "/Cats/Images/cat3.jpg",
-            "/Cats/Images/catm.jpg"
-        ],
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "White with black spots",
         gender: "Female",
@@ -222,6 +230,81 @@ export const cats = [
         category: "Domestic",
         motherName: "Daisy",
         fatherName: "Buddy",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Sweet and caring.",
+        fatherDescription: "Loves to snuggle.",
+        price: 530
+    }
+    ,
+    {
+        id: 11,
+        alias: "mittens",
+        name: "Mittens",
+        description: "Loves to cuddle, especially during cold nights",
+        mainImage: "/Cats/Images/cat1.jpg",
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
+        videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
+        color: "White with black spots",
+        gender: "Female",
+        yearOfBirth: 2018,
+        isVaccinated: false,
+        isMicrochipped: true,
+        breed: "Siberian",
+        category: "Domestic",
+        motherName: "Daisy",
+        fatherName: "Buddy",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Sweet and caring.",
+        fatherDescription: "Loves to snuggle.",
+        price: 530
+    }
+    ,
+    {
+        id: 12,
+        alias: "mittens",
+        name: "Mittens",
+        description: "Loves to cuddle, especially during cold nights",
+        mainImage: "/Cats/Images/cat1.jpg",
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
+        videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
+        color: "White with black spots",
+        gender: "Female",
+        yearOfBirth: 2018,
+        isVaccinated: false,
+        isMicrochipped: true,
+        breed: "Siberian",
+        category: "Domestic",
+        motherName: "Daisy",
+        fatherName: "Buddy",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Sweet and caring.",
+        fatherDescription: "Loves to snuggle.",
+        price: 530
+    },
+    {
+        id: 12,
+        alias: "mittens",
+        name: "Mittens",
+        description: "Loves to cuddle, especially during cold nights",
+        mainImage: "/Cats/Images/cat1.jpg",
+        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
+        videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
+        color: "White with black spots",
+        gender: "Female",
+        yearOfBirth: 2018,
+        isVaccinated: false,
+        isMicrochipped: true,
+        breed: "Siberian",
+        category: "Domestic",
+        motherName: "Daisy",
+        fatherName: "Buddy",
+        motherImage: "/Cats/Images/cat1.jpg",
+        fatherImage: "/Cats/Images/cat3.jpg",
+        motherDescription: "Sweet and caring.",
+        fatherDescription: "Loves to snuggle.",
         price: 530
     }
 ];
