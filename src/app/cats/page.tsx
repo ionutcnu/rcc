@@ -32,7 +32,7 @@ export default function AllCats() {
     const [vaccinationFilter, setVaccinationFilter] = useState<boolean | null>(null);
     const [microchipFilter, setMicrochipFilter] = useState<boolean | null>(null);
     const [priceOrder, setPriceOrder] = useState<string>(''); // New state for price sorting
-    const [catsPerPage, setCatsPerPage] = useState<number>(12); // Default to 12 cats per page
+    const [catsPerPage, setCatsPerPage] = useState<number>(9); // Default to 12 cats per page
     const [currentPage, setCurrentPage] = useState<number>(1);
 
     // Filter Handlers
@@ -100,9 +100,9 @@ export default function AllCats() {
 
     // Sort by Price
     if (priceOrder === 'asc') {
-        filteredCats = filteredCats.sort((a, b) => a.price - b.price);
+        filteredCats = [...filteredCats].sort((a, b) => a.price - b.price);
     } else if (priceOrder === 'desc') {
-        filteredCats = filteredCats.sort((a, b) => b.price - a.price);
+        filteredCats = [...filteredCats].sort((a, b) => b.price - a.price);
     }
 
     const totalPages = Math.ceil(filteredCats.length / catsPerPage);
@@ -260,9 +260,9 @@ export default function AllCats() {
                                     onChange={handleCatsPerPageChange}
                                     className="w-full border border-gray-300 rounded-lg p-2 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 >
-                                    <option value="12">12</option>
-                                    <option value="24">24</option>
-                                    <option value="48">48</option>
+                                    <option value="9">9</option>
+                                    <option value="18">18</option>
+                                    <option value="32">32</option>
                                 </select>
                             </div>
                         </div>

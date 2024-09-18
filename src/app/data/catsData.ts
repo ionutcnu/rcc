@@ -285,7 +285,7 @@ export const cats = [
         price: 530
     },
     {
-        id: 12,
+        id: 13,
         alias: "mittens",
         name: "Mittens",
         description: "Loves to cuddle, especially during cold nights",
