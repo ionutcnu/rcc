@@ -4,6 +4,9 @@ import Landing from '@/components/elements/Swipe';
 import Footer from "@/components/layouts/Footer";
 import CatsSection from "@/components/elements/CatsSection";
 import Head from 'next/head';
+import AboutMe from "@/app/about-me/page";
+
+
 
 
 
@@ -25,6 +28,7 @@ export default function Home() {
           <Header/>
           <Landing/>
           <CatsSection/>
+          <AboutMe/>
           <Footer/>
       </div>
 
