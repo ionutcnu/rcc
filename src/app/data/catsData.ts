@@ -215,8 +215,8 @@ export const cats = [
     },
     {
         id: 10,
-        alias: "mittens",
-        name: "Mittens",
+        alias: "mittenss",
+        name: "Mittenss",
         description: "Loves to cuddle, especially during cold nights",
         mainImage: "/Cats/Images/cat1.jpg",
         images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
@@ -239,8 +239,8 @@ export const cats = [
     ,
     {
         id: 11,
-        alias: "mittens",
-        name: "Mittens",
+        alias: "mittensa",
+        name: "Mittensa",
         description: "Loves to cuddle, especially during cold nights",
         mainImage: "/Cats/Images/cat1.jpg",
         images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
@@ -263,8 +263,8 @@ export const cats = [
     ,
     {
         id: 12,
-        alias: "mittens",
-        name: "Mittens",
+        alias: "mittensd",
+        name: "Mittensd",
         description: "Loves to cuddle, especially during cold nights",
         mainImage: "/Cats/Images/cat1.jpg",
         images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],
@@ -286,8 +286,8 @@ export const cats = [
     },
     {
         id: 13,
-        alias: "mittens",
-        name: "Mittens",
+        alias: "mittensq",
+        name: "Mittensq",
         description: "Loves to cuddle, especially during cold nights",
         mainImage: "/Cats/Images/cat1.jpg",
         images: ["/Cats/Images/cat1.jpg", "/Cats/Images/cat3.jpg", "/Cats/Images/catm.jpg"],

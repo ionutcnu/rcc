@@ -2,7 +2,7 @@ import {FaFacebookF, FaTwitter, FaInstagram, FaTiktok} from "react-icons/fa";
 
 export default function Footer() {
     return (
-        <footer className="bg-gray-200 text-black p-6">
+        <footer className="bg-gray-200  text-black p-6">
             <div className="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                     <h3 className="text-lg font-semibold">Red Cat Cuasar</h3>
