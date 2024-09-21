@@ -1,22 +1,23 @@
 "use client";
-import { cats } from '@/app/data/catsData';
+import { cats } from '@app/data/catsData';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/swiper-bundle.css';
 import Particles from "./Particles";
 import { useRef } from 'react';
 import Link from 'next/link';
 import SwiperCore from 'swiper';
+import { useTranslation } from 'react-i18next';
 
 export default function CatsSection() {
+    const { t } = useTranslation();
     const swiperRef = useRef<SwiperCore>();
-
 
     return (
         <section className="relative bg-[#1C1C21] text-white py-16">
             <Particles className="absolute inset-0 z-0" quantity={100} staticity={10} ease={50} />
             <div className="container mx-auto text-center relative z-10">
-                <h2 className="text-4xl font-semibold mb-4">Meow, meow meow...</h2>
-                <p className="text-xl mb-12">Hello we need a new home</p>
+                <h2 className="text-4xl font-semibold mb-4">{t('cats_section.title')}</h2>
+                <p className="text-xl mb-12">{t('cats_section.subtitle')}</p>
 
                 <Swiper
                     onSwiper={(swiper) => {
@@ -83,11 +84,13 @@ export default function CatsSection() {
                 </div>
 
                 <p className="mt-12 text-lg">
-                    Rescued from the streets of Spain, these felines are treated with love, care, and full vaccinations.
+                    {t('cats_section.description1')}
                 </p>
-                <p className="text-lg">They’re now healthy and excited to meet their new owners!</p>
+                <p className="text-lg">
+                    {t('cats_section.description2')}
+                </p>
                 <a href="/cats" className="text-yellow-500 mt-4 inline-block text-lg hover:underline">
-                    See all cats &gt;
+                    {t('cats_section.see_all_cats')}
                 </a>
             </div>
         </section>

@@ -48,13 +48,13 @@ export default function Header() {
                 <div className="flex items-center space-x-6">
                     <nav className="hidden md:flex space-x-6">
                         <Link href="/" className="hover:text-gray-400">
-                            {t('home')}
+                            {t('header.home')}
                         </Link>
                         <Link href="/cats" className="hover:text-gray-400">
-                            {t('cats')}
+                            {t('header.cats')}
                         </Link>
                         <Link href="/contact" className="hover:text-gray-400">
-                            {t('contact')}
+                            {t('header.contact')}
                         </Link>
                     </nav>
 

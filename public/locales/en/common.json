@@ -1,5 +1,140 @@
 {
-  "home": "Home",
-  "cats": "Cats",
-  "contact": "Contact"
+  "header": {
+    "home": "Home",
+    "cats": "Cats",
+    "contact": "Contact"
+  },
+  "about_me": {
+    "title": "Meet Felissa",
+    "image_alt": "Red Cat Cuasar Felissa",
+    "subtitle": "Felissa - Cat Enthusiast and Rescue Specialist",
+    "paragraph1": "Cats have been a part of my life for as long as I can remember. Growing up with these majestic creatures, I realized that their loyalty and love for their owners are unmatched. Felissa is a place where I share my passion for cats and help them find loving homes.",
+    "paragraph2": "Our mission is to rescue cats and provide them with the care they deserve, ensuring they are vaccinated, microchipped, and ready to find their forever home.",
+    "paragraph3": "If you are interested in learning more about our work, feel free to explore our platform and meet the wonderful cats that are ready to become part of your family.",
+    "get_in_touch": "Get in Touch"
+  },
+
+  "contact": {
+    "get_in_touch": "Get in touch",
+    "connecting_souls": "Connecting souls with souls",
+    "contact_us": "Contact us",
+    "phone_number": "+40 735 670 304",
+    "email_address": "contact@rcc.org",
+    "become_hero": "Become the next hero",
+    "from_screening": "From screening to owner in 5 days",
+    "reach_out": "Reach out and let's start your journey today.",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "email_placeholder": "Enter your email address",
+    "how_did_you_find_us": "How did you find out about RCC?",
+    "google": "Google",
+    "friend": "Friend",
+    "social_media": "Social Media",
+    "message_placeholder": "Type your message in here",
+    "send_message": "Send message"
+  },
+  "footer": {
+    "title": "Red Cat Cuasar",
+    "official_location": "Official Location:",
+    "pitesti": "Pitesti",
+    "email": "Email: poppsy81@yahoo.com",
+    "cat": "CAT",
+    "for_adoption": "For Adoption",
+    "adoption_process": "Adoption Process",
+    "living_conditions": "Living Conditions",
+    "post_adoption_guide": "Post-adoption Guide",
+    "organization": "ORGANIZATION",
+    "the_team": "The Team",
+    "history": "History",
+    "copyright": "© 2024 www.rcc.org"
+  },
+
+  "cats_section": {
+    "title": "Meow, meow meow...",
+    "subtitle": "Hello we need a new home",
+    "description1": "Rescued from the streets of Spain, these felines are treated with love, care, and full vaccinations.",
+    "description2": "They’re now healthy and excited to meet their new owners!",
+    "see_all_cats": "See all cats >"
+  },
+  "hero_slideshow": {
+    "title": "RED CAT CUASAR",
+    "subtitle": "THE JOURNEY STARTS HERE"
+  },
+  "all_cats": {
+    "title": "Meet Our Cats",
+    "clear_all_filters": "Clear All Filters",
+    "sort_by_price": "Sort by Price:",
+    "price_none": "None",
+    "price_asc": "Ascending",
+    "price_desc": "Descending",
+    "filter_by_gender": "Filter by Gender:",
+    "gender_all": "All",
+    "gender_male": "Male",
+    "gender_female": "Female",
+    "filter_by_color": "Filter by Color:",
+    "color_all": "All",
+    "color_white": "White",
+    "color_orange": "Orange",
+    "color_orange_black": "Orange and Black",
+    "color_brown": "Brown",
+    "color_black": "Black",
+    "color_gray": "Gray",
+    "color_golden": "Golden",
+    "color_white_black_spots": "White with Black Spots",
+    "filter_by_year": "Filter by Year of Birth:",
+    "filter_by_breed": "Filter by Breed:",
+    "filter_by_category": "Filter by Category:",
+    "filter_by_vaccinated": "Filter by Vaccinated:",
+    "vaccinated_all": "All",
+    "vaccinated_yes": "Yes",
+    "vaccinated_no": "No",
+    "filter_by_microchipped": "Filter by Microchipped:",
+    "microchipped_all": "All",
+    "microchipped_yes": "Yes",
+    "microchipped_no": "No",
+    "cats_per_page": "Cats per page:",
+    "view_profile": "View Profile",
+    "previous": "Previous",
+    "next": "Next",
+    "of": "of",
+    "none_selected": "None",
+    "all": "All",
+    "page": "Page",
+    "gender": "Gender",
+    "color": "Color",
+    "year_of_birth": "Year of Birth",
+    "loading": "Loading...",
+    "cat_not_found": "Cat not found.",
+    "error_loading": "Error loading cat data.",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "cat_profile": {
+    "ready_for_adoption": "Is Ready for Adoption",
+    "price": "PRICE",
+    "color": "COLOR",
+    "gender": "GENDER",
+    "breed": "BREED",
+    "category": "CATEGORY",
+    "vaccinated": "VACCINATED",
+    "microchipped": "MICROCHIPPED",
+    "contact": "CONTACT",
+    "phone": "Phone",
+    "unknown_mother": "Unknown Mother",
+    "unknown_father": "Unknown Father",
+    "no_description": "No description available",
+    "media_image": "Image {{index}}"
+  },
+  "yes": "Yes",
+  "no": "No",
+
+  "parent_info": {
+    "show_tree": "Show Genealogical Tree",
+    "unknown_mother": "Unknown Mother",
+    "unknown_father": "Unknown Father",
+    "no_description": "No description available",
+    "close": "Close"
+  }
+
 }
+

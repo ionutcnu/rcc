@@ -1,9 +1,11 @@
-export const cats = [
+// app/data/catsData.ro.tsx
+
+export const catsRo = [
     {
         id: 1,
         alias: "gura",
         name: "Gura Mare",
-        description: "Mare matza alba",
+        description: "Mare pisică albă",
         mainImage: "/Cats/Images/cat1.jpg",
         images: [
             "/Cats/Images/cat1.jpg",
@@ -14,42 +16,47 @@ export const cats = [
             "/Cats/Images/cat1.jpg"
         ],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
-        color: "test",
-        gender: "Female",
+        color: "Alb",
+        gender: "Feminin",
         yearOfBirth: 2017,
         isVaccinated: true,
         isMicrochipped: true,
         breed: "Persian",
-        category: "Domestic",
+        category: "Domestică",
         motherName: "Mina",
         fatherName: "Rocco",
         motherImage: "/Cats/Images/cat1.jpg",
         fatherImage: "/Cats/Images/cat1.jpg",
-        motherDescription: "lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum",
-        fatherDescription: "lorem ipsum",
+        motherDescription: "Îi place să se joace și să urce în copaci.",
+        fatherDescription: "Calm și afectuos.",
         price: 500
     },
     {
         id: 2,
         alias: "veve",
         name: "Berberita",
-        description: "Se urca in copac dupa ghinde",
+        description: "Se urcă în copaci după ghinde",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/catm.jpg", "/Cats/Images/cat3.jpg"],
+        images: [
+            "/Cats/Images/cat1.jpg",
+            "/Cats/Images/catm.jpg",
+            "/Cats/Images/cat3.jpg"
+        ],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
-        color: "Orange",
-        gender: "Female",
+        color: "Portocaliu",
+        gender: "Feminin",
         yearOfBirth: 2016,
         isVaccinated: false,
         isMicrochipped: true,
         breed: "Siamese",
-        category: "Domestic",
+        category: "Domestică",
         motherName: "Luna",
         fatherName: "Felix",
         motherImage: "/Cats/Images/cat1.jpg",
         fatherImage: "/Cats/Images/cat3.jpg",
-        motherDescription: "Very playful and loves to climb trees.",
-        fatherDescription: "Likes chasing birds.",
+        motherDescription: "Foarte jucăușă și iubește să urce în copaci.",
+        fatherDescription: "Îi place să urmărească păsările.",
         price: 450
-    }
+    },
+    // ... Adaugă alte obiecte de pisici în limba română
 ];

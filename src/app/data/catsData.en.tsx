@@ -1,9 +1,11 @@
-export const cats = [
+// app/data/catsData.en.tsx
+
+export const catsEn = [
     {
         id: 1,
         alias: "gura",
-        name: "Gura Mare",
-        description: "Mare matza alba",
+        name: "Big Mouth",
+        description: "Large white cat",
         mainImage: "/Cats/Images/cat1.jpg",
         images: [
             "/Cats/Images/cat1.jpg",
@@ -14,7 +16,7 @@ export const cats = [
             "/Cats/Images/cat1.jpg"
         ],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
-        color: "test",
+        color: "White",
         gender: "Female",
         yearOfBirth: 2017,
         isVaccinated: true,
@@ -25,17 +27,21 @@ export const cats = [
         fatherName: "Rocco",
         motherImage: "/Cats/Images/cat1.jpg",
         fatherImage: "/Cats/Images/cat1.jpg",
-        motherDescription: "lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum",
-        fatherDescription: "lorem ipsum",
+        motherDescription: "Loves to play and climb trees.",
+        fatherDescription: "Calm and affectionate.",
         price: 500
     },
     {
         id: 2,
         alias: "veve",
         name: "Berberita",
-        description: "Se urca in copac dupa ghinde",
+        description: "Climbs trees after acorns",
         mainImage: "/Cats/Images/cat1.jpg",
-        images: ["/Cats/Images/cat1.jpg", "/Cats/Images/catm.jpg", "/Cats/Images/cat3.jpg"],
+        images: [
+            "/Cats/Images/cat1.jpg",
+            "/Cats/Images/catm.jpg",
+            "/Cats/Images/cat3.jpg"
+        ],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
         color: "Orange",
         gender: "Female",
@@ -51,5 +57,6 @@ export const cats = [
         motherDescription: "Very playful and loves to climb trees.",
         fatherDescription: "Likes chasing birds.",
         price: 450
-    }
+    },
+    // ... Add other cat objects in English
 ];

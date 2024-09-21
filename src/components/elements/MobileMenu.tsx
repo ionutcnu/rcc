@@ -39,21 +39,21 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ onClose }) => {
                     className="block text-2xl text-white hover:text-gray-400 py-4"
                     onClick={onClose}
                 >
-                    {t('home')}
+                    {t('header.home')}
                 </Link>
                 <Link
                     href="/cats"
                     className="block text-2xl text-white hover:text-gray-400 py-4"
                     onClick={onClose}
                 >
-                    {t('cats')}
+                    {t('header.cats')}
                 </Link>
                 <Link
                     href="/contact"
                     className="block text-2xl text-white hover:text-gray-400 py-4"
                     onClick={onClose}
                 >
-                    {t('contact')}
+                    {t('header.contact')}
                 </Link>
             </nav>
         </motion.div>

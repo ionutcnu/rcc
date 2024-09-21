@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { FaTree } from 'react-icons/fa'; // Tree icon
+import { useTranslation } from 'react-i18next'; // Import translation hook
 
-type ParentInfoPopupProps = {
+type ParentInfoModalProps = {
     motherName: string;
     motherImage: string;
     motherDescription: string;
@@ -11,7 +12,7 @@ type ParentInfoPopupProps = {
     fatherDescription: string;
 };
 
-const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({
+const ParentInfoModal: React.FC<ParentInfoModalProps> = ({
                                                              motherName,
                                                              motherImage,
                                                              motherDescription,
@@ -19,6 +20,7 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({
                                                              fatherImage,
                                                              fatherDescription,
                                                          }) => {
+    const { t } = useTranslation(); // Initialize translation
     const [isOpen, setIsOpen] = useState(false);
 
     const togglePopup = () => {
@@ -29,7 +31,7 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({
         <>
             {/* Tree Icon to trigger popup */}
             <button onClick={togglePopup} className="text-blue-500 flex items-center">
-                <FaTree className="mr-2" /> Show Genealogical Tree
+                <FaTree className="mr-2" /> {t('parent_info.show_tree')}
             </button>
 
             {/* Popup content */}
@@ -57,8 +59,12 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({
                                         className="rounded-lg object-cover"
                                     />
                                 </div>
-                                <h3 className="text-lg font-semibold text-black">{motherName || "Unknown Mother"}</h3>
-                                <p className="text-gray-700 mt-2">{motherDescription || "No description available"}</p>
+                                <h3 className="text-lg font-semibold text-black">
+                                    {motherName || t('parent_info.unknown_mother')}
+                                </h3>
+                                <p className="text-gray-700 mt-2">
+                                    {motherDescription || t('parent_info.no_description')}
+                                </p>
                             </div>
 
                             {/* Father Section */}
@@ -72,8 +78,12 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({
                                         className="rounded-lg object-cover"
                                     />
                                 </div>
-                                <h3 className="text-lg font-semibold text-black">{fatherName || "Unknown Father"}</h3>
-                                <p className="text-gray-700 mt-2">{fatherDescription || "No description available"}</p>
+                                <h3 className="text-lg font-semibold text-black">
+                                    {fatherName || t('parent_info.unknown_father')}
+                                </h3>
+                                <p className="text-gray-700 mt-2">
+                                    {fatherDescription || t('parent_info.no_description')}
+                                </p>
                             </div>
                         </div>
 
@@ -82,7 +92,7 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({
                             onClick={togglePopup}
                             className="mt-6 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300"
                         >
-                            Close
+                            {t('parent_info.close')}
                         </button>
                     </div>
                 </div>
@@ -91,4 +101,4 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({
     );
 };
 
-export default ParentInfoPopup;
+export default ParentInfoModal;
