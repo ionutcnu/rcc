@@ -1,22 +1,17 @@
-"use client";
+'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-
+import GoogleTranslate from '@/Utils/LanguageSwitcher';
 
 export default function Header() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [isSticky, setIsSticky] = useState(false);
-    const [language, setLanguage] = useState("EN");
 
     const menuVariants = {
         hidden: { opacity: 0, x: -100, transition: { duration: 0.5 } },
         visible: { opacity: 1, x: 0, transition: { duration: 0.5 } },
-    };
-
-    const handleLanguageSwitch = (lang: string) => {
-        setLanguage(lang);
     };
 
     useEffect(() => {
@@ -51,32 +46,19 @@ export default function Header() {
                     <nav className="hidden md:flex space-x-6">
                         <Link href="/" className="hover:text-gray-400" >Home</Link>
                         <Link href="/cats" className="hover:text-gray-400" >Cats</Link>
-                        <Link href="/contact" className="hover:text-gray-400 ">Contact</Link>
+                        <Link href="/contact" className="hover:text-gray-400">Contact</Link>
                     </nav>
 
-                    {/* Language Switcher */}
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={() => handleLanguageSwitch("RO")}
-                            className={`hover:text-gray-400  ${language === "DE" ? "font-bold" : ""}`}
-                        >
-                            RO
-                        </button>
-                        <span>|</span>
-                        <button
-                            onClick={() => handleLanguageSwitch("EN")}
-                            className={`hover:text-gray-400  ${language === "EN" ? "font-bold" : ""}`}
-                        >
-                            EN
-                        </button>
+                    {/* Google Translate Component */}
+                    <div className="hidden md:flex">
+                        <GoogleTranslate />
                     </div>
 
                     {/* Hamburger Menu (Visible on mobile) */}
                     <div className="md:hidden">
                         <button onClick={() => setMenuOpen(!menuOpen)}>
-                            {!menuOpen &&
-                           (
-                              <Bars3Icon className="h-6 w-6 text-blue-500 hover:text-blue-700" />
+                            {!menuOpen && (
+                                <Bars3Icon className="h-6 w-6 text-blue-500 hover:text-blue-700" />
                             )}
                         </button>
                     </div>
