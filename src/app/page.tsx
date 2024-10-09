@@ -4,6 +4,7 @@ import Landing from '@/components/elements/Swipe';
 import Footer from "@/components/layouts/Footer";
 import CatsSection from "@/components/elements/CatsSection";
 import Head from 'next/head';
+import Felisa from "@/components/elements/Felisa";
 
 
 
@@ -25,6 +26,7 @@ export default function Home() {
           <Header/>
           <Landing/>
           <CatsSection/>
+          <Felisa/>
           <Footer/>
       </div>
 
