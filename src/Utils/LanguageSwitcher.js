@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 
+
 const GoogleTranslate = () => {
     useEffect(() => {
         const addTranslateScript = () => {
@@ -22,6 +23,8 @@ const GoogleTranslate = () => {
             }
         };
 
+
+
         window.googleTranslateElementInit = () => {
             if (window.google && window.google.translate && window.google.translate.TranslateElement) {
                 if (!document.querySelector('.goog-te-combo')) {
@@ -37,21 +40,31 @@ const GoogleTranslate = () => {
             }
         };
 
+
         addTranslateScript();
     }, []);
 
     return (
         <>
-            <div id="google_translate_element" style={{ position: 'relative', zIndex: '10000', marginBottom: '7px' }} />
-            <style>{`
-                #google_translate_element {
-                    background: #ffffff;
-                    padding: 8px;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-                    font-family: Arial, sans-serif;
-                    font-size: 14px;
-                }
+
+
+    <div id="google_translate_element" style={{position: 'relative', zIndex: '10000', marginBottom: '5px'}}/>
+    <style>{`
+             #google_translate_element {
+             background: transparent; /* Remove background box */
+             padding: 0; /* Remove additional padding */
+             border-radius: 0; /* Remove border radius */
+             box-shadow: none; /* Remove shadow */
+             display: flex;
+             padding-top:10px;
+             align-items: center;
+             color: #333; /* Match header text color */
+             transition: color 0.3s ease-in-out;
+}
+
+            #google_translate_element:hover {
+            color: #1f2937; /* Slightly darker color on hover for interaction */
+}
 
                 .goog-te-gadget-simple {
                     border: none;

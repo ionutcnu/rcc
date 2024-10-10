@@ -32,7 +32,7 @@ export default function Header() {
     return (
         <motion.header
             className={`p-2 w-full top-0 z-50 adjust-for-translate-bar ${isSticky ? 'bg-gray-200 text-black fixed' : 'bg-gray-200 text-black'} transition-all ease-in-out duration-300`}
-            animate={{ height: isSticky ? 65 : 75 }}
+            animate={{ height: isSticky ? 65 : 65 }}
         >
             <div className="container mx-auto flex justify-between items-center">
                 {/* Logo */}
