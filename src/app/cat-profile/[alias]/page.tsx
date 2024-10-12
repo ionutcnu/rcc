@@ -7,7 +7,7 @@ import Image from 'next/image';
 import Footer from "@/components/layouts/Footer";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
-import ParentInfoPopup from '@/components/elements/ParentInfoModal'; // Import the updated ParentInfoPopup component
+import ParentInfoPopup from '@/components/elements/CatsRelated/ParentInfoModal'; // Import the updated ParentInfoPopup component
 import 'swiper/swiper-bundle.css';
 
 export default function CatProfile() {

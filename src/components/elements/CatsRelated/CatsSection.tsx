@@ -2,7 +2,7 @@
 import { cats } from '@/app/data/catsData';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/swiper-bundle.css';
-import Particles from "./Particles";
+import Particles from "../Particles";
 import { useRef } from 'react';
 import Link from 'next/link';
 import SwiperCore from 'swiper';

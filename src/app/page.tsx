@@ -1,10 +1,10 @@
 import React from 'react';
 import Header from '@/components/layouts/Header';
-import Landing from '@/components/elements/Swipe';
+import Landing from '@/components/elements/CatsRelated/HomeCatSlideshow';
 import Footer from "@/components/layouts/Footer";
-import CatsSection from "@/components/elements/CatsSection";
+import CatsSection from "@/components/elements/CatsRelated/CatsSection";
 import Head from 'next/head';
-import Felisa from "@/components/elements/Felisa";
+import Felisa from "@/components/elements/CatsRelated/AboutFelisa";
 
 
 
@@ -13,16 +13,6 @@ import Felisa from "@/components/elements/Felisa";
 export default function Home() {
   return (
       <div>
-          <Head>
-              <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet" />
-              <style>
-                  {`
-                    body {
-                      font-family: 'Patrick Hand', cursive;
-                    }
-                  `}
-              </style>
-          </Head>
           <Header/>
           <Landing/>
           <CatsSection/>
