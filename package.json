@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "clean": "rm -rf .next",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "bun run next dev",
+    "build": "bun run next build",
+    "clean": "bun run rimraf .next",
+    "start": "bun run next start",
+    "lint": "bun run next lint"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
@@ -16,6 +16,7 @@
     "@react-three/drei": "^9.111.5",
     "@react-three/fiber": "^8.17.6",
     "@react-three/rapier": "^1.4.0",
+    "d3": "^7.9.0",
     "firebase": "^10.14.1",
     "framer-motion": "^11.3.30",
     "leva": "^0.9.35",
