@@ -17,18 +17,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v4
-        with:
-          node-version: "latest"
-
-      - name: npm install, build, and test
+      # Install Bun
+      - name: Install Bun
         run: |
-          npm install
-          npm run build
+          curl -fsSL https://bun.sh/install | bash
+          echo 'export PATH="$HOME/.bun/bin:$PATH"' >> $GITHUB_ENV
+
+      # Install dependencies and build using Bun
+      - name: Install dependencies and build with Bun
+        run: |
+          bun install
+          bun run build
           mv ./build/static ./build/standalone/build
           mv ./public ./build/standalone
 
+      # Deploy to Azure Web App
       - name: "Deploy to Azure Web App"
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
