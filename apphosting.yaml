@@ -9,5 +9,5 @@ runConfig:
 # Environment variables and secrets
 env:
   # Securely stored API_KEY secret reference from Cloud Secret Manager
-  - variable: API_KEY
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     secret: API_KEY
