@@ -1,0 +1,13 @@
+# Settings for Cloud Run
+runConfig:
+  minInstances: 1                # Ensures at least one instance is always running
+  maxInstances: 50               # Matches your max instance limit
+  concurrency: 80                # Allows 80 requests per instance, as seen in the screenshot
+  cpu: 1                         # CPU set to 1000m, which is equivalent to 1 vCPU
+  memoryMiB: 512                 # Memory limit of 512 MiB
+
+# Environment variables and secrets
+env:
+  # Securely stored API_KEY secret reference from Cloud Secret Manager
+  - variable: API_KEY
+    secret: API_KEY
