@@ -34,7 +34,7 @@ export default function CatsSection() {
                 >
                     {cats.map((cat) => (
                         <SwiperSlide key={cat.alias}>
-                            <Link href={`/cat-profile/${cat.alias}`} key={cat.id}>
+                            <Link href={`/profile/${cat.alias}`} key={cat.id}>
                                 <div className="bg-white text-black rounded-lg overflow-hidden shadow-lg cursor-pointer">
                                     <img
                                         src={cat.mainImage}
@@ -86,7 +86,7 @@ export default function CatsSection() {
                     Rescued from the streets of Spain, these felines are treated with love, care, and full vaccinations.
                 </p>
                 <p className="text-lg">They’re now healthy and excited to meet their new owners!</p>
-                <a href="/cats" className="text-yellow-500 mt-4 inline-block text-lg hover:underline">
+                <a href="/allcats" className="text-yellow-500 mt-4 inline-block text-lg hover:underline">
                     See all cats &gt;
                 </a>
             </div>

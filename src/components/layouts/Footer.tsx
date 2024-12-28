@@ -14,6 +14,11 @@ export default function Footer() {
                     <h3 className="text-lg font-semibold">CAT</h3>
                     <ul className="space-y-1">
                         <li>For Adoption</li>
+                        <li>
+                            <a href="/contract" className="hover:text-gray-400">
+                                Contract
+                            </a>
+                        </li>
                         <li>Adoption Process</li>
                         <li>Living Conditions</li>
                         <li>Post-adoption Guide</li>
