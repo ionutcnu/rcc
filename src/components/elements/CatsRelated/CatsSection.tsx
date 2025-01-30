@@ -6,10 +6,10 @@ import Particles from "../Particles";
 import { useRef } from 'react';
 import Link from 'next/link';
 import SwiperCore from 'swiper';
+import Image from "next/image";
 
 export default function CatsSection() {
     const swiperRef = useRef<SwiperCore>();
-
 
     return (
         <section className="relative bg-[#1C1C21] text-white py-16">
@@ -34,13 +34,17 @@ export default function CatsSection() {
                 >
                     {cats.map((cat) => (
                         <SwiperSlide key={cat.alias}>
-                            <Link href={`/profile/${cat.alias}`} key={cat.id}>
+                            <Link href={`/cat-profile/${cat.alias}`} key={cat.id}>
                                 <div className="bg-white text-black rounded-lg overflow-hidden shadow-lg cursor-pointer">
-                                    <img
-                                        src={cat.mainImage}
-                                        alt={cat.name}
-                                        className="object-cover h-56 w-full"
-                                    />
+                                    <div className="relative h-56 w-full">
+                                        <Image
+                                            src={cat.mainImage}
+                                            alt={cat.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        />
+                                    </div>
                                     <div className="p-6">
                                         <h3 className="text-2xl font-bold mb-2">{cat.name}</h3>
                                         <p className="text-gray-700">{cat.description}</p>
@@ -51,6 +55,7 @@ export default function CatsSection() {
                     ))}
                 </Swiper>
 
+                {/* Navigation buttons and footer text remain unchanged */}
                 <div className="mt-4 flex justify-center">
                     <button
                         className="text-alabaster-600 bg-alabaster-900 hover:bg-seance-700 border border-alabaster-900 rounded-full h-12 w-12 flex items-center justify-center"

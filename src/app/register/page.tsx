@@ -1,9 +1,9 @@
-'use client'; // Required for using client-side hooks
-
+'use client';
 import { useState } from "react";
 import { auth } from "@/Utils/firebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const Signup = () => {
     // State variables
@@ -48,17 +48,27 @@ const Signup = () => {
             <div className="flex flex-col lg:flex-row max-w-6xl w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
                 {/* Image Section */}
                 <div className="lg:w-1/2 h-64 lg:h-auto relative">
-                    <img
-                        alt=""
+                    <Image
                         src="https://images.unsplash.com/photo-1605106702734-205df224ecce?ixlib=rb-1.2.1&auto=format&fit=crop&w=870&q=80"
-                        className="absolute inset-0 h-full w-full object-cover"
+                        alt="Decorative background"
+                        fill
+                        className="object-cover"
+                        priority
+                        sizes="(max-width: 768px) 100vw, 50vw"
                     />
                 </div>
 
                 {/* Form Section */}
                 <div className="w-full lg:w-1/2 p-8 sm:p-12">
                     <div className="flex justify-center">
-                        <img src="/logo.svg" alt="Logo" className="w-16 h-16" />
+                        <Image
+                            src="/logo.svg"
+                            alt="Logo"
+                            width={64}
+                            height={64}
+                            className="w-16 h-16"
+                            priority
+                        />
                     </div>
 
                     <h2 className="text-2xl font-semibold text-center text-gray-700 dark:text-white mt-4">Create Your Account</h2>
@@ -90,7 +100,6 @@ const Signup = () => {
                                         required
                                     />
                                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                        {/* User Icon */}
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9.985 9.985 0 0012 21a9.985 9.985 0 006.879-3.196M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
@@ -113,7 +122,6 @@ const Signup = () => {
                                         required
                                     />
                                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                        {/* User Icon */}
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9.985 9.985 0 0012 21a9.985 9.985 0 006.879-3.196M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
@@ -138,7 +146,6 @@ const Signup = () => {
                                     required
                                 />
                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                    {/* Email Icon */}
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path d="M16 12H8m0 0H5m3 0l4 4m0-4l-4-4m0 8V8m0 0V4m0 4l4-4m0 0l4 4m-4-4v4" />
                                     </svg>
@@ -162,7 +169,6 @@ const Signup = () => {
                                     required
                                 />
                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                    {/* Lock Icon */}
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path d="M12 15v2m0-6v2m0 2a2 2 0 11-4 0 2 2 0 014 0zM5 12h14M5 12a7 7 0 1114 0H5z" />
                                     </svg>
@@ -175,12 +181,10 @@ const Signup = () => {
                                         aria-label={passwordVisible ? "Hide password" : "Show password"}
                                     >
                                         {passwordVisible ? (
-                                            /* Eye-Off Icon */
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4.03-9-9a9.968 9.968 0 012.87-7.068M15 15l-3-3m0 0l-3-3m3 3l3-3m-3 3l-3 3m9-9a9.968 9.968 0 012.87 7.068c0 5-4 9-9 9-1.313 0-2.57-.264-3.738-.744" />
                                             </svg>
                                         ) : (
-                                            /* Eye Icon */
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path d="M2.458 12C3.732 7.943 7.522 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" />
@@ -207,7 +211,6 @@ const Signup = () => {
                                     required
                                 />
                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                    {/* Lock Icon */}
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path d="M12 15v2m0-6v2m0 2a2 2 0 11-4 0 2 2 0 014 0zM5 12h14M5 12a7 7 0 1114 0H5z" />
                                     </svg>
@@ -220,12 +223,10 @@ const Signup = () => {
                                         aria-label={passwordConfirmVisible ? "Hide password" : "Show password"}
                                     >
                                         {passwordConfirmVisible ? (
-                                            /* Eye-Off Icon */
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4.03-9-9a9.968 9.968 0 012.87-7.068M15 15l-3-3m0 0l-3-3m3 3l3-3m-3 3l-3 3m9-9a9.968 9.968 0 012.87 7.068c0 5-4 9-9 9-1.313 0-2.57-.264-3.738-.744" />
                                             </svg>
                                         ) : (
-                                            /* Eye Icon */
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path d="M2.458 12C3.732 7.943 7.522 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" />

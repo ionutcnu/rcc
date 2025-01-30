@@ -1,25 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import GoogleTranslate from '@/Utils/LanguageSwitcher';
 import ProfileDropdown from "@/components/elements/Header/ProfileDropdown";
 import MobileMenu from '@/components/elements/Header/MobileMenu';
-import {auth} from "@/Utils/firebaseConfig";
-
+import { auth } from "@/Utils/firebaseConfig";
 
 export default function Header() {
     const [isSticky, setIsSticky] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
-        // Sticky header logic
         const handleScroll = () => {
             setIsSticky(window.scrollY > 50);
         };
         window.addEventListener('scroll', handleScroll);
 
-        // Authentication state listener
         const unsubscribe = auth.onAuthStateChanged((user) => {
             setIsAuthenticated(!!user);
         });
@@ -38,12 +36,15 @@ export default function Header() {
             animate={{ height: isSticky ? 60 : 60 }}
         >
             <div className="container mx-auto flex justify-between items-center">
-                {/* Logo */}
+                {/* Logo with optimized Image component */}
                 <div className="text-2xl font-bold flex items-center">
-                    <img
+                    <Image
                         src="/logo.svg"
                         alt="RCC Logo"
-                        className={`inline-block mr-3 h-10 w-10`}
+                        width={40}
+                        height={40}
+                        className="inline-block mr-3 h-10 w-10"
+                        priority
                     />
                     <Link href="/">RCC</Link>
                 </div>
@@ -62,12 +63,10 @@ export default function Header() {
                         </Link>
                     </nav>
 
-                    {/* Google Translate Component */}
                     <div>
                         <GoogleTranslate />
                     </div>
 
-                    {/* Authentication Buttons */}
                     {isAuthenticated ? (
                         <>
                             <ProfileDropdown />
@@ -82,7 +81,6 @@ export default function Header() {
                                 Logout
                             </button>
                         </>
-
                     ) : (
                         <>
                             <Link href="/login">
@@ -99,9 +97,6 @@ export default function Header() {
                     )}
                 </div>
 
-
-
-                {/* Mobile Menu */}
                 <MobileMenu />
             </div>
         </motion.header>

@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Image from "next/image";
 
 export default function AboutMe() {
     return (
@@ -10,11 +11,14 @@ export default function AboutMe() {
                 </h2>
                 <div className="flex flex-col lg:flex-row items-center lg:space-x-8">
                     {/* Image */}
-                    <div className="lg:w-1/2 w-full mb-6 lg:mb-0">
-                        <img
+                    <div className="lg:w-1/2 w-full mb-6 lg:mb-0 relative h-96">
+                        <Image
                             src="/Images/fellisa.jpg"
                             alt="Red Cat Cuasar Felissa"
-                            className="rounded-lg shadow-lg object-cover w-full h-full lg:h-96 max-h-96"
+                            fill
+                            className="rounded-lg shadow-lg object-cover"
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            priority
                         />
                     </div>
 

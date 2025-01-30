@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Spotlight, { SpotlightCard } from "@/components/elements/Spotlight";
 
 type Cat = {
@@ -36,13 +37,15 @@ export default function CatGrid({ displayedCats, redirectToProfile }: CatGridPro
                     >
                         {/* Image Section */}
                         <div
-                            className="relative cursor-pointer overflow-hidden"
+                            className="relative cursor-pointer overflow-hidden h-40"
                             onClick={() => redirectToProfile(cat.alias)}
                         >
-                            <img
+                            <Image
                                 src={cat.mainImage}
                                 alt={`Photo of ${cat.name}`}
-                                className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                                fill
+                                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         </div>
@@ -65,8 +68,6 @@ export default function CatGrid({ displayedCats, redirectToProfile }: CatGridPro
                                 <h2 className="text-md font-bold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300">
                                     {cat.name}
                                 </h2>
-                                {/*<h3 className="text-sm font-semibold text-gray-700 mt-1">${cat.price}</h3>*/}
-                                {/*removed price from cat card for now*/}
                             </div>
 
                             {/* Cat Details */}

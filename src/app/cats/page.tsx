@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Footer from "@/components/layouts/Footer";
 import Header from "@/components/layouts/Header";
@@ -27,7 +27,8 @@ type Cat = {
     isCastrated: boolean;
 };
 
-export default function AllCatsPage() {
+// Changed to named export
+function AllCatsPage() {
     const searchParams = useSearchParams();
     const filter = searchParams.get("filter");
 
@@ -36,9 +37,8 @@ export default function AllCatsPage() {
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
     useEffect(() => {
-        // Initialize filters based on the query parameter
         if (filter === "male" || filter === "female") {
-            setGenderFilter(filter.charAt(0).toUpperCase() + filter.slice(1)); // Capitalize
+            setGenderFilter(filter.charAt(0).toUpperCase() + filter.slice(1));
             setCategoryFilter(null);
         } else if (filter === "kitten") {
             setCategoryFilter("Kitten");
@@ -111,7 +111,6 @@ export default function AllCatsPage() {
             <div className="container mx-auto max-w-screen-xl py-12">
                 <h1 className="text-4xl font-bold text-gray-800 text-center mb-8">Meet Our Cats</h1>
                 <div className="flex flex-col md:flex-row gap-8">
-                    {/* Sidebar */}
                     <div className="w-full md:w-1/4">
                         <FilterSidebar
                             clearAllFilters={clearAllFilters}
@@ -157,7 +156,6 @@ export default function AllCatsPage() {
                         />
                     </div>
 
-                    {/* Main Content */}
                     <div className="w-full md:w-3/4">
                         <CatGrid displayedCats={displayedCats} redirectToProfile={redirectToProfile} />
                         {totalPages > 1 && (
@@ -174,5 +172,14 @@ export default function AllCatsPage() {
             </div>
             <Footer />
         </div>
+    );
+}
+
+// Wrapper component with Suspense
+export default function Page() {
+    return (
+        <Suspense fallback={<div className="text-center p-8">Loading cats...</div>}>
+            <AllCatsPage />
+        </Suspense>
     );
 }

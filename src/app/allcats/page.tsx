@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Footer from "@/components/layouts/Footer";
 import Header from "@/components/layouts/Header";
 import { cats } from "@/app/data/catsData";
@@ -31,7 +32,6 @@ type Category = {
     filter: string;
 };
 
-// Generate categories dynamically
 const generateCategories = (cats: Cat[]): Category[] => [
     {
         id: "male",
@@ -81,16 +81,18 @@ export default function CategoriesPage() {
                                 className="group bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer"
                                 onClick={() => handleCategoryClick(category.filter)}
                             >
-                                {/* Image Section */}
-                                <div className="relative">
-                                    <img
+                                <div className="relative h-56">
+                                    <Image
                                         src={category.image}
                                         alt={category.title}
-                                        className="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105"
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                        quality={80}
+                                        priority={category.id === "male"} // Optional: Prioritize above-the-fold images
                                     />
                                 </div>
 
-                                {/* Content Section */}
                                 <div className="p-6">
                                     <h2 className="text-2xl font-bold text-gray-800 group-hover:text-indigo-600 transition-colors duration-300 mb-3">
                                         {category.title}
@@ -99,6 +101,7 @@ export default function CategoriesPage() {
 
                                     <button
                                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        aria-label={`View all ${category.title}`}
                                     >
                                         View All
                                     </button>
