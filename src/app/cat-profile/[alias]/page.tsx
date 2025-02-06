@@ -88,7 +88,7 @@ export default function CatProfile() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <h3 className="text-lg lg:text-xl font-semibold mb-2">PRICE:</h3>
-                                    <p className="text-2xl lg:text-3xl text-blue-500 font-bold mb-4">€{cat.price}</p>
+                                  <p className="text-2xl lg:text-3xl text-blue-500 font-bold mb-4">€{cat.price}</p>
                                     <h3 className="text-lg lg:text-xl font-semibold mb-2">COLOR:</h3>
                                     <p className="text-gray-400 mb-4">{cat.color}</p>
                                     <h3 className="text-lg lg:text-xl font-semibold mb-2">GENDER:</h3>

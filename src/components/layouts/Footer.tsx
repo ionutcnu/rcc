@@ -13,9 +13,9 @@ export default function Footer() {
                 <div>
                     <h3 className="text-lg font-semibold">CAT</h3>
                     <ul className="space-y-1">
-                        <li>For Adoption</li>
+
                         <li>
-                            <a href="/contract" className="hover:text-gray-400">
+                            <a href="/contract"  className="hover:text-gray-400">
                                 Contract
                             </a>
                         </li>
@@ -27,7 +27,11 @@ export default function Footer() {
                 <div>
                     <h3 className="text-lg font-semibold">ORGANIZATION</h3>
                     <ul className="space-y-1">
-                        <li>The Team</li>
+                        <li>
+                            <a href={"/club"} className='hover:text-gray-400'>
+                                Club
+                            </a>
+                        </li>
                         <li>History</li>
                     </ul>
                 </div>
