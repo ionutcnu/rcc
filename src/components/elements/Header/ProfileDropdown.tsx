@@ -1,16 +1,26 @@
 'use client';
-
-import { useState } from 'react';
+import { useState, ReactElement } from 'react';
 import { auth } from '@/Utils/firebaseConfig';
 import { useRouter } from 'next/navigation';
+import { GiCat, GiPawPrint, GiExitDoor } from 'react-icons/gi';
+import Link from "next/link";
 
-export default function ProfileDropdown() {
+interface ProfileDropdownProps {
+    icon: ReactElement;
+}
+
+export default function ProfileDropdown({ icon }: ProfileDropdownProps) {
     const [menuOpen, setMenuOpen] = useState(false);
     const router = useRouter();
 
     const handleLogout = async () => {
-        await auth.signOut();
-        router.push('/login'); // Redirect to login after logging out
+        try {
+            await auth.signOut();
+            router.push('/login');
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+        setMenuOpen(false);
     };
 
     return (
@@ -20,50 +30,58 @@ export default function ProfileDropdown() {
                 <button
                     type="button"
                     onClick={() => setMenuOpen(!menuOpen)}
-                    className="flex items-center space-x-2 bg-gray-200 rounded-full p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    id="menu-button"
-                    aria-expanded="true"
+                    className="flex items-center space-x-2 bg-orange-100 rounded-full p-2 focus:outline-none focus:ring-2 focus:ring-orange-500 hover:bg-orange-200 transition-colors"
+                    aria-expanded={menuOpen}
                     aria-haspopup="true"
                 >
-                    <span className="sr-only">Open user menu</span>
-                    {/* User Icon */}
-                    <svg
-                        className="w-6 h-6 text-gray-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M5.121 19.073A10 10 0 1019.073 5.121 10 10 0 005.121 19.073zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        ></path>
-                    </svg>
-                    <span className="text-sm font-medium text-gray-700">Your Account</span>
+                    <span className="sr-only">Open profile menu</span>
+                    {icon}
+                    <span className="text-sm font-medium text-orange-700">Cat Profile</span>
                 </button>
             </div>
 
             {/* Dropdown Menu */}
             {menuOpen && (
                 <div
-                    className="absolute right-0 mt-2 w-56 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    className="absolute right-0 mt-2 w-56 origin-top-right rounded-lg shadow-xl bg-amber-50 border border-orange-200 z-50"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="menu-button"
                     tabIndex={-1}
                 >
-                    <div className="py-1" role="none">
+                    <div className="py-2 px-1" role="none">
+                        {/* Profile Link */}
+                        <Link
+                            href="/profile"
+                            className="flex items-center px-4 py-2 text-gray-900 hover:bg-orange-100 rounded-md transition-colors"
+                            role="menuitem"
+                            onClick={() => setMenuOpen(false)}
+                        >
+                            <GiCat className="w-5 h-5 mr-2 text-orange-600" />
+                            My Profile
+                        </Link>
+
                         {/* Logout Button */}
                         <button
                             onClick={handleLogout}
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                            className="w-full flex items-center px-4 py-2 text-gray-900 hover:bg-orange-100 rounded-md transition-colors"
                             role="menuitem"
-                            tabIndex={-1}
                         >
+                            <GiExitDoor className="w-5 h-5 mr-2 text-orange-600" />
                             Log out
                         </button>
+
+                        {/* Current User Info */}
+                        <div className="mt-2 pt-2 border-t border-orange-200">
+                            <div className="px-4 py-2 text-xs text-orange-600">
+                                {auth.currentUser?.email && (
+                                    <div className="flex items-center">
+                                        <GiPawPrint className="mr-1.5" />
+                                        {auth.currentUser.email}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

@@ -28,7 +28,8 @@ export const cats = [
         fatherImage: "/Cats/Images/cat1.jpg",
         motherDescription: "lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum",
         fatherDescription: "lorem ipsum",
-        price: 500
+        price: 500,
+        availability: "Available"
     },
     {
         id: 2,
@@ -52,7 +53,9 @@ export const cats = [
         fatherImage: "/Cats/Images/cat3.jpg",
         motherDescription: "Very playful and loves to climb trees.",
         fatherDescription: "Likes chasing birds.",
-        price: 450
+        price: 450,
+        availability: "Reserved"
+
     },
     {
         id: 3,
@@ -62,7 +65,7 @@ export const cats = [
         mainImage: "/Cats/Images/cat1.jpg",
         images: ["/Cats/Images/cat1.jpg", "/Cats/Images/catm.jpg", "/Cats/Images/cat3.jpg"],
         videos: ["/Cats/Videos/Video1.mp4", "/Cats/Videos/Video2.mp4"],
-        color: "Orange and black",
+        color: "black",
         gender: "Male",
         yearOfBirth: 2015,
         isVaccinated: true,
@@ -76,7 +79,8 @@ export const cats = [
         fatherImage: "/Cats/Images/cat3.jpg",
         motherDescription: "Loves hunting.",
         fatherDescription: "Strong and independent.",
-        price: 600
+        price: 600,
+        availability: "Stays in cattery"
     },
     {
         id: 4,
@@ -100,6 +104,7 @@ export const cats = [
         fatherImage: "/Cats/Images/cat3.jpg",
         motherDescription: "Gentle giant.",
         fatherDescription: "Fierce and strong.",
-        price: 700
+        price: 700,
+        availability: "Reserved"
     }
 ];
