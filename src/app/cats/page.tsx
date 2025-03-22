@@ -25,9 +25,9 @@ type Cat = {
     isMicrochipped: boolean;
     price: number;
     isCastrated: boolean;
+    availability: string;
 };
 
-// Changed to named export
 function AllCatsPage() {
     const searchParams = useSearchParams();
     const filter = searchParams.get("filter");
@@ -36,6 +36,7 @@ function AllCatsPage() {
     const [genderFilter, setGenderFilter] = useState<string | null>(null);
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
+    // If "filter" query param is present in the URL, we can pre-set gender/category:
     useEffect(() => {
         if (filter === "male" || filter === "female") {
             setGenderFilter(filter.charAt(0).toUpperCase() + filter.slice(1));
@@ -50,6 +51,10 @@ function AllCatsPage() {
     }, [filter]);
 
     const [colorFilter, setColorFilter] = useState<string | null>(null);
+
+    // Renaming your 'availability' to 'availableCategoryFilter' for consistency
+    const [availableCategoryFilter, setAvailableCategoryFilter] = useState<string | null>(null);
+
     const [yearFilter, setYearFilter] = useState<number | null>(null);
     const [breedFilter, setBreedFilter] = useState<string | null>(null);
     const [vaccinationFilter, setVaccinationFilter] = useState<boolean | null>(null);
@@ -67,10 +72,12 @@ function AllCatsPage() {
         setBreedFilter(null);
         setVaccinationFilter(null);
         setMicrochipFilter(null);
+        setAvailableCategoryFilter(null);
         setPriceOrder("");
         setCurrentPage(1);
     };
 
+    // Filtering
     let filteredCats = cats.filter((cat) => {
         return (
             (!genderFilter || cat.gender.toLowerCase() === genderFilter.toLowerCase()) &&
@@ -79,16 +86,21 @@ function AllCatsPage() {
             (!yearFilter || cat.yearOfBirth === yearFilter) &&
             (!breedFilter || cat.breed.toLowerCase() === breedFilter.toLowerCase()) &&
             (vaccinationFilter === null || cat.isVaccinated === vaccinationFilter) &&
-            (microchipFilter === null || cat.isMicrochipped === microchipFilter)
+            (microchipFilter === null || cat.isMicrochipped === microchipFilter) &&
+            // ** Corrected line below: compare cat.availability, not cat.gender **
+            (!availableCategoryFilter ||
+                cat.availability.toLowerCase() === availableCategoryFilter.toLowerCase())
         );
     });
 
+    // Price ordering
     if (priceOrder === "asc") {
         filteredCats = [...filteredCats].sort((a, b) => a.price - b.price);
     } else if (priceOrder === "desc") {
         filteredCats = [...filteredCats].sort((a, b) => b.price - a.price);
     }
 
+    // Pagination
     const totalPages = Math.ceil(filteredCats.length / catsPerPage);
     const displayedCats = filteredCats.slice(
         (currentPage - 1) * catsPerPage,
@@ -99,6 +111,7 @@ function AllCatsPage() {
         window.location.href = `/cat-profile/${alias}`;
     };
 
+    // Option arrays
     const uniqueYears = Array.from(new Set(cats.map((cat) => cat.yearOfBirth))).sort(
         (a, b) => b - a
     );
@@ -109,7 +122,9 @@ function AllCatsPage() {
         <div className="bg-gray-100 min-h-screen">
             <Header />
             <div className="container mx-auto max-w-screen-xl py-12">
-                <h1 className="text-4xl font-bold text-gray-800 text-center mb-8">Meet Our Cats</h1>
+                <h1 className="text-4xl font-bold text-gray-800 text-center mb-8">
+                    Meet Our Cats
+                </h1>
                 <div className="flex flex-col md:flex-row gap-8">
                     <div className="w-full md:w-1/4">
                         <FilterSidebar
@@ -117,7 +132,9 @@ function AllCatsPage() {
                             priceOrder={priceOrder}
                             handlePriceOrderChange={(e) => setPriceOrder(e.target.value)}
                             genderFilter={genderFilter}
-                            handleGenderFilterChange={(e) => setGenderFilter(e.target.value || null)}
+                            handleGenderFilterChange={(e) =>
+                                setGenderFilter(e.target.value || null)
+                            }
                             colorFilter={colorFilter}
                             handleColorFilterChange={(e) => setColorFilter(e.target.value || null)}
                             yearFilter={yearFilter}
@@ -126,11 +143,20 @@ function AllCatsPage() {
                             }
                             uniqueYears={uniqueYears}
                             breedFilter={breedFilter}
-                            handleBreedFilterChange={(e) => setBreedFilter(e.target.value || null)}
+                            handleBreedFilterChange={(e) =>
+                                setBreedFilter(e.target.value || null)
+                            }
                             uniqueBreeds={uniqueBreeds}
                             categoryFilter={categoryFilter}
-                            handleCategoryFilterChange={(e) => setCategoryFilter(e.target.value || null)}
+                            handleCategoryFilterChange={(e) =>
+                                setCategoryFilter(e.target.value || null)
+                            }
                             uniqueCategories={uniqueCategories}
+                            // Pass availability as "availableCategoryFilter"
+                            availableCategoryFilter={availableCategoryFilter}
+                            handleAvailableCategoryChange={(e) =>
+                                setAvailableCategoryFilter(e.target.value || null)
+                            }
                             vaccinationFilter={vaccinationFilter}
                             handleVaccinationFilterChange={(e) =>
                                 setVaccinationFilter(
@@ -157,7 +183,10 @@ function AllCatsPage() {
                     </div>
 
                     <div className="w-full md:w-3/4">
-                        <CatGrid displayedCats={displayedCats} redirectToProfile={redirectToProfile} />
+                        <CatGrid
+                            displayedCats={displayedCats}
+                            redirectToProfile={redirectToProfile}
+                        />
                         {totalPages > 1 && (
                             <PaginationSection
                                 currentPage={currentPage}
@@ -175,7 +204,6 @@ function AllCatsPage() {
     );
 }
 
-// Wrapper component with Suspense
 export default function Page() {
     return (
         <Suspense fallback={<div className="text-center p-8">Loading cats...</div>}>

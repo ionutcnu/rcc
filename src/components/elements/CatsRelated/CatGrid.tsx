@@ -22,7 +22,7 @@ type Cat = {
     isMicrochipped: boolean;
     isCastrated: boolean;
     price: number;
-    availability: "Available" | "Reserved" | "Stays in cattery";
+    availability: string;
 };
 
 type CatGridProps = {

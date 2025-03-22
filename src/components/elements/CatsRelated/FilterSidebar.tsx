@@ -13,12 +13,12 @@ const FilterOption = ({ label, value, onChange, options }: FilterOptionProps) =>
     <div className="mb-6">
         <label className="block text-sm font-medium text-gray-800 mb-2">{label}</label>
         <select
-            value={value || ""}
+            value={value ?? ""}
             onChange={onChange}
             className="w-full border border-gray-300 rounded-lg py-2 px-3 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-indigo-400 transition-all duration-300 shadow-sm"
         >
             {options.map((opt) => (
-                <option key={opt.value} value={opt.value || ""}>
+                <option key={opt.value ?? "null"} value={opt.value ?? ""}>
                     {opt.label}
                 </option>
             ))}
@@ -43,6 +43,8 @@ type FilterSidebarProps = {
     categoryFilter: string | null;
     handleCategoryFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     uniqueCategories: string[];
+    availableCategoryFilter: string | null;
+    handleAvailableCategoryChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     vaccinationFilter: boolean | null;
     handleVaccinationFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     microchipFilter: boolean | null;
@@ -68,6 +70,8 @@ const FilterSidebar = ({
                            categoryFilter,
                            handleCategoryFilterChange,
                            uniqueCategories,
+                           availableCategoryFilter,
+                           handleAvailableCategoryChange,
                            vaccinationFilter,
                            handleVaccinationFilterChange,
                            microchipFilter,
@@ -84,91 +88,101 @@ const FilterSidebar = ({
                 Clear All Filters
             </button>
 
-            {/*Removed price filter , might re-enable later */}
-            {/*<FilterOption*/}
-            {/*    label="Sort by Price"*/}
-            {/*    value={priceOrder}*/}
-            {/*    onChange={handlePriceOrderChange}*/}
-            {/*    options={[*/}
-            {/*        { value: "", label: "None" },*/}
-            {/*        { value: "asc", label: "Ascending" },*/}
-            {/*        { value: "desc", label: "Descending" },*/}
-            {/*    ]}*/}
-            {/*/>*/}
+            <FilterOption
+                label="Filter by Availability"
+                value={availableCategoryFilter}
+                onChange={handleAvailableCategoryChange}
+                options={[
+                    { value: "", label: "All" },
+                    { value: "Available", label: "Available" },
+                    { value: "Reserved", label: "Reserved" },
+                    { value: "Stays in cattery", label: "Stays in cattery" },
+                ]}
+            />
 
             <FilterOption
                 label="Filter by Gender"
                 value={genderFilter}
                 onChange={handleGenderFilterChange}
                 options={[
-                    {value: "", label: "All"},
-                    {value: "Male", label: "Male"},
-                    {value: "Female", label: "Female"},
+                    { value: "", label: "All" },
+                    { value: "Male", label: "Male" },
+                    { value: "Female", label: "Female" },
                 ]}
             />
+
             <FilterOption
                 label="Filter by Color"
                 value={colorFilter}
                 onChange={handleColorFilterChange}
                 options={[
-                    {value: "", label: "All"},
-                    {value: "White", label: "White"},
-                    {value: "Orange", label: "Orange"},
-                    {value: "Gray", label: "Gray"},
+                    { value: "", label: "All" },
+                    { value: "White", label: "White" },
+                    { value: "Orange", label: "Orange" },
+                    { value: "Gray", label: "Gray" },
                 ]}
             />
+
             <FilterOption
                 label="Filter by Year of Birth"
                 value={yearFilter}
                 onChange={handleYearFilterChange}
-                options={[{value: "", label: "All"}, ...uniqueYears.map((year) => ({
+                options={[{ value: "", label: "All" }, ...uniqueYears.map((year) => ({
                     value: year,
-                    label: String(year)
+                    label: String(year),
                 }))]}
             />
+
             <FilterOption
                 label="Filter by Breed"
                 value={breedFilter}
                 onChange={handleBreedFilterChange}
-                options={[{value: "", label: "All"}, ...uniqueBreeds.map((breed) => ({value: breed, label: breed}))]}
+                options={[{ value: "", label: "All" }, ...uniqueBreeds.map((breed) => ({
+                    value: breed,
+                    label: breed,
+                }))]}
             />
+
             <FilterOption
                 label="Filter by Category"
                 value={categoryFilter}
                 onChange={handleCategoryFilterChange}
-                options={[{value: "", label: "All"}, ...uniqueCategories.map((category) => ({
-                    value: category,
-                    label: category
+                options={[{ value: "", label: "All" }, ...uniqueCategories.map((cat) => ({
+                    value: cat,
+                    label: cat,
                 }))]}
             />
+
             <FilterOption
                 label="Filter by Vaccinated"
                 value={vaccinationFilter === null ? "" : vaccinationFilter ? "Yes" : "No"}
                 onChange={handleVaccinationFilterChange}
                 options={[
-                    {value: "", label: "All"},
-                    {value: "Yes", label: "Yes"},
-                    {value: "No", label: "No"},
+                    { value: "", label: "All" },
+                    { value: "Yes", label: "Yes" },
+                    { value: "No", label: "No" },
                 ]}
             />
+
             <FilterOption
                 label="Filter by Microchipped"
                 value={microchipFilter === null ? "" : microchipFilter ? "Yes" : "No"}
                 onChange={handleMicrochipFilterChange}
                 options={[
-                    {value: "", label: "All"},
-                    {value: "Yes", label: "Yes"},
-                    {value: "No", label: "No"},
+                    { value: "", label: "All" },
+                    { value: "Yes", label: "Yes" },
+                    { value: "No", label: "No" },
                 ]}
             />
+
             <FilterOption
                 label="Cats per Page"
                 value={catsPerPage}
                 onChange={handleCatsPerPageChange}
                 options={[
-                    {value: 9, label: "9"},
-                    {value: 18, label: "18"},
-                    {value: 32, label: "32"},
+                    { value: 9, label: "9" },
+                    { value: 18, label: "18" },
+                    { value: 32, label: "32" },
                 ]}
             />
         </aside>
