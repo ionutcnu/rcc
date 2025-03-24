@@ -55,8 +55,8 @@ export default function Header() {
         <motion.header
             className={`w-full top-0 z-50 ${
                 isSticky
-                    ? 'bg-amber-50 shadow-lg fixed border-b-2 border-orange-200'
-                    : 'bg-amber-50'
+                    ? 'bg-[#F4F6FA] shadow-lg fixed border-b-2 border-[#5C6AC4]'
+                    : 'bg-[#F4F6FA]'
             } transition-all duration-300`}
             animate={{ height: isSticky ? "70px" : "90px" }}
         >
@@ -72,7 +72,7 @@ export default function Header() {
                             priority
                         />
                     </div>
-                    <span className="text-2xl font-bold text-orange-600">
+                    <span className="text-2xl font-bold text-[#FF6B6B]">
                         Red Cat Cuasar
                     </span>
                 </Link>
@@ -84,7 +84,7 @@ export default function Header() {
                             <Link
                                 key={link.path}
                                 href={link.path}
-                                className="flex items-center text-gray-900 hover:text-orange-700 px-3 py-2 rounded-lg transition-colors"
+                                className="flex items-center text-[#2E2E2E] hover:text-[#FF6B6B] px-3 py-2 rounded-lg transition-colors"
                             >
                                 {link.icon}
                                 {link.name}
@@ -92,19 +92,19 @@ export default function Header() {
                         ))}
                     </nav>
 
-                    <div className="flex items-center space-x-4 border-l-2 border-orange-100 pl-4">
-                        <div className="text-orange-600">
+                    <div className="flex items-center space-x-4 border-l-2 border-[#d1d5db] pl-4">
+                        <div className="text-[#FF6B6B]">
                             <GoogleTranslate />
                         </div>
 
                         {isAuthenticated ? (
                             <>
                                 <ProfileDropdown
-                                    icon={<GiCat className="w-6 h-6 text-orange-600" />}
+                                    icon={<GiCat className="w-6 h-6 text-[#FF6B6B]" />}
                                 />
                                 <button
                                     onClick={() => auth.signOut()}
-                                    className="flex items-center bg-orange-100 text-orange-700 px-4 py-2 rounded-full hover:bg-orange-200 transition-colors"
+                                    className="flex items-center bg-[#FFD9D9] text-[#FF6B6B] px-4 py-2 rounded-full hover:bg-[#FFB8B8] transition-colors"
                                 >
                                     <GiPawPrint className="mr-2" />
                                     Logout
@@ -112,11 +112,17 @@ export default function Header() {
                             </>
                         ) : (
                             <>
-                                <Link href="/login" className="flex items-center bg-orange-100 text-orange-700 px-4 py-2 rounded-full hover:bg-orange-200 transition-colors">
+                                <Link
+                                    href="/login"
+                                    className="flex items-center bg-[#FFD9D9] text-[#FF6B6B] px-4 py-2 rounded-full hover:bg-[#FFB8B8] transition-colors"
+                                >
                                     <GiPawPrint className="mr-2" />
                                     Login
                                 </Link>
-                                <Link href="/register" className="flex items-center bg-orange-600 text-white px-4 py-2 rounded-full hover:bg-orange-700 transition-colors">
+                                <Link
+                                    href="/register"
+                                    className="flex items-center bg-[#5C6AC4] text-white px-4 py-2 rounded-full hover:bg-[#3F4EB3] transition-colors"
+                                >
                                     <GiCat className="mr-2" />
                                     Register
                                 </Link>
@@ -132,7 +138,7 @@ export default function Header() {
                         isAuthenticated ? (
                             <button
                                 onClick={() => auth.signOut()}
-                                className="flex items-center justify-center text-xl text-gray-900 hover:text-orange-700 p-3"
+                                className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
                             >
                                 <GiPawPrint className="mr-2" />
                                 Logout
@@ -141,14 +147,14 @@ export default function Header() {
                             <>
                                 <Link
                                     href="/login"
-                                    className="flex items-center justify-center text-xl text-gray-900 hover:text-orange-700 p-3"
+                                    className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
                                 >
                                     <GiPawPrint className="mr-2" />
                                     Login
                                 </Link>
                                 <Link
                                     href="/register"
-                                    className="flex items-center justify-center text-xl text-gray-900 hover:text-orange-700 p-3"
+                                    className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
                                 >
                                     <GiCat className="mr-2" />
                                     Register
