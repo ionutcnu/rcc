@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function MeetFelissa() {
     return (
         <section className="bg-[#F4F6FA] text-[#2E2E2E] py-12">
@@ -5,12 +7,16 @@ export default function MeetFelissa() {
 
                 {/* Image Section */}
                 <div className="flex justify-center">
-                    {/* Parent div with a max width so it doesn't stretch indefinitely */}
                     <div className="relative w-full max-w-xl overflow-hidden rounded-lg shadow-lg">
-                        <img
-                            src="/images/fellisa.jpg"
+                        <Image
+                            src="/images/fellisa.jpg"     // Ensure file is in /public/images/fellisa.jpg
                             alt="Felissa holding a cat"
-                            className="w-full h-auto object-cover"
+                            width={800}                   // pick appropriate width
+                            height={600}                  // pick appropriate height
+                            className="object-cover w-full h-auto"
+                            // Or if you prefer a fill-based approach:
+                            // fill
+                            // style={{ objectFit: "cover" }}
                         />
                     </div>
                 </div>
@@ -24,20 +30,13 @@ export default function MeetFelissa() {
                         Felissa – Cat Enthusiast and Rescue Specialist
                     </h3>
                     <p>
-                        Cats have been a part of my life for as long as I can remember.
-                        Growing up with these majestic creatures, I realized that their
-                        loyalty and love for their owners are unmatched. Felissa is a place
-                        where I share my passion for cats and help them find loving homes.
+                        Cats have been a part of my life for as long as I can remember...
                     </p>
                     <p>
-                        Our mission is to rescue cats and provide them with the care they
-                        deserve, ensuring they are vaccinated, microchipped, and ready to
-                        find their forever home.
+                        Our mission is to rescue cats...
                     </p>
                     <p>
-                        If you are interested in learning more about our work, feel free
-                        to explore our platform and meet the wonderful cats that are ready
-                        to become part of your family.
+                        If you are interested in learning more...
                     </p>
 
                     <div>

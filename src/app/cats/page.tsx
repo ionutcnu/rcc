@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Footer from "@/components/layouts/Footer";
 import Header from "@/components/layouts/Header";
@@ -9,7 +9,6 @@ import FilterSidebar from "@/components/elements/CatsRelated/FilterSidebar";
 import CatGrid from "@/components/elements/CatsRelated/CatGrid";
 import PaginationSection from "@/components/elements/CatsRelated/PaginationSection";
 
-// A single place for the Cat type:
 export type Cat = {
     id: number;
     alias: string;
@@ -26,14 +25,14 @@ export type Cat = {
     isMicrochipped: boolean;
     price: number;
     isCastrated: boolean;
-    availability: string;  // or union if you prefer
+    availability: string;
 };
 
-export default function Page() {
+function CatsPageContent() {
     const searchParams = useSearchParams();
     const filterParam = searchParams.get("filter");
 
-    // 1) Filter states
+    // Filter states
     const [genderFilter, setGenderFilter] = useState<string | null>(null);
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
     const [colorFilter, setColorFilter] = useState<string | null>(null);
@@ -44,14 +43,13 @@ export default function Page() {
     const [microchipFilter, setMicrochipFilter] = useState<boolean | null>(null);
     const [priceOrder, setPriceOrder] = useState<string>("");
 
-    // 2) Pagination states
+    // Pagination states
     const [catsPerPage, setCatsPerPage] = useState<number>(9);
     const [currentPage, setCurrentPage] = useState<number>(1);
 
-    // 3) Mobile filter toggling
+    // Mobile filter toggling
     const [showFilters, setShowFilters] = useState(false);
 
-    // Pre-set filters if we have ?filter=male/female/kitten
     useEffect(() => {
         if (filterParam === "male" || filterParam === "female") {
             setGenderFilter(filterParam.charAt(0).toUpperCase() + filterParam.slice(1));
@@ -65,7 +63,6 @@ export default function Page() {
         }
     }, [filterParam]);
 
-    // 4) “Clear all” resets everything
     const clearAllFilters = () => {
         setGenderFilter(null);
         setCategoryFilter(null);
@@ -79,7 +76,6 @@ export default function Page() {
         setCurrentPage(1);
     };
 
-    // 5) Filter logic
     const filteredCats = useMemo(() => {
         let result = cats.filter((cat) => {
             return (
@@ -95,7 +91,6 @@ export default function Page() {
             );
         });
 
-        // Price order
         if (priceOrder === "asc") {
             result = [...result].sort((a, b) => a.price - b.price);
         } else if (priceOrder === "desc") {
@@ -114,19 +109,16 @@ export default function Page() {
         priceOrder,
     ]);
 
-    // 6) Pagination
     const totalPages = Math.ceil(filteredCats.length / catsPerPage);
     const displayedCats = filteredCats.slice(
         (currentPage - 1) * catsPerPage,
         currentPage * catsPerPage
     );
 
-    // 7) Simple redirect function
     const redirectToProfile = (alias: string) => {
         window.location.href = `/cat-profile/${alias}`;
     };
 
-    // 8) Unique options
     const uniqueYears = Array.from(new Set(cats.map((cat) => cat.yearOfBirth))).sort(
         (a, b) => b - a
     );
@@ -142,7 +134,6 @@ export default function Page() {
                     Meet Our Cats
                 </h1>
 
-                {/* MOBILE "SHOW FILTERS" BUTTON */}
                 <div className="block md:hidden mb-4 text-center">
                     <button
                         onClick={() => setShowFilters(!showFilters)}
@@ -152,9 +143,7 @@ export default function Page() {
                     </button>
                 </div>
 
-
                 <div className="flex flex-col md:flex-row gap-6">
-                    {/* Collapsible sidebar on mobile */}
                     {(showFilters || window.innerWidth >= 768) && (
                         <div className="w-full md:w-1/4">
                             <FilterSidebar
@@ -214,7 +203,6 @@ export default function Page() {
                         </div>
                     )}
 
-                    {/* Main content */}
                     <div className="w-full md:w-3/4">
                         <CatGrid displayedCats={displayedCats} redirectToProfile={redirectToProfile} />
 
@@ -233,5 +221,13 @@ export default function Page() {
 
             <Footer />
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <Suspense fallback={<div className="text-center p-8">Loading cats...</div>}>
+            <CatsPageContent />
+        </Suspense>
     );
 }

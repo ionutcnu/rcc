@@ -1,3 +1,4 @@
+"use client";
 import { FaFacebookF, FaTwitter, FaInstagram, FaTiktok } from "react-icons/fa";
 import { GiCat, GiPartyPopper, GiPawPrint } from "react-icons/gi";
 import { IoLogoOctocat } from "react-icons/io5";
