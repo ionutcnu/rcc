@@ -62,6 +62,7 @@ export default function CatProfile() {
         });
     };
 
+
     if (!cat) {
         return (
             <>
@@ -108,14 +109,7 @@ export default function CatProfile() {
                                 </div>
                             </div>
                             <div className="mt-4">
-                                <ParentInfoPopup
-                                    motherName={cat.motherName || "Unknown Mother"}
-                                    motherImage={cat.motherImage || "/default-mother.jpg"}
-                                    motherDescription={cat.motherDescription || "No description available"}
-                                    fatherName={cat.fatherName || "Unknown Father"}
-                                    fatherImage={cat.fatherImage || "/default-father.jpg"}
-                                    fatherDescription={cat.fatherDescription || "No description available"}
-                                />
+                                <ParentInfoPopup currentCatId={cat.id} />
                             </div>
                         </div>
                     </div>
