@@ -1,5 +1,5 @@
 'use client';
-
+import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTree } from 'react-icons/fa';
@@ -40,10 +40,13 @@ const CatNode = ({ cat }: { cat: Cat }) => {
             onClick={() => window.location.href = `/cat-profile/${cat.alias}`}
             className="flex flex-col items-center cursor-pointer group min-w-[7rem] max-w-[8rem]"
         >
-            <img
+            <Image
                 src={cat.mainImage}
                 alt={cat.name}
-                className="w-28 h-28 object-cover rounded-full shadow-md group-hover:scale-105 transition-transform"
+                width={112}
+                height={112}
+                className="rounded-full shadow-md"
+                style={{ objectFit: 'cover' }}
             />
             <span className="mt-3 text-center text-black text-xl font-bold tracking-tight group-hover:underline break-words leading-tight">
     {cat.name}
@@ -185,7 +188,7 @@ const ParentInfoPopup: React.FC<{ currentCatId: number }> = ({ currentCatId }) =
                             {/* Modal Scrollable Content */}
                             <div className="p-8">
                                 <h2 className="text-2xl font-semibold text-center w-full text-gray-800 mb-6">
-                                    {currentCat?.name}'s Genealogy
+                                    {currentCat?.name}&#39;s Genealogy
                                 </h2>
 
                                 <div className="overflow-x-auto w-full">
