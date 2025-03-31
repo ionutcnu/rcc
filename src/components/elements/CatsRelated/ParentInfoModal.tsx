@@ -106,7 +106,13 @@ const FamilyTree = ({ data, isRoot = true }: { data: Cat; isRoot?: boolean }) =>
                             const relation = child.motherId === data.id ? 'Mother' : child.fatherId === data.id ? 'Father' : '';
                             return (
                                 <div key={index} className="flex flex-col items-center px-3">
-                                    <div className="mb-2 text-sm text-gray-500 tracking-wide uppercase">{relation}</div>
+                                    <div
+                                        className={`mb-2 text-sm font-bold tracking-wide uppercase ${
+                                            relation === 'Mother' ? 'text-pink-500' : relation === 'Father' ? 'text-blue-500' : 'text-gray-500'
+                                        }`}
+                                    >
+                                        {relation}
+                                    </div>
                                     <div className="h-6 w-px bg-gray-300 mb-2" />
                                     <FamilyTree data={child} isRoot={false} />
                                 </div>
