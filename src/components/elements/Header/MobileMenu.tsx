@@ -3,7 +3,7 @@ import {JSXElementConstructor, ReactElement, useState} from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/Utils/firebaseConfig';
+import { auth } from '@/lib/firebase/firebaseConfig';
 import GoogleTranslate from '@/Utils/LanguageSwitcher';
 
 interface NavLink {

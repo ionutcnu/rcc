@@ -1,6 +1,6 @@
 'use client';
 import { useState } from "react";
-import { auth } from "@/Utils/firebaseConfig";
+import { auth } from "@/lib/firebase/firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import ParticlesLogin from "@/components/elements/ParticlesLogin";

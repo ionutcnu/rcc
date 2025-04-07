@@ -1,6 +1,6 @@
 'use client';
 import { useState, ReactElement } from 'react';
-import { auth } from '@/Utils/firebaseConfig';
+import { auth } from '@/lib/firebase/firebaseConfig';
 import { useRouter } from 'next/navigation';
 import { GiCat, GiPawPrint, GiExitDoor } from 'react-icons/gi';
 import Link from "next/link";

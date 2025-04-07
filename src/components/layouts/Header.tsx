@@ -7,7 +7,7 @@ import { GiCat, GiPawPrint, GiHollowCat } from 'react-icons/gi';
 import GoogleTranslate from '@/Utils/LanguageSwitcher';
 import ProfileDropdown from "@/components/elements/Header/ProfileDropdown";
 import MobileMenu from '@/components/elements/Header/MobileMenu';
-import { auth } from "@/Utils/firebaseConfig";
+import { auth } from "@/lib/firebase/firebaseConfig";
 
 interface NavLink {
     name: string;
