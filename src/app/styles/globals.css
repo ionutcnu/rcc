@@ -18,9 +18,8 @@
   }
 }
 
-
 .swiper-button-next, .swiper-button-prev {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgb(255 255 255 / 0.5);
 }
 
 body {
@@ -34,6 +33,7 @@ body {
 }
 
 html {
+  font-size: 16px;
   scroll-behavior: smooth;
 }
 
@@ -69,8 +69,6 @@ blockquote {
   padding: 0;
 }
 
-/* Remove list styles (bullet points and numbers) */
-
 /* Remove default styles for headings */
 h1,
 h2,
@@ -82,16 +80,11 @@ h6 {
   font-weight: inherit;
 }
 
-/* Set root font size to 16px (adjust as needed) */
-html {
-  font-size: 16px;
-}
-
 /* Remove text decoration for links */
 a {
   text-decoration: none;
-  color: inherit; /* Inherit color from parent element */
-  background: none; /* Remove background */
+  color: inherit;
+  background: none;
 }
 
 /* Remove outline on focus */
@@ -103,21 +96,19 @@ a {
 .custom-next {
   border: 2px solid #6a0dad;
   color: #6a0dad;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgb(255 255 255 / 0.8);
   transition: background-color 0.3s ease;
 }
 
 .custom-prev:hover,
 .custom-next:hover {
-  background-color: rgba(255, 255, 255, 1);
+  background-color: rgb(255 255 255 / 1);
 }
 
 .custom-prev svg,
 .custom-next svg {
   stroke: #6a0dad;
 }
-
-
 
 @layer base {
   :root {
@@ -173,16 +164,13 @@ a {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-}
 
-
-
-@layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
+
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
-
