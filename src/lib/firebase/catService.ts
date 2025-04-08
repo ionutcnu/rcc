@@ -1,6 +1,7 @@
 import { db } from "@/lib/firebase/firebaseConfig"
 import type { CatProfile } from "@/lib/types/cat"
 import { collection, doc, getDocs, getDoc, addDoc, setDoc, deleteDoc, Timestamp } from "firebase/firestore"
+import { deleteFileFromStorage } from "./storageService"
 
 // Reference the correct root-level cats collection
 const catsRef = collection(db, "cats")
@@ -72,8 +73,34 @@ export async function updateCat(id: string, cat: Partial<Omit<CatProfile, "id" |
 
 export async function deleteCat(id: string): Promise<void> {
     try {
+        // First get the cat to find its associated media files
+        const cat = await getCatById(id)
+
+        if (cat) {
+            // Delete main image if it exists
+            if (cat.mainImage) {
+                await deleteFileFromStorage(cat.mainImage)
+            }
+
+            // Delete additional images
+            if (cat.images && Array.isArray(cat.images)) {
+                for (const imageUrl of cat.images) {
+                    await deleteFileFromStorage(imageUrl)
+                }
+            }
+
+            // Delete videos
+            if (cat.videos && Array.isArray(cat.videos)) {
+                for (const videoUrl of cat.videos) {
+                    await deleteFileFromStorage(videoUrl)
+                }
+            }
+        }
+
+        // Delete the Firestore document
         const docRef = doc(db, "cats", id)
         await deleteDoc(docRef)
+        console.log(`Cat with ID ${id} and all associated media deleted successfully`)
     } catch (error: any) {
         console.error(`Error deleting cat with ID ${id}:`, error)
         throw error
@@ -88,4 +115,3 @@ export async function archiveCat(id: string): Promise<void> {
         throw error
     }
 }
-
