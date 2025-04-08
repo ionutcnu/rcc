@@ -1,7 +1,21 @@
-// /lib/firebase/storageService.ts
 import { storage } from "./firebaseConfig"
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage"
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll } from "firebase/storage"
 import { v4 as uuidv4 } from "uuid"
+import { collection, addDoc, getDocs, Timestamp, doc, deleteDoc } from "firebase/firestore"
+import { db } from "./firebaseConfig"
+
+// Define media item type
+export interface MediaItem {
+    id: string
+    name: string
+    url: string
+    type: "image" | "video"
+    catId?: string
+    catName?: string
+    size?: string
+    createdAt: Date
+    path: string
+}
 
 /**
  * Uploads a file to Firebase Storage and returns the download URL
@@ -56,6 +70,20 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
                         // Get the download URL
                         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
                         console.log(`Download URL for ${file.name}:`, downloadURL)
+
+                        // Determine file type
+                        const fileType = file.type.startsWith("image/") ? "image" : "video"
+
+                        // Add record to media collection
+                        await addDoc(collection(db, "media"), {
+                            name: file.name,
+                            url: downloadURL,
+                            type: fileType,
+                            size: formatFileSize(file.size),
+                            path: `${folder}/${uniqueName}`,
+                            createdAt: Timestamp.now(),
+                        })
+
                         resolve(downloadURL)
                     } catch (urlError) {
                         console.error(`Error getting download URL for ${file.name}:`, urlError)
@@ -189,4 +217,230 @@ export async function uploadCatVideos(files: File[], catId: string): Promise<str
         console.error(`Error uploading videos for cat ${catId}:`, error)
         throw error
     }
+}
+
+/**
+ * Gets statistics about media files in storage
+ * @returns Promise with media statistics
+ */
+export async function getMediaStats(): Promise<{ totalFiles: number; totalViews: number }> {
+    try {
+        // Get a reference to the media collection to count files
+        const mediaRef = collection(db, "media")
+        const mediaSnapshot = await getDocs(mediaRef)
+
+        const totalFiles = mediaSnapshot.size
+
+        // Get a reference to the cats collection to count views
+        const catsRef = collection(db, "cats")
+        const catsSnapshot = await getDocs(catsRef)
+
+        let totalViews = 0
+        catsSnapshot.forEach((doc) => {
+            const cat = doc.data()
+            if (cat.views) {
+                totalViews += cat.views
+            }
+        })
+
+        return { totalFiles, totalViews }
+    } catch (error) {
+        console.error("Error getting media stats:", error)
+        return { totalFiles: 0, totalViews: 0 }
+    }
+}
+
+/**
+ * Gets all media files from Firestore
+ * @returns Promise with array of media items
+ */
+export async function getAllMedia(): Promise<MediaItem[]> {
+    try {
+        // Get media from Firestore collection
+        const mediaRef = collection(db, "media")
+        const mediaSnapshot = await getDocs(mediaRef)
+
+        if (mediaSnapshot.empty) {
+            console.log("No media found in Firestore, fetching from Storage")
+            return await fetchMediaFromStorage()
+        }
+
+        const mediaItems: MediaItem[] = []
+
+        mediaSnapshot.forEach((doc) => {
+            const data = doc.data()
+
+            // Determine file type based on data or URL extension
+            let fileType: "image" | "video" = "image"
+            if (data.type) {
+                fileType = data.type as "image" | "video"
+            } else if (data.url) {
+                // Fallback to checking URL extension
+                const url = data.url.toLowerCase()
+                if (url.match(/\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i)) {
+                    fileType = "video"
+                }
+            }
+
+            mediaItems.push({
+                id: doc.id,
+                name: data.name || "Unnamed file",
+                url: data.url,
+                type: fileType,
+                catId: data.catId,
+                catName: data.catName,
+                size: data.size || "Unknown",
+                createdAt: data.createdAt?.toDate() || new Date(),
+                path: data.path || "",
+            })
+        })
+
+        // Sort by creation date, newest first
+        return mediaItems.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    } catch (error) {
+        console.error("Error getting media:", error)
+        return []
+    }
+}
+
+/**
+ * Fetches media directly from Firebase Storage
+ * This is a fallback if the media collection doesn't exist
+ */
+async function fetchMediaFromStorage(): Promise<MediaItem[]> {
+    try {
+        // List all files in the cats directory
+        const storageRef = ref(storage, "cats")
+        const result = await listAll(storageRef)
+
+        const mediaItems: MediaItem[] = []
+
+        // Process each cat folder
+        for (const catFolder of result.prefixes) {
+            const catId = catFolder.name
+
+            // List images
+            const imagesRef = ref(storage, `cats/${catId}/images`)
+            try {
+                const imagesResult = await listAll(imagesRef)
+
+                for (const imageRef of imagesResult.items) {
+                    const url = await getDownloadURL(imageRef)
+                    mediaItems.push({
+                        id: imageRef.name,
+                        name: imageRef.name,
+                        url,
+                        type: "image",
+                        catId,
+                        createdAt: new Date(),
+                        path: `cats/${catId}/images/${imageRef.name}`,
+                    })
+                }
+            } catch (e) {
+                // Images folder might not exist, continue
+            }
+
+            // List videos
+            const videosRef = ref(storage, `cats/${catId}/videos`)
+            try {
+                const videosResult = await listAll(videosRef)
+
+                for (const videoRef of videosResult.items) {
+                    const url = await getDownloadURL(videoRef)
+                    mediaItems.push({
+                        id: videoRef.name,
+                        name: videoRef.name,
+                        url,
+                        type: "video",
+                        catId,
+                        createdAt: new Date(),
+                        path: `cats/${catId}/videos/${videoRef.name}`,
+                    })
+                }
+            } catch (e) {
+                // Videos folder might not exist, continue
+            }
+        }
+
+        // Also check the general images and videos folders
+        try {
+            const imagesRef = ref(storage, "images")
+            const imagesResult = await listAll(imagesRef)
+
+            for (const imageRef of imagesResult.items) {
+                const url = await getDownloadURL(imageRef)
+                mediaItems.push({
+                    id: imageRef.name,
+                    name: imageRef.name,
+                    url,
+                    type: "image",
+                    createdAt: new Date(),
+                    path: `images/${imageRef.name}`,
+                })
+            }
+        } catch (e) {
+            // Images folder might not exist
+        }
+
+        try {
+            const videosRef = ref(storage, "videos")
+            const videosResult = await listAll(videosRef)
+
+            for (const videoRef of videosResult.items) {
+                const url = await getDownloadURL(videoRef)
+                mediaItems.push({
+                    id: videoRef.name,
+                    name: videoRef.name,
+                    url,
+                    type: "video",
+                    createdAt: new Date(),
+                    path: `videos/${videoRef.name}`,
+                })
+            }
+        } catch (e) {
+            // Videos folder might not exist
+        }
+
+        return mediaItems
+    } catch (error) {
+        console.error("Error fetching media from storage:", error)
+        return []
+    }
+}
+
+/**
+ * Deletes a media item by ID
+ * @param mediaId The ID of the media item to delete
+ * @returns Promise<boolean> indicating success
+ */
+export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
+    try {
+        // Delete from Storage
+        if (mediaItem.path) {
+            const fileRef = ref(storage, mediaItem.path)
+            await deleteObject(fileRef)
+        } else if (mediaItem.url) {
+            await deleteFileFromStorage(mediaItem.url)
+        }
+
+        // Delete from Firestore
+        const mediaDoc = doc(db, "media", mediaItem.id)
+        await deleteDoc(mediaDoc)
+
+        return true
+    } catch (error) {
+        console.error("Error deleting media:", error)
+        return false
+    }
+}
+
+/**
+ * Helper function to format file size
+ * @param bytes File size in bytes
+ * @returns Formatted file size string
+ */
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + " B"
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
+    else return (bytes / 1048576).toFixed(1) + " MB"
 }

@@ -1,7 +1,8 @@
 import { db } from "@/lib/firebase/firebaseConfig"
 import type { CatProfile } from "@/lib/types/cat"
-import { collection, doc, getDocs, getDoc, addDoc, setDoc, deleteDoc, Timestamp } from "firebase/firestore"
-import { deleteFileFromStorage } from "./storageService"
+import { collection, doc, getDocs, getDoc, addDoc, setDoc, deleteDoc, Timestamp, updateDoc } from "firebase/firestore"
+import { deleteFileFromStorage, uploadCatImage as uploadCatImageStorage } from "./storageService"
+import { logActivity } from "./activityService"
 
 // Reference the correct root-level cats collection
 const catsRef = collection(db, "cats")
@@ -11,7 +12,9 @@ export async function getAllCats(): Promise<CatProfile[]> {
         const snapshot = await getDocs(catsRef)
         return snapshot.docs.map((docSnap) => {
             const data = docSnap.data() as CatProfile
-            return { id: docSnap.id, ...data }
+            // Avoid duplicate id property by destructuring data first
+            const { id: _, ...restData } = data
+            return { id: docSnap.id, ...restData }
         })
     } catch (error: any) {
         console.error("Error getting all cats:", error)
@@ -25,10 +28,32 @@ export async function getCatById(id: string): Promise<CatProfile | null> {
         const snapshot = await getDoc(docRef)
         if (!snapshot.exists()) return null
         const data = snapshot.data() as CatProfile
-        return { id: snapshot.id, ...data }
+        // Avoid duplicate id property by destructuring data first
+        const { id: _, ...restData } = data
+        return { id: snapshot.id, ...restData }
     } catch (error: any) {
         console.error(`Error getting cat with ID ${id}:`, error)
         throw error
+    }
+}
+
+/**
+ * Increments the view count for a cat
+ */
+export async function incrementCatViews(id: string): Promise<void> {
+    try {
+        const docRef = doc(db, "cats", id)
+        const catSnap = await getDoc(docRef)
+
+        if (catSnap.exists()) {
+            const currentViews = catSnap.data().views || 0
+            await updateDoc(docRef, {
+                views: currentViews + 1,
+                lastViewed: Timestamp.now(),
+            })
+        }
+    } catch (error) {
+        console.error(`Error incrementing views for cat ${id}:`, error)
     }
 }
 
@@ -42,10 +67,15 @@ export async function addCat(cat: Omit<CatProfile, "id" | "createdAt" | "updated
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
             isDeleted: false,
+            views: 0, // Initialize views counter
         }
 
         const docRef = await addDoc(catsRef, payload)
         console.log("Cat added successfully with ID:", docRef.id)
+
+        // Log the activity
+        await logActivity("add", cat.name, docRef.id)
+
         return docRef.id // Returns Firestore-generated unique ID
     } catch (error: any) {
         console.error("Error adding cat to Firestore:", error)
@@ -60,11 +90,19 @@ export async function addCat(cat: Omit<CatProfile, "id" | "createdAt" | "updated
 export async function updateCat(id: string, cat: Partial<Omit<CatProfile, "id" | "createdAt">>): Promise<void> {
     try {
         const docRef = doc(db, "cats", id)
-        const payload = {
-            ...cat,
-            updatedAt: Timestamp.now(),
+        const catSnap = await getDoc(docRef)
+
+        if (catSnap.exists()) {
+            const currentCat = catSnap.data()
+            const payload = {
+                ...cat,
+                updatedAt: Timestamp.now(),
+            }
+            await setDoc(docRef, payload, { merge: true })
+
+            // Log the activity
+            await logActivity("update", currentCat.name || "Unknown cat", id)
         }
-        await setDoc(docRef, payload, { merge: true })
     } catch (error: any) {
         console.error(`Error updating cat with ID ${id}:`, error)
         throw error
@@ -73,7 +111,7 @@ export async function updateCat(id: string, cat: Partial<Omit<CatProfile, "id" |
 
 export async function deleteCat(id: string): Promise<void> {
     try {
-        // First get the cat to find its associated media files
+        // First get the cat to find its associated media files and name
         const cat = await getCatById(id)
 
         if (cat) {
@@ -95,6 +133,9 @@ export async function deleteCat(id: string): Promise<void> {
                     await deleteFileFromStorage(videoUrl)
                 }
             }
+
+            // Log the activity
+            await logActivity("delete", cat.name, id)
         }
 
         // Delete the Firestore document
@@ -115,3 +156,5 @@ export async function archiveCat(id: string): Promise<void> {
         throw error
     }
 }
+
+export const uploadCatImage = uploadCatImageStorage
