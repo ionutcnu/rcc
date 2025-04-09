@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { BarChart3, TrendingUp, Users, Eye, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { BarChart3, TrendingUp, Users, Eye, Loader2, ExternalLink } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -20,6 +20,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { getAllCats } from "@/lib/firebase/catService"
 import { getAnalyticsData } from "@/lib/firebase/analyticsService"
+import { getVercelAnalytics } from "@/lib/actions/analytics-actions"
+import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
 // Define the CatProfile type
@@ -57,6 +59,7 @@ export default function AnalyticsPage() {
     const [trafficSources, setTrafficSources] = useState<Array<{ source: string; percentage: number }>>([])
     const [chartData, setChartData] = useState<Array<{ name: string; views: number; visitors: number }>>([])
     const [catsByBreed, setCatsByBreed] = useState<Array<{ name: string; count: number }>>([])
+    const [vercelAnalyticsInfo, setVercelAnalyticsInfo] = useState<any>(null)
 
     useEffect(() => {
         async function fetchAnalyticsData() {
@@ -70,7 +73,6 @@ export default function AnalyticsPage() {
                 const totalViews = cats.reduce((sum, cat) => sum + (cat.views || 0), 0)
 
                 // Calculate views for different time periods based on lastViewed timestamps
-                const now = new Date()
                 const viewsData = {
                     "7d": calculateViewsInPeriod(cats, 7),
                     "30d": calculateViewsInPeriod(cats, 30),
@@ -114,6 +116,9 @@ export default function AnalyticsPage() {
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 6) // Top 6 breeds
 
+                // Get Vercel Analytics info
+                const vercelInfo = await getVercelAnalytics()
+
                 // Set states with fetched data
                 setPageViews(viewsData)
                 setVisitors(visitorsData)
@@ -121,6 +126,7 @@ export default function AnalyticsPage() {
                 setChartData(generateChartData(cats, timeRange))
                 setPopularCats(sortedCats)
                 setCatsByBreed(breedData)
+                setVercelAnalyticsInfo(vercelInfo)
             } catch (err) {
                 console.error("Error fetching analytics data:", err)
                 setError("Failed to load analytics data. Please try again later.")
@@ -168,6 +174,42 @@ export default function AnalyticsPage() {
                     </TabsList>
                 </Tabs>
             </div>
+
+            <Card className="bg-blue-50 border border-blue-200">
+                <CardHeader>
+                    <CardTitle className="text-blue-800">Analytics Integration</CardTitle>
+                    <CardDescription className="text-blue-700">
+                        This dashboard combines data from both Vercel Analytics and Firebase Analytics
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="text-blue-800">
+                    <p className="flex items-center">
+                        <BarChart3 className="h-5 w-5 mr-2" />
+                        <span>
+              <strong>Firebase Analytics:</strong> Custom event tracking for cat-specific metrics is shown below.
+            </span>
+                    </p>
+                    <p className="flex items-center mt-2">
+                        <BarChart3 className="h-5 w-5 mr-2" />
+                        <span>
+              <strong>Vercel Analytics:</strong> Web analytics data is automatically collected and available in your
+              Vercel dashboard.
+            </span>
+                    </p>
+                </CardContent>
+                <CardFooter>
+                    <Button variant="outline" className="bg-white" asChild>
+                        <a
+                            href="https://vercel.com/dashboard"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center"
+                        >
+                            View Vercel Analytics Dashboard <ExternalLink className="ml-2 h-4 w-4" />
+                        </a>
+                    </Button>
+                </CardFooter>
+            </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card>

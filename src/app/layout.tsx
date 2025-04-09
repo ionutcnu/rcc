@@ -1,30 +1,32 @@
-import type { Metadata } from "next";
-import { Inter, Patrick_Hand } from "next/font/google";
-import "./styles/globals.css";
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter, Patrick_Hand } from "next/font/google"
+import "./styles/globals.css"
+import { Analytics } from "@vercel/analytics/react"
 
 // Configure main fonts
 const inter = Inter({
     subsets: ["latin"],
-    variable: '--font-inter',
-    display: 'swap'
-});
+    variable: "--font-inter",
+    display: "swap",
+})
 
 const patrickHand = Patrick_Hand({
-    weight: '400',
-    subsets: ['latin'],
-    variable: '--font-patrick',
-    display: 'swap'
-});
+    weight: "400",
+    subsets: ["latin"],
+    variable: "--font-patrick",
+    display: "swap",
+})
 
 export const metadata: Metadata = {
     title: "Red Cat Cuasar",
     description: "Red Cat Cuasar",
-};
+}
 
 export default function RootLayout({
                                        children,
                                    }: Readonly<{
-    children: React.ReactNode;
+    children: React.ReactNode
 }>) {
     return (
         <html lang="en" className={`${inter.variable} ${patrickHand.variable}`}>
@@ -33,7 +35,8 @@ export default function RootLayout({
         </head>
         <body className="font-patrick">
         {children}
+        <Analytics />
         </body>
         </html>
-    );
+    )
 }
