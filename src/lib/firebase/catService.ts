@@ -1,7 +1,7 @@
 import { db } from "@/lib/firebase/firebaseConfig"
 import type { CatProfile } from "@/lib/types/cat"
 import { collection, doc, getDocs, getDoc, addDoc, setDoc, deleteDoc, Timestamp, updateDoc } from "firebase/firestore"
-import { deleteFileFromStorage, uploadCatImage as uploadCatImageStorage } from "./storageService"
+import { deleteFileFromStorage, uploadFileAndGetURL } from "./storageService"
 import { logActivity } from "./activityService"
 
 // Reference the correct root-level cats collection
@@ -62,8 +62,11 @@ export async function addCat(cat: Omit<CatProfile, "id" | "createdAt" | "updated
     try {
         console.log("Adding cat to Firestore:", cat)
 
+        // Clean the cat object to remove undefined values
+        const cleanCat = Object.fromEntries(Object.entries(cat).filter(([_, v]) => v !== undefined))
+
         const payload = {
-            ...cat,
+            ...cleanCat,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
             isDeleted: false,
@@ -73,8 +76,8 @@ export async function addCat(cat: Omit<CatProfile, "id" | "createdAt" | "updated
         const docRef = await addDoc(catsRef, payload)
         console.log("Cat added successfully with ID:", docRef.id)
 
-        // Log the activity
-        await logActivity("add", cat.name, docRef.id)
+        // Log the activity with cleaned details
+        await logActivity("add", cat.name, docRef.id, cleanCat)
 
         return docRef.id // Returns Firestore-generated unique ID
     } catch (error: any) {
@@ -94,14 +97,18 @@ export async function updateCat(id: string, cat: Partial<Omit<CatProfile, "id" |
 
         if (catSnap.exists()) {
             const currentCat = catSnap.data()
+
+            // Clean the cat object to remove undefined values
+            const cleanCat = Object.fromEntries(Object.entries(cat).filter(([_, v]) => v !== undefined))
+
             const payload = {
-                ...cat,
+                ...cleanCat,
                 updatedAt: Timestamp.now(),
             }
             await setDoc(docRef, payload, { merge: true })
 
-            // Log the activity
-            await logActivity("update", currentCat.name || "Unknown cat", id)
+            // Log the activity with cleaned details
+            await logActivity("update", currentCat.name || "Unknown cat", id, cleanCat)
         }
     } catch (error: any) {
         console.error(`Error updating cat with ID ${id}:`, error)
@@ -134,8 +141,8 @@ export async function deleteCat(id: string): Promise<void> {
                 }
             }
 
-            // Log the activity
-            await logActivity("delete", cat.name, id)
+            // Log the activity with minimal details to avoid undefined values
+            await logActivity("delete", cat.name, id, { deleted: true })
         }
 
         // Delete the Firestore document
@@ -150,11 +157,47 @@ export async function deleteCat(id: string): Promise<void> {
 
 export async function archiveCat(id: string): Promise<void> {
     try {
-        await updateCat(id, { isDeleted: true })
+        const cat = await getCatById(id)
+        if (cat) {
+            await updateCat(id, { isDeleted: true })
+            await logActivity("archive", cat.name, id, { archived: true })
+        }
     } catch (error: any) {
         console.error(`Error archiving cat with ID ${id}:`, error)
         throw error
     }
 }
 
-export const uploadCatImage = uploadCatImageStorage
+/**
+ * Uploads a cat image to Firebase Storage with progress tracking
+ * @param file The file to upload
+ * @param catId The ID of the cat
+ * @param type Optional type identifier (main, additional_1, etc.)
+ * @returns Promise with the download URL
+ */
+export async function uploadCatImage(file: File, catId: string, type = "image"): Promise<string> {
+    try {
+        // Use the existing upload function with the cats folder
+        return await uploadFileAndGetURL(file, `cats/${catId}/images`)
+    } catch (error) {
+        console.error("Error uploading cat image:", error)
+        throw error
+    }
+}
+
+/**
+ * Uploads a cat video to Firebase Storage with progress tracking
+ * @param file The file to upload
+ * @param catId The ID of the cat
+ * @param type Optional type identifier
+ * @returns Promise with the download URL
+ */
+export async function uploadCatVideo(file: File, catId: string, type = "video"): Promise<string> {
+    try {
+        // Use the existing upload function with the cats folder
+        return await uploadFileAndGetURL(file, `cats/${catId}/videos`)
+    } catch (error) {
+        console.error("Error uploading cat video:", error)
+        throw error
+    }
+}

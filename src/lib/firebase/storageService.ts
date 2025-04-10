@@ -3,6 +3,12 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll } from
 import { v4 as uuidv4 } from "uuid"
 import { collection, addDoc, getDocs, Timestamp, doc, deleteDoc } from "firebase/firestore"
 import { db } from "./firebaseConfig"
+import { getSettings } from "./settingsService"
+
+// Check if storage is initialized
+if (!storage) {
+    throw new Error("Firebase Storage is not initialized. Make sure you're running in a browser environment.")
+}
 
 // Define media item type
 export interface MediaItem {
@@ -24,8 +30,24 @@ export interface MediaItem {
  * @returns Promise with the download URL
  */
 export async function uploadFileAndGetURL(file: File, folder: string): Promise<string> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         try {
+            // Fetch current settings to get image quality setting
+            const settings = await getSettings()
+            const { imageQuality, maxImageSize, maxVideoSize, enableImageCompression } = settings.firebase
+
+            // Check file size based on file type
+            const fileSizeInMB = file.size / (1024 * 1024)
+            const isImage = file.type.startsWith("image/")
+            const isVideo = file.type.startsWith("video/")
+            const maxAllowedSize = isImage ? maxImageSize : maxVideoSize
+
+            if (fileSizeInMB > maxAllowedSize) {
+                throw new Error(
+                    `File size exceeds the maximum allowed size of ${maxAllowedSize}MB for ${isImage ? "images" : "videos"}`,
+                )
+            }
+
             // Create a unique file name
             const uniqueName = `${uuidv4()}-${file.name}`
 
@@ -34,12 +56,64 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
 
             console.log(`Starting upload for ${file.name} to ${folder}/${uniqueName}`)
 
-            // Upload the file with metadata
-            const metadata = {
-                contentType: file.type,
+            let fileToUpload = file
+
+            // Process image if it's an image and compression is enabled
+            if (isImage && enableImageCompression) {
+                try {
+                    // Convert file to array buffer for processing
+                    const arrayBuffer = await file.arrayBuffer()
+
+                    // Create a canvas to resize/compress the image
+                    const img = new Image()
+
+                    // Create a promise to handle the image loading
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve
+                        img.onerror = reject
+                        img.src = URL.createObjectURL(file)
+                    })
+
+                    // Create canvas with original dimensions
+                    const canvas = document.createElement("canvas")
+                    canvas.width = img.width
+                    canvas.height = img.height
+
+                    // Get compression quality based on settings
+                    let quality = 0.8 // default medium quality
+                    if (imageQuality === "low") quality = 0.6
+                    if (imageQuality === "high") quality = 0.9
+
+                    // Draw and compress
+                    const ctx = canvas.getContext("2d")
+                    ctx?.drawImage(img, 0, 0)
+
+                    // Convert to blob with quality setting
+                    const blob = await new Promise<Blob>((resolve) => {
+                        canvas.toBlob((blob) => resolve(blob as Blob), file.type, quality)
+                    })
+
+                    // Create new file from blob
+                    fileToUpload = new File([blob], file.name, { type: file.type })
+
+                    console.log(
+                        `Image compressed: ${file.size} -> ${fileToUpload.size} bytes (${Math.round((fileToUpload.size / file.size) * 100)}% of original)`,
+                    )
+                } catch (err) {
+                    console.warn("Image compression failed, uploading original file:", err)
+                    // Continue with original file if compression fails
+                }
             }
 
-            const uploadTask = uploadBytesResumable(storageRef, file, metadata)
+            // For videos, we'll just upload the original file without compression
+            // No video compression code here - removed as requested
+
+            // Upload the file with metadata
+            const metadata = {
+                contentType: fileToUpload.type,
+            }
+
+            const uploadTask = uploadBytesResumable(storageRef, fileToUpload, metadata)
 
             uploadTask.on(
                 "state_changed",
@@ -97,6 +171,8 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
         }
     })
 }
+
+// Removed getSupportedVideoMimeType function as it's no longer needed
 
 /**
  * Uploads a cat image to Firebase Storage with progress tracking
@@ -156,13 +232,22 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
 
             console.log(`Attempting to delete file: ${filePath}`)
 
-            // Create a reference to the file
-            const fileRef = ref(storage, filePath)
+            try {
+                // Create a reference to the file
+                const fileRef = ref(storage, filePath)
 
-            // Delete the file
-            await deleteObject(fileRef)
-            console.log(`Successfully deleted file: ${filePath}`)
-            return true
+                // Delete the file
+                await deleteObject(fileRef)
+                console.log(`Successfully deleted file: ${filePath}`)
+                return true
+            } catch (deleteError: any) {
+                // If the file doesn't exist, consider it a success
+                if (deleteError.code === "storage/object-not-found") {
+                    console.log(`File already deleted: ${filePath}`)
+                    return true
+                }
+                throw deleteError
+            }
         }
 
         console.error(`Could not extract file path from URL: ${fileUrl}`)
@@ -415,21 +500,42 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
  */
 export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
     try {
-        // Delete from Storage
+        // Delete from Storage if path exists
         if (mediaItem.path) {
-            const fileRef = ref(storage, mediaItem.path)
-            await deleteObject(fileRef)
+            try {
+                const fileRef = ref(storage, mediaItem.path)
+                await deleteObject(fileRef)
+                console.log(`Deleted file from storage: ${mediaItem.path}`)
+            } catch (storageError: any) {
+                // If the file doesn't exist (already deleted), just log and continue
+                if (storageError.code === "storage/object-not-found") {
+                    console.log(`File already deleted from storage: ${mediaItem.path}`)
+                } else {
+                    console.error(`Error deleting from storage: ${mediaItem.path}`, storageError)
+                    // Continue with Firestore deletion even if Storage deletion fails
+                }
+            }
         } else if (mediaItem.url) {
-            await deleteFileFromStorage(mediaItem.url)
+            try {
+                await deleteFileFromStorage(mediaItem.url)
+            } catch (urlError) {
+                console.log(`File may already be deleted or URL invalid: ${mediaItem.url}`)
+                // Continue with Firestore deletion
+            }
         }
 
         // Delete from Firestore
-        const mediaDoc = doc(db, "media", mediaItem.id)
-        await deleteDoc(mediaDoc)
-
-        return true
+        try {
+            const mediaDoc = doc(db, "media", mediaItem.id)
+            await deleteDoc(mediaDoc)
+            console.log(`Deleted media record from Firestore: ${mediaItem.id}`)
+            return true
+        } catch (firestoreError) {
+            console.error(`Error deleting media from Firestore: ${mediaItem.id}`, firestoreError)
+            return false
+        }
     } catch (error) {
-        console.error("Error deleting media:", error)
+        console.error("Error in deleteMedia:", error)
         return false
     }
 }

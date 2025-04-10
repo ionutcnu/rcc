@@ -20,7 +20,7 @@ export async function logActivity(
     type: ActivityType,
     catName: string,
     catId?: string,
-    details?: Record<string, any>,
+    details?: Record<string, any> | null,
 ): Promise<string> {
     try {
         let action = ""
@@ -49,13 +49,16 @@ export async function logActivity(
                 break
         }
 
+        // Ensure details is an object and clean it by removing undefined values
+        const cleanDetails = details ? Object.fromEntries(Object.entries(details).filter(([_, v]) => v !== undefined)) : {}
+
         const activityData: ActivityData = {
             action,
             catName,
             catId,
             timestamp: Timestamp.now(),
             status,
-            details,
+            details: cleanDetails, // Use the cleaned details object
         }
 
         const docRef = await addDoc(collection(db, "activity"), activityData)
@@ -69,7 +72,7 @@ export async function logActivity(
 /**
  * Gets recent activity from the activity collection
  */
-export async function getRecentActivity(count = 5): Promise<ActivityData[]> {
+export async function getRecentActivity(count = 5): Promise<any[]> {
     try {
         const activityRef = collection(db, "activity")
         const activityQuery = query(activityRef, orderBy("timestamp", "desc"), limit(count))

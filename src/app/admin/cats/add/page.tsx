@@ -10,7 +10,6 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Trash2, Upload, X } from "lucide-react"
 import { addCat } from "@/lib/firebase/catService"
-import type { CatProfile } from "@/lib/types/cat"
 import CatPopup from "@/components/elements/CatsRelated/CatPopup"
 
 import { Button } from "@/components/ui/button"
@@ -169,6 +168,11 @@ export default function CatEntryForm() {
         }
     }
 
+    // Helper function to remove undefined values from an object
+    function removeUndefined<T extends Record<string, any>>(obj: T): T {
+        return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T
+    }
+
     const onSubmit = async (data: FormValues) => {
         if (!mainImage && images.length === 0) {
             setPopupMessage("Please upload at least one image for the cat.")
@@ -215,7 +219,7 @@ export default function CatEntryForm() {
             console.log("All files uploaded successfully")
 
             // Create cat entry with uploaded URLs
-            const catEntry: Omit<CatProfile, "id"> = {
+            const catEntry = {
                 name: data.name,
                 description: data.description,
                 mainImage: uploadedMainImageUrl || (uploadedImageUrls.length > 0 ? uploadedImageUrls[0] : ""),
@@ -237,8 +241,11 @@ export default function CatEntryForm() {
                 isDeleted: false,
             }
 
-            console.log("Saving cat data to Firestore:", catEntry)
-            await addCat(catEntry)
+            // Remove any undefined values before sending to Firestore
+            const cleanCatEntry = removeUndefined(catEntry)
+
+            console.log("Saving cat data to Firestore:", cleanCatEntry)
+            await addCat(cleanCatEntry)
             console.log("Cat data saved successfully")
 
             setPopupMessage(`${data.name} has been added to the database.`)
@@ -609,13 +616,13 @@ export default function CatEntryForm() {
                                                             <FormLabel>Mother ID</FormLabel>
                                                             <FormControl>
                                                                 <Input
-                                                                    type="number"
+                                                                    type="text"
                                                                     placeholder="Optional"
                                                                     {...field}
                                                                     value={field.value === null ? "" : field.value}
                                                                     onChange={(e) => {
                                                                         const value = e.target.value
-                                                                        field.onChange(value ? Number(value) : null)
+                                                                        field.onChange(value || null)
                                                                     }}
                                                                 />
                                                             </FormControl>
@@ -632,13 +639,13 @@ export default function CatEntryForm() {
                                                             <FormLabel>Father ID</FormLabel>
                                                             <FormControl>
                                                                 <Input
-                                                                    type="number"
+                                                                    type="text"
                                                                     placeholder="Optional"
                                                                     {...field}
                                                                     value={field.value === null ? "" : field.value}
                                                                     onChange={(e) => {
                                                                         const value = e.target.value
-                                                                        field.onChange(value ? Number(value) : null)
+                                                                        field.onChange(value || null)
                                                                     }}
                                                                 />
                                                             </FormControl>
@@ -715,4 +722,3 @@ export default function CatEntryForm() {
         </div>
     )
 }
-

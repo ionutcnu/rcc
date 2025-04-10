@@ -15,6 +15,7 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    CatIcon,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,9 +25,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { useCatPopup } from "@/components/CatPopupProvider"
-import { CatIcon } from "lucide-react"
 import { getAllCats, deleteCat } from "@/lib/firebase/catService"
 import type { CatProfile } from "@/lib/types/cat"
+import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 
 export default function AdminCatsPage() {
     const [viewMode, setViewMode] = useState<"list" | "grid">("grid")
@@ -36,6 +37,10 @@ export default function AdminCatsPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [showFilters, setShowFilters] = useState(false)
+
+    // Delete confirmation dialog state
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [catToDelete, setCatToDelete] = useState<{ id: string; name: string } | null>(null)
 
     // Search and filter states
     const [searchQuery, setSearchQuery] = useState("")
@@ -54,9 +59,6 @@ export default function AdminCatsPage() {
     const [itemsPerPage, setItemsPerPage] = useState(8)
     const [paginatedCats, setPaginatedCats] = useState<CatProfile[]>([])
     const [totalPages, setTotalPages] = useState(1)
-
-    // Get unique breeds for filter dropdown
-    const uniqueBreeds = Array.from(new Set(cats.map((cat) => cat.breed))).sort()
 
     // Get current year for age calculation
     const currentYear = new Date().getFullYear()
@@ -134,7 +136,7 @@ export default function AdminCatsPage() {
 
         setFilteredCats(result)
         setCurrentPage(1) // Reset to first page when filters change
-    }, [cats, searchQuery, breedFilter, availabilityFilter, genderFilter, ageFilter, statusFilters])
+    }, [cats, searchQuery, breedFilter, availabilityFilter, genderFilter, ageFilter, statusFilters, currentYear])
 
     // Apply pagination
     useEffect(() => {
@@ -149,21 +151,38 @@ export default function AdminCatsPage() {
         setPaginatedCats(paginatedItems)
     }, [filteredCats, currentPage, itemsPerPage])
 
-    const handleDeleteCat = async (id: string | undefined) => {
-        if (!id) {
-            showPopup("Error: Cat ID is missing")
-            return
-        }
+    // Get unique breeds for filter dropdown
+    const uniqueBreeds = Array.from(new Set(cats.map((cat) => cat.breed))).sort()
 
-        try {
-            await deleteCat(id)
-            const updatedCats = cats.filter((cat) => cat.id !== id)
-            setCats(updatedCats)
-            setFilteredCats(updatedCats.filter((cat) => filteredCats.some((fc) => fc.id === cat.id)))
-            showPopup("Cat deleted successfully")
-        } catch (err) {
-            console.error("Error deleting cat:", err)
-            showPopup("Error deleting cat")
+    // Function to handle delete button click
+    const handleDeleteClick = (id: string, name: string) => {
+        console.log("Delete clicked for cat:", name)
+        setCatToDelete({ id, name })
+        setDeleteDialogOpen(true)
+    }
+
+    // Function to handle cancel delete
+    const handleCancelDelete = () => {
+        setDeleteDialogOpen(false)
+        setCatToDelete(null)
+    }
+
+    // Function to confirm deletion
+    const handleConfirmDelete = async () => {
+        if (catToDelete) {
+            try {
+                await deleteCat(catToDelete.id)
+                const updatedCats = cats.filter((cat) => cat.id !== catToDelete.id)
+                setCats(updatedCats)
+                setFilteredCats(updatedCats.filter((cat) => filteredCats.some((fc) => fc.id === cat.id)))
+                showPopup(`${catToDelete.name} deleted successfully`)
+            } catch (err) {
+                console.error("Error deleting cat:", err)
+                showPopup("Error deleting cat")
+            } finally {
+                setDeleteDialogOpen(false)
+                setCatToDelete(null)
+            }
         }
     }
 
@@ -486,7 +505,7 @@ export default function AdminCatsPage() {
                                                 Edit
                                             </Link>
                                         </Button>
-                                        <Button variant="destructive" size="sm" onClick={() => handleDeleteCat(cat.id)}>
+                                        <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(cat.id, cat.name)}>
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Delete
                                         </Button>
@@ -552,7 +571,12 @@ export default function AdminCatsPage() {
                                             <Pencil className="h-3.5 w-3.5" />
                                         </Link>
                                     </Button>
-                                    <Button variant="destructive" size="sm" className="h-8 px-2" onClick={() => handleDeleteCat(cat.id)}>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="h-8 px-2"
+                                        onClick={() => handleDeleteClick(cat.id, cat.name)}
+                                    >
                                         <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
@@ -632,6 +656,15 @@ export default function AdminCatsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Simple Delete Confirmation Dialog */}
+            <SimpleConfirmDialog
+                isOpen={deleteDialogOpen}
+                title="Delete Cat"
+                message={`Are you sure you want to delete ${catToDelete?.name || "this cat"}? This action cannot be undone.`}
+                onConfirm={handleConfirmDelete}
+                onCancel={handleCancelDelete}
+            />
         </div>
     )
 }
