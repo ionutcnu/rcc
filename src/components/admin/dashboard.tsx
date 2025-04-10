@@ -4,7 +4,6 @@ import { useState } from "react"
 import { AdminSidebar } from "./admin-sidebar"
 import { CatProfiles } from "./cat-profiles"
 import MediaManager from "./media-manager"
-import { Analytics } from "./analytics"
 import { Settings } from "./settings"
 
 type TabType = "profiles" | "media" | "analytics" | "settings"
@@ -19,7 +18,6 @@ export default function AdminDashboard() {
         <div className="container mx-auto py-6 px-4">
           {activeTab === "profiles" && <CatProfiles />}
           {activeTab === "media" && <MediaManager />}
-          {activeTab === "analytics" && <Analytics />}
           {activeTab === "settings" && <Settings />}
         </div>
       </div>

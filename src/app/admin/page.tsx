@@ -202,40 +202,6 @@ export default function AdminDashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
-
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-sm text-gray-500">Page Views</p>
-                                <p className="text-3xl font-bold mt-1">{stats.pageViews.toLocaleString()}</p>
-                                <Link href="/admin/analytics" className="text-sm text-gray-500 hover:underline">
-                                    View details
-                                </Link>
-                            </div>
-                            <div className="p-3 rounded-full bg-green-100 text-green-500">
-                                <BarChart3 className="h-5 w-5" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-sm text-gray-500">Growth</p>
-                                <p className="text-3xl font-bold mt-1">{stats.growth > 0 ? `+${stats.growth}%` : `${stats.growth}%`}</p>
-                                <Link href="/admin/analytics" className="text-sm text-gray-500 hover:underline">
-                                    View details
-                                </Link>
-                            </div>
-                            <div className="p-3 rounded-full bg-purple-100 text-purple-500">
-                                <TrendingUp className="h-5 w-5" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

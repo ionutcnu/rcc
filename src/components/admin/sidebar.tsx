@@ -28,11 +28,6 @@ export function AdminSidebar() {
       icon: ImageIcon,
     },
     {
-      title: "Analytics",
-      href: "/admin/analytics",
-      icon: BarChart3,
-    },
-    {
       title: "Settings",
       href: "/admin/settings",
       icon: Settings,

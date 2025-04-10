@@ -23,11 +23,6 @@ export function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarProps) {
       icon: ImageIcon,
     },
     {
-      id: "analytics" as TabType,
-      label: "Analytics",
-      icon: BarChart3,
-    },
-    {
       id: "settings" as TabType,
       label: "Settings",
       icon: Settings,
