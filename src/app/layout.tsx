@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter, Patrick_Hand } from "next/font/google"
 import "./styles/globals.css"
 import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 // Configure main fonts
 const inter = Inter({
@@ -36,6 +37,7 @@ export default function RootLayout({
         <body className="font-patrick">
         {children}
         <Analytics />
+        <SpeedInsights/>
         </body>
         </html>
     )
