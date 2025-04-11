@@ -3,14 +3,15 @@
 import { uploadFileAndGetURL } from "@/lib/firebase/storageService"
 import type React from "react"
 import { serverTimestamp } from "firebase/firestore"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Trash2, Upload, X } from "lucide-react"
-import { addCat } from "@/lib/firebase/catService"
+import { addCat, getAllCats } from "@/lib/firebase/catService"
 import CatPopup from "@/components/elements/CatsRelated/CatPopup"
+import type { CatProfile } from "@/lib/types/cat"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { ComboboxSelect } from "@/components/ui/combobox-select"
 
 // Form schema aligned with CatProfile interface
 const formSchema = z.object({
@@ -52,6 +54,8 @@ export default function CatEntryForm() {
     const [popupVisible, setPopupVisible] = useState(false)
     const [popupMessage, setPopupMessage] = useState("")
     const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
+    const [allCats, setAllCats] = useState<CatProfile[]>([])
+    const [isLoadingCats, setIsLoadingCats] = useState(true)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -71,6 +75,55 @@ export default function CatEntryForm() {
             availability: "Available",
         },
     })
+
+    useEffect(() => {
+        const fetchAllCats = async () => {
+            try {
+                setIsLoadingCats(true)
+                const fetchedCats = await getAllCats()
+                console.log("Fetched cats:", fetchedCats)
+                setAllCats(fetchedCats)
+            } catch (error) {
+                console.error("Error fetching all cats:", error)
+                setPopupMessage("Error loading cat data for parent selection")
+                setPopupVisible(true)
+            } finally {
+                setIsLoadingCats(false)
+            }
+        }
+
+        fetchAllCats()
+    }, [])
+
+    // Create options for mother and father dropdowns
+    const motherOptions = allCats
+        .filter((cat) => {
+            // Case-insensitive check for female gender
+            const gender = cat.gender?.toLowerCase() || ""
+            return gender === "female"
+        })
+        .map((cat) => ({
+            value: cat.id,
+            label: `${cat.name} (${cat.breed || "Unknown breed"})`,
+        }))
+
+    const fatherOptions = allCats
+        .filter((cat) => {
+            // Case-insensitive check for male gender
+            const gender = cat.gender?.toLowerCase() || ""
+            return gender === "male"
+        })
+        .map((cat) => ({
+            value: cat.id,
+            label: `${cat.name} (${cat.breed || "Unknown breed"})`,
+        }))
+
+    // Add "None" option to both
+    motherOptions.unshift({ value: "", label: "None" })
+    fatherOptions.unshift({ value: "", label: "None" })
+
+    console.log("Mother options:", motherOptions)
+    console.log("Father options:", fatherOptions)
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isMain = false) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -613,17 +666,21 @@ export default function CatEntryForm() {
                                                     name="motherId"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Mother ID</FormLabel>
+                                                            <FormLabel>Mother Cat</FormLabel>
                                                             <FormControl>
-                                                                <Input
-                                                                    type="text"
-                                                                    placeholder="Optional"
-                                                                    {...field}
-                                                                    value={field.value === null ? "" : field.value}
-                                                                    onChange={(e) => {
-                                                                        const value = e.target.value
-                                                                        field.onChange(value || null)
+                                                                <ComboboxSelect
+                                                                    options={motherOptions}
+                                                                    value={field.value || ""}
+                                                                    onValueChange={(value) => {
+                                                                        console.log("Mother selected:", value)
+                                                                        // Explicitly handle the value change - use empty string instead of null
+                                                                        field.onChange(value)
+                                                                        // Force a form state update - use empty string instead of null
+                                                                        form.setValue("motherId", value)
                                                                     }}
+                                                                    placeholder="Select mother cat"
+                                                                    searchPlaceholder="Search cats..."
+                                                                    emptyMessage={isLoadingCats ? "Loading cats..." : "No female cats found."}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -636,17 +693,21 @@ export default function CatEntryForm() {
                                                     name="fatherId"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Father ID</FormLabel>
+                                                            <FormLabel>Father Cat</FormLabel>
                                                             <FormControl>
-                                                                <Input
-                                                                    type="text"
-                                                                    placeholder="Optional"
-                                                                    {...field}
-                                                                    value={field.value === null ? "" : field.value}
-                                                                    onChange={(e) => {
-                                                                        const value = e.target.value
-                                                                        field.onChange(value || null)
+                                                                <ComboboxSelect
+                                                                    options={fatherOptions}
+                                                                    value={field.value || ""}
+                                                                    onValueChange={(value) => {
+                                                                        console.log("Father selected:", value)
+                                                                        // Explicitly handle the value change - use empty string instead of null
+                                                                        field.onChange(value)
+                                                                        // Force a form state update - use empty string instead of null
+                                                                        form.setValue("fatherId", value)
                                                                     }}
+                                                                    placeholder="Select father cat"
+                                                                    searchPlaceholder="Search cats..."
+                                                                    emptyMessage={isLoadingCats ? "Loading cats..." : "No male cats found."}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />

@@ -16,6 +16,8 @@ import {
     ChevronLeft,
     ChevronRight,
     CatIcon,
+    UserIcon as Male,
+    UserIcon as Female,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -532,8 +534,21 @@ export default function AdminCatsPage() {
                                 </div>
                             </div>
                             <CardContent className="p-4">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h2 className="text-lg font-bold truncate">{cat.name}</h2>
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-lg font-bold truncate">{cat.name}</h2>
+                                        {cat.gender && (
+                                            <div
+                                                className={`rounded-full p-1 ${cat.gender?.toLowerCase() === "male" ? "bg-blue-100" : "bg-pink-100"}`}
+                                            >
+                                                {cat.gender?.toLowerCase() === "male" ? (
+                                                    <Male className="h-4 w-4 text-blue-500" />
+                                                ) : (
+                                                    <Female className="h-4 w-4 text-pink-500" />
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                     <span className="text-sm text-gray-500">{currentYear - cat.yearOfBirth}y</span>
                                 </div>
                                 <p className="text-sm text-gray-600 mb-3 line-clamp-1">{cat.breed}</p>

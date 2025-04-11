@@ -10,142 +10,42 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Save, Loader2 } from "lucide-react"
-import type { GeneralSettings, SeoSettings, FirebaseSettings } from "@/lib/firebase/settingsService"
+import type { SeoSettings, FirebaseSettings } from "@/lib/firebase/settingsService"
 
+// Change the interface to remove generalSettings and related props
 interface SettingsUiProps {
-    generalSettings: GeneralSettings
     seoSettings: SeoSettings
     firebaseSettings: FirebaseSettings
-    onGeneralSettingsChange: (settings: GeneralSettings) => void
     onSeoSettingsChange: (settings: SeoSettings) => void
     onFirebaseSettingsChange: (settings: FirebaseSettings) => void
-    onSaveGeneral: () => void
     onSaveSeo: () => void
     onSaveFirebase: () => void
-    savingGeneral: boolean
     savingSeo: boolean
     savingFirebase: boolean
 }
 
+// Update the function parameters to match the new interface
 export function SettingsUi({
-                               generalSettings,
                                seoSettings,
                                firebaseSettings,
-                               onGeneralSettingsChange,
                                onSeoSettingsChange,
                                onFirebaseSettingsChange,
-                               onSaveGeneral,
                                onSaveSeo,
                                onSaveFirebase,
-                               savingGeneral,
                                savingSeo,
                                savingFirebase,
                            }: SettingsUiProps) {
-    const [activeTab, setActiveTab] = useState("general")
+    const [activeTab, setActiveTab] = useState("seo")
 
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold">Settings</h2>
 
-            <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab}>
+            <Tabs defaultValue="seo" value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
-                    <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="seo">SEO</TabsTrigger>
                     <TabsTrigger value="firebase">Firebase</TabsTrigger>
                 </TabsList>
-
-                <TabsContent value="general" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Site Settings</CardTitle>
-                            <CardDescription>Manage your website's general settings</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="siteName">Site Name</Label>
-                                <Input
-                                    id="siteName"
-                                    value={generalSettings.siteName}
-                                    onChange={(e) => onGeneralSettingsChange({ ...generalSettings, siteName: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="siteDescription">Site Description</Label>
-                                <Textarea
-                                    id="siteDescription"
-                                    value={generalSettings.siteDescription}
-                                    onChange={(e) => onGeneralSettingsChange({ ...generalSettings, siteDescription: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="contactEmail">Contact Email</Label>
-                                <Input
-                                    id="contactEmail"
-                                    type="email"
-                                    value={generalSettings.contactEmail}
-                                    onChange={(e) => onGeneralSettingsChange({ ...generalSettings, contactEmail: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="itemsPerPage">Items Per Page</Label>
-                                <Select
-                                    value={generalSettings.itemsPerPage.toString()}
-                                    onValueChange={(value) =>
-                                        onGeneralSettingsChange({ ...generalSettings, itemsPerPage: Number(value) })
-                                    }
-                                >
-                                    <SelectTrigger id="itemsPerPage">
-                                        <SelectValue placeholder="Select items per page" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="8">8</SelectItem>
-                                        <SelectItem value="12">12</SelectItem>
-                                        <SelectItem value="16">16</SelectItem>
-                                        <SelectItem value="24">24</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Switch
-                                    id="enableComments"
-                                    checked={generalSettings.enableComments}
-                                    onCheckedChange={(checked) =>
-                                        onGeneralSettingsChange({ ...generalSettings, enableComments: checked })
-                                    }
-                                />
-                                <Label htmlFor="enableComments">Enable Comments</Label>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Switch
-                                    id="enableLikes"
-                                    checked={generalSettings.enableLikes}
-                                    onCheckedChange={(checked) => onGeneralSettingsChange({ ...generalSettings, enableLikes: checked })}
-                                />
-                                <Label htmlFor="enableLikes">Enable Likes</Label>
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button onClick={onSaveGeneral} disabled={savingGeneral}>
-                                {savingGeneral ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="mr-2 h-4 w-4" />
-                                        Save Changes
-                                    </>
-                                )}
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                </TabsContent>
 
                 <TabsContent value="seo" className="space-y-4">
                     <Card>

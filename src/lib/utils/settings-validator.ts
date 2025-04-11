@@ -1,39 +1,8 @@
-import type { GeneralSettings, SeoSettings, FirebaseSettings } from "@/lib/firebase/settingsService"
+import type { SeoSettings, FirebaseSettings } from "@/lib/firebase/settingsService"
 
 export interface ValidationResult {
     valid: boolean
     errors: Record<string, string>
-}
-
-export function validateGeneralSettings(settings: GeneralSettings): ValidationResult {
-    const errors: Record<string, string> = {}
-
-    // Validate site name
-    if (!settings.siteName.trim()) {
-        errors.siteName = "Site name is required"
-    }
-
-    // Validate site description
-    if (!settings.siteDescription.trim()) {
-        errors.siteDescription = "Site description is required"
-    }
-
-    // Validate contact email
-    if (!settings.contactEmail.trim()) {
-        errors.contactEmail = "Contact email is required"
-    } else if (!isValidEmail(settings.contactEmail)) {
-        errors.contactEmail = "Invalid email format"
-    }
-
-    // Validate items per page
-    if (settings.itemsPerPage < 1) {
-        errors.itemsPerPage = "Items per page must be at least 1"
-    }
-
-    return {
-        valid: Object.keys(errors).length === 0,
-        errors,
-    }
 }
 
 export function validateSeoSettings(settings: SeoSettings): ValidationResult {

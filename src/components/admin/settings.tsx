@@ -6,15 +6,13 @@ import { Loader2 } from "lucide-react"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import {
   getSettings,
-  updateGeneralSettings,
   updateSeoSettings,
   updateFirebaseSettings,
-  type GeneralSettings,
   type SeoSettings,
   type FirebaseSettings,
   defaultSettings,
 } from "@/lib/firebase/settingsService"
-import { validateGeneralSettings, validateSeoSettings, validateFirebaseSettings } from "@/lib/utils/settings-validator"
+import { validateSeoSettings, validateFirebaseSettings } from "@/lib/utils/settings-validator"
 // Add this import at the top
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { InfoIcon } from "lucide-react"
@@ -22,12 +20,10 @@ import { InfoIcon } from "lucide-react"
 export function Settings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState({
-    general: false,
     seo: false,
     firebase: false,
   })
 
-  const [generalSettings, setGeneralSettings] = useState<GeneralSettings>(defaultSettings.general)
   const [seoSettings, setSeoSettings] = useState<SeoSettings>(defaultSettings.seo)
   const [firebaseSettings, setFirebaseSettings] = useState<FirebaseSettings>(defaultSettings.firebase)
 
@@ -40,7 +36,6 @@ export function Settings() {
         setLoading(true)
         const settings = await getSettings()
 
-        setGeneralSettings(settings.general)
         setSeoSettings(settings.seo)
         setFirebaseSettings(settings.firebase)
       } catch (error) {
@@ -53,33 +48,6 @@ export function Settings() {
 
     fetchSettings()
   }, [showPopup])
-
-  const handleSaveGeneral = async () => {
-    // Validate settings
-    const validation = validateGeneralSettings(generalSettings)
-    if (!validation.valid) {
-      // Convert the first error to string to ensure type safety
-      const firstError = String(Object.values(validation.errors)[0])
-      showPopup(firstError)
-      return
-    }
-
-    try {
-      setSaving({ ...saving, general: true })
-      const success = await updateGeneralSettings(generalSettings)
-
-      if (success) {
-        showPopup("General settings saved successfully!")
-      } else {
-        showPopup("Failed to save general settings")
-      }
-    } catch (error) {
-      console.error("Error saving general settings:", error)
-      showPopup("An error occurred while saving settings")
-    } finally {
-      setSaving({ ...saving, general: false })
-    }
-  }
 
   const handleSaveSeo = async () => {
     // Validate settings
@@ -162,16 +130,12 @@ export function Settings() {
         </Alert>
 
         <SettingsUi
-            generalSettings={generalSettings}
             seoSettings={seoSettings}
             firebaseSettings={firebaseSettings}
-            onGeneralSettingsChange={setGeneralSettings}
             onSeoSettingsChange={setSeoSettings}
             onFirebaseSettingsChange={setFirebaseSettings}
-            onSaveGeneral={handleSaveGeneral}
             onSaveSeo={handleSaveSeo}
             onSaveFirebase={handleSaveFirebase}
-            savingGeneral={saving.general}
             savingSeo={saving.seo}
             savingFirebase={saving.firebase}
         />

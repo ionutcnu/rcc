@@ -1,15 +1,7 @@
 import { db } from "@/lib/firebase/firebaseConfig"
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
 
-// Define settings types
-export interface GeneralSettings {
-    siteName: string
-    siteDescription: string
-    contactEmail: string
-    enableComments: boolean
-    enableLikes: boolean
-    itemsPerPage: number
-}
+// Keep the SeoSettings and FirebaseSettings interfaces
 
 export interface SeoSettings {
     metaTitle: string
@@ -27,22 +19,13 @@ export interface FirebaseSettings {
 }
 
 export interface AllSettings {
-    general: GeneralSettings
     seo: SeoSettings
     firebase: FirebaseSettings
     updatedAt?: Date
 }
 
-// Default settings in case none exist in the database
+// Update the defaultSettings object to remove general settings
 export const defaultSettings: AllSettings = {
-    general: {
-        siteName: "Cat Showcase",
-        siteDescription: "A showcase of beautiful cats available for adoption.",
-        contactEmail: "contact@catshowcase.com",
-        enableComments: true,
-        enableLikes: true,
-        itemsPerPage: 12,
-    },
     seo: {
         metaTitle: "Cat Showcase - Beautiful Cats for Adoption",
         metaDescription:
@@ -55,7 +38,6 @@ export const defaultSettings: AllSettings = {
         maxImageSize: 5,
         maxVideoSize: 20,
         enableImageCompression: true,
-        // Removed enableVideoCompression: true
     },
 }
 
@@ -83,7 +65,6 @@ export async function getSettings(): Promise<AllSettings> {
             }
 
             return {
-                general: data.general as GeneralSettings,
                 seo: data.seo as SeoSettings,
                 firebase: data.firebase as FirebaseSettings,
                 updatedAt: data.updatedAt ? data.updatedAt.toDate() : new Date(),
@@ -99,9 +80,7 @@ export async function getSettings(): Promise<AllSettings> {
     }
 }
 
-/**
- * Initialize settings with default values
- */
+// Remove the initializeSettings function or update it to not include general settings
 async function initializeSettings(): Promise<void> {
     try {
         const settingsRef = doc(db, "settings", SETTINGS_DOC_ID)
@@ -114,27 +93,7 @@ async function initializeSettings(): Promise<void> {
     }
 }
 
-/**
- * Update general settings
- */
-export async function updateGeneralSettings(settings: GeneralSettings): Promise<boolean> {
-    try {
-        const settingsRef = doc(db, "settings", SETTINGS_DOC_ID)
-        await setDoc(
-            settingsRef,
-            {
-                general: settings,
-                updatedAt: serverTimestamp(),
-            },
-            { merge: true },
-        )
-        return true
-    } catch (error) {
-        console.error("Error updating general settings:", error)
-        return false
-    }
-}
-
+// Keep the updateSeoSettings and updateFirebaseSettings functions
 /**
  * Update SEO settings
  */

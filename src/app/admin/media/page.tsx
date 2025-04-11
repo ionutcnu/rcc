@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Upload, Film, Trash2, Search, Loader2, AlertCircle, Download } from "lucide-react"
+import { Upload, Film, Trash2, Search, Loader2, AlertCircle, Download, Filter, X } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,10 +11,26 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import { getAllMedia, type MediaItem, deleteMedia, uploadFileAndGetURL } from "@/lib/firebase/storageService"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
+import { Pagination } from "@/components/ui/pagination"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { format } from "date-fns"
+
+// Helper function to format date
+function formatDate(date: Date | undefined | null): string {
+    if (!date) return "Unknown date"
+
+    try {
+        return format(new Date(date), "MMM d, yyyy")
+    } catch (error) {
+        return "Invalid date"
+    }
+}
 
 export default function MediaManagerPage() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
     const [filteredItems, setFilteredItems] = useState<MediaItem[]>([])
+    const [paginatedItems, setPaginatedItems] = useState<MediaItem[]>([])
     const [activeFilter, setActiveFilter] = useState<"all" | "images" | "videos" | "image" | "video">("all")
     const [searchQuery, setSearchQuery] = useState("")
     const [loading, setLoading] = useState(true)
@@ -27,6 +43,16 @@ export default function MediaManagerPage() {
 
     // Add state for upload progress
     const [isUploading, setIsUploading] = useState(false)
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(12)
+    const [totalPages, setTotalPages] = useState(1)
+
+    // Simplified sorting state
+    const [sortOption, setSortOption] = useState<string>("dateDesc")
+    const [sizeFilter, setSizeFilter] = useState<string>("all")
+    const [showFilters, setShowFilters] = useState(false)
 
     // Fetch media on component mount
     const fetchMedia = async () => {
@@ -86,6 +112,8 @@ export default function MediaManagerPage() {
                 validMedia.filter((item) => !mediaToCleanup.some((cleanupItem) => cleanupItem.id === item.id)),
                 activeFilter,
                 searchQuery,
+                sortOption,
+                sizeFilter,
             )
         } catch (err) {
             console.error("Error fetching media:", err)
@@ -99,8 +127,8 @@ export default function MediaManagerPage() {
         fetchMedia()
     }, [])
 
-    // Apply filters when activeFilter or searchQuery changes
-    const applyFilters = (items: MediaItem[], filter: string, query: string) => {
+    // Apply filters when filter criteria change
+    const applyFilters = (items: MediaItem[], filter: string, query: string, sort: string, size: string) => {
         let result = [...items]
 
         // Apply type filter
@@ -118,13 +146,84 @@ export default function MediaManagerPage() {
             )
         }
 
+        // Apply size filter
+        if (size !== "all") {
+            result = result.filter((item) => {
+                if (!item.size) return false
+
+                const sizeInMB = Number.parseFloat(item.size.replace(/[^0-9.]/g, ""))
+
+                switch (size) {
+                    case "small":
+                        return sizeInMB < 1
+                    case "medium":
+                        return sizeInMB >= 1 && sizeInMB < 5
+                    case "large":
+                        return sizeInMB >= 5
+                    default:
+                        return true
+                }
+            })
+        }
+
+        // Apply sorting based on the selected option
+        switch (sort) {
+            case "dateAsc":
+                result.sort((a, b) => {
+                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+                    return dateA - dateB
+                })
+                break
+            case "dateDesc":
+                result.sort((a, b) => {
+                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+                    return dateB - dateA
+                })
+                break
+            case "sizeAsc":
+                result.sort((a, b) => {
+                    const sizeA = a.size ? Number.parseFloat(a.size.replace(/[^0-9.]/g, "")) : 0
+                    const sizeB = b.size ? Number.parseFloat(b.size.replace(/[^0-9.]/g, "")) : 0
+                    return sizeA - sizeB
+                })
+                break
+            case "sizeDesc":
+                result.sort((a, b) => {
+                    const sizeA = a.size ? Number.parseFloat(a.size.replace(/[^0-9.]/g, "")) : 0
+                    const sizeB = b.size ? Number.parseFloat(b.size.replace(/[^0-9.]/g, "")) : 0
+                    return sizeB - sizeA
+                })
+                break
+            case "nameAsc":
+                result.sort((a, b) => a.name.localeCompare(b.name))
+                break
+            case "nameDesc":
+                result.sort((a, b) => b.name.localeCompare(a.name))
+                break
+        }
+
         setFilteredItems(result)
+        setTotalPages(Math.ceil(result.length / itemsPerPage) || 1) // Ensure at least 1 page
+
+        // Update paginated items
+        const startIndex = (currentPage - 1) * itemsPerPage
+        const endIndex = startIndex + itemsPerPage
+        setPaginatedItems(result.slice(startIndex, endIndex))
     }
 
     // Update filtered items when filter criteria change
     useEffect(() => {
-        applyFilters(mediaItems, activeFilter, searchQuery)
-    }, [mediaItems, activeFilter, searchQuery])
+        applyFilters(mediaItems, activeFilter, searchQuery, sortOption, sizeFilter)
+    }, [mediaItems, activeFilter, searchQuery, sortOption, sizeFilter])
+
+    // Update paginated items when page changes
+    useEffect(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage
+        const endIndex = startIndex + itemsPerPage
+        setPaginatedItems(filteredItems.slice(startIndex, endIndex))
+    }, [currentPage, itemsPerPage, filteredItems])
 
     // Function to handle delete button click
     const handleDeleteClick = (item: MediaItem) => {
@@ -215,6 +314,17 @@ export default function MediaManagerPage() {
         input.click()
     }
 
+    const resetFilters = () => {
+        setSearchQuery("")
+        setActiveFilter("all")
+        setSortOption("dateDesc")
+        setSizeFilter("all")
+        setItemsPerPage(12)
+        setCurrentPage(1)
+        // Force re-filtering with the reset values
+        applyFilters(mediaItems, "all", "", "dateDesc", "all")
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -264,38 +374,141 @@ export default function MediaManagerPage() {
                             <Button
                                 variant={activeFilter === "all" ? "secondary" : "ghost"}
                                 size="sm"
-                                onClick={() => setActiveFilter("all")}
+                                onClick={() => {
+                                    setActiveFilter("all")
+                                    setCurrentPage(1)
+                                }}
                             >
                                 All Media ({mediaItems.length})
                             </Button>
                             <Button
                                 variant={activeFilter === "image" ? "secondary" : "ghost"}
                                 size="sm"
-                                onClick={() => setActiveFilter("image")}
+                                onClick={() => {
+                                    setActiveFilter("image")
+                                    setCurrentPage(1)
+                                }}
                             >
                                 Images ({imageCount})
                             </Button>
                             <Button
                                 variant={activeFilter === "video" ? "secondary" : "ghost"}
                                 size="sm"
-                                onClick={() => setActiveFilter("video")}
+                                onClick={() => {
+                                    setActiveFilter("video")
+                                    setCurrentPage(1)
+                                }}
                             >
                                 Videos ({videoCount})
                             </Button>
                         </div>
 
-                        <div className="relative w-full md:w-64">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                            <Input
-                                placeholder="Search media..."
-                                className="pl-10"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
+                        <div className="flex items-center gap-2">
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                                <Input
+                                    placeholder="Search media..."
+                                    className="pl-10"
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value)
+                                        setCurrentPage(1)
+                                    }}
+                                />
+                            </div>
+                            <Button
+                                variant={showFilters ? "secondary" : "outline"}
+                                size="icon"
+                                onClick={() => setShowFilters(!showFilters)}
+                            >
+                                <Filter className="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
+
+                    {showFilters && (
+                        <div className="mt-4 border-t pt-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-medium">Advanced Filters</h3>
+                                <Button variant="ghost" size="sm" onClick={resetFilters}>
+                                    <X className="mr-2 h-4 w-4" />
+                                    Reset Filters
+                                </Button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Sort By */}
+                                <div>
+                                    <Label htmlFor="sort-by">Sort By</Label>
+                                    <Select value={sortOption} onValueChange={(value) => setSortOption(value)}>
+                                        <SelectTrigger id="sort-by" className="flex-1">
+                                            <SelectValue placeholder="Sort by" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="dateDesc">Date Added (Newest First)</SelectItem>
+                                            <SelectItem value="dateAsc">Date Added (Oldest First)</SelectItem>
+                                            <SelectItem value="sizeDesc">Size (Largest First)</SelectItem>
+                                            <SelectItem value="sizeAsc">Size (Smallest First)</SelectItem>
+                                            <SelectItem value="nameAsc">Name (A-Z)</SelectItem>
+                                            <SelectItem value="nameDesc">Name (Z-A)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Size Filter */}
+                                <div>
+                                    <Label htmlFor="size-filter">File Size</Label>
+                                    <Select
+                                        value={sizeFilter}
+                                        onValueChange={(value) => {
+                                            setSizeFilter(value)
+                                            setCurrentPage(1)
+                                        }}
+                                    >
+                                        <SelectTrigger id="size-filter">
+                                            <SelectValue placeholder="All Sizes" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Sizes</SelectItem>
+                                            <SelectItem value="small">Small (&lt; 1MB)</SelectItem>
+                                            <SelectItem value="medium">Medium (1-5MB)</SelectItem>
+                                            <SelectItem value="large">Large (&gt; 5MB)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Items Per Page */}
+                                <div>
+                                    <Label htmlFor="items-per-page">Items Per Page</Label>
+                                    <Select
+                                        value={itemsPerPage.toString()}
+                                        onValueChange={(value) => {
+                                            setItemsPerPage(Number(value))
+                                            setCurrentPage(1)
+                                        }}
+                                    >
+                                        <SelectTrigger id="items-per-page">
+                                            <SelectValue placeholder="12" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="12">12</SelectItem>
+                                            <SelectItem value="24">24</SelectItem>
+                                            <SelectItem value="48">48</SelectItem>
+                                            <SelectItem value="96">96</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
+
+            {/* Results count */}
+            <div className="text-sm text-gray-500">
+                Showing {paginatedItems.length} of {filteredItems.length} media items
+                {filteredItems.length !== mediaItems.length && ` (filtered from ${mediaItems.length} total)`}
+            </div>
 
             {filteredItems.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-lg shadow">
@@ -324,7 +537,7 @@ export default function MediaManagerPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredItems.map((item) => (
+                    {paginatedItems.map((item) => (
                         <Card key={item.id} className="overflow-hidden">
                             <div className="aspect-video relative bg-muted">
                                 {item.type === "image" ? (
@@ -388,6 +601,16 @@ export default function MediaManagerPage() {
                 </div>
             )}
 
+            {/* Pagination */}
+            {filteredItems.length > 0 && (
+                <Pagination
+                    totalItems={filteredItems.length}
+                    itemsPerPage={itemsPerPage}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                />
+            )}
+
             {/* Delete Confirmation Dialog */}
             <SimpleConfirmDialog
                 isOpen={deleteDialogOpen}
@@ -398,13 +621,4 @@ export default function MediaManagerPage() {
             />
         </div>
     )
-}
-
-// Helper function to format date
-function formatDate(date: Date): string {
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-    })
 }
