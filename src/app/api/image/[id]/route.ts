@@ -2,10 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getStorage, ref, getDownloadURL } from "firebase/storage"
 import { app } from "@/lib/firebase/firebaseConfig"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// The key fix: In Next.js 15, params is now a Promise
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
+        // Await the params to get the id
+        const { id } = await context.params
+
         // Get the image path from the URL parameter
-        const imagePath = decodeURIComponent(params.id)
+        const imagePath = decodeURIComponent(id)
 
         // Initialize Firebase Storage
         const storage = getStorage(app)
