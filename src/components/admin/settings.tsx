@@ -6,14 +6,13 @@ import { Loader2 } from "lucide-react"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import {
   getSettings,
-  updateSeoSettings,
   updateFirebaseSettings,
   type SeoSettings,
   type FirebaseSettings,
   defaultSettings,
 } from "@/lib/firebase/settingsService"
 import { validateSeoSettings, validateFirebaseSettings } from "@/lib/utils/settings-validator"
-// Add this import at the top
+import { getSeoSettings, updateSeoSettings as updateSeo, defaultSeoSettings } from "@/lib/firebase/seoService"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { InfoIcon } from "lucide-react"
 
@@ -24,7 +23,7 @@ export function Settings() {
     firebase: false,
   })
 
-  const [seoSettings, setSeoSettings] = useState<SeoSettings>(defaultSettings.seo)
+  const [seoSettings, setSeoSettings] = useState<SeoSettings>(defaultSeoSettings)
   const [firebaseSettings, setFirebaseSettings] = useState<FirebaseSettings>(defaultSettings.firebase)
 
   const { showPopup } = useCatPopup()
@@ -35,8 +34,9 @@ export function Settings() {
       try {
         setLoading(true)
         const settings = await getSettings()
+        const seo = await getSeoSettings()
 
-        setSeoSettings(settings.seo)
+        setSeoSettings(seo)
         setFirebaseSettings(settings.firebase)
       } catch (error) {
         console.error("Error fetching settings:", error)
@@ -61,7 +61,7 @@ export function Settings() {
 
     try {
       setSaving({ ...saving, seo: true })
-      const success = await updateSeoSettings(seoSettings)
+      const success = await updateSeo(seoSettings)
 
       if (success) {
         showPopup("SEO settings saved successfully!")

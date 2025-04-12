@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Save, Loader2 } from "lucide-react"
 import type { SeoSettings, FirebaseSettings } from "@/lib/firebase/settingsService"
+import { getProxiedImageUrl } from "@/lib/utils/image-utils"
 
-// Change the interface to remove generalSettings and related props
 interface SettingsUiProps {
     seoSettings: SeoSettings
     firebaseSettings: FirebaseSettings
@@ -24,7 +24,6 @@ interface SettingsUiProps {
     savingFirebase: boolean
 }
 
-// Update the function parameters to match the new interface
 export function SettingsUi({
                                seoSettings,
                                firebaseSettings,
@@ -36,6 +35,10 @@ export function SettingsUi({
                                savingFirebase,
                            }: SettingsUiProps) {
     const [activeTab, setActiveTab] = useState("seo")
+
+    // Calculate character counts for SEO fields
+    const titleLength = seoSettings.metaTitle?.length || 0
+    const descriptionLength = seoSettings.metaDescription?.length || 0
 
     return (
         <div className="space-y-6">
@@ -58,42 +61,66 @@ export function SettingsUi({
                                 <Label htmlFor="metaTitle">Meta Title</Label>
                                 <Input
                                     id="metaTitle"
-                                    value={seoSettings.metaTitle}
+                                    value={seoSettings.metaTitle || ""}
                                     onChange={(e) => onSeoSettingsChange({ ...seoSettings, metaTitle: e.target.value })}
+                                    placeholder="Cat Showcase - Beautiful Cats for Adoption"
                                 />
-                                <p className="text-xs text-muted-foreground">Recommended length: 50-60 characters</p>
+                                <p className={`text-xs ${titleLength > 60 ? "text-red-500" : "text-muted-foreground"}`}>
+                                    {titleLength}/60 characters (Recommended: 50-60 characters)
+                                </p>
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="metaDescription">Meta Description</Label>
                                 <Textarea
                                     id="metaDescription"
-                                    value={seoSettings.metaDescription}
+                                    value={seoSettings.metaDescription || ""}
                                     onChange={(e) => onSeoSettingsChange({ ...seoSettings, metaDescription: e.target.value })}
+                                    placeholder="Discover beautiful cats available for adoption. Browse our showcase of cats with detailed profiles and high-quality images."
                                 />
-                                <p className="text-xs text-muted-foreground">Recommended length: 150-160 characters</p>
+                                <p className={`text-xs ${descriptionLength > 160 ? "text-red-500" : "text-muted-foreground"}`}>
+                                    {descriptionLength}/160 characters (Recommended: 150-160 characters)
+                                </p>
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="ogImage">Open Graph Image URL</Label>
                                 <Input
                                     id="ogImage"
-                                    value={seoSettings.ogImage}
+                                    value={seoSettings.ogImage || ""}
                                     onChange={(e) => onSeoSettingsChange({ ...seoSettings, ogImage: e.target.value })}
+                                    placeholder="https://example.com/images/og-image.jpg"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     This image will be displayed when your site is shared on social media
                                 </p>
                             </div>
 
+                            {seoSettings.ogImage && (
+                                <div className="mt-2">
+                                    <p className="text-sm font-medium mb-2">Preview:</p>
+                                    <div className="border rounded-md p-2 bg-gray-50">
+                                        <img
+                                            src={getProxiedImageUrl(seoSettings.ogImage) || "/placeholder.svg"}
+                                            alt="Open Graph preview"
+                                            className="max-h-[200px] object-contain mx-auto"
+                                            onError={(e) => {
+                                                ;(e.target as HTMLImageElement).src = "/placeholder.svg?height=200&width=300"
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid gap-2">
                                 <Label htmlFor="googleAnalyticsId">Google Analytics ID</Label>
                                 <Input
                                     id="googleAnalyticsId"
                                     placeholder="G-XXXXXXXXXX"
-                                    value={seoSettings.googleAnalyticsId}
+                                    value={seoSettings.googleAnalyticsId || ""}
                                     onChange={(e) => onSeoSettingsChange({ ...seoSettings, googleAnalyticsId: e.target.value })}
                                 />
+                                <p className="text-xs text-muted-foreground">Your Google Analytics 4 measurement ID (starts with G-)</p>
                             </div>
                         </CardContent>
                         <CardFooter>
@@ -189,8 +216,6 @@ export function SettingsUi({
                                 />
                                 <Label htmlFor="enableImageCompression">Enable Image Compression</Label>
                             </div>
-
-                            {/* Removed video compression toggle */}
                         </CardContent>
                         <CardFooter>
                             <Button onClick={onSaveFirebase} disabled={savingFirebase}>

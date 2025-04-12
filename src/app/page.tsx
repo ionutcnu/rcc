@@ -4,6 +4,7 @@ import Landing from '@/components/elements/CatsRelated/HomeCatSlideshow';
 import Footer from "@/components/layouts/Footer";
 import CatsSection from "@/components/elements/CatsRelated/CatsSection";
 import Head from 'next/head';
+import { Metadata } from 'next';
 import Felisa from "@/components/elements/CatsRelated/AboutFelisa";
 
 

@@ -12,6 +12,7 @@ import { getMediaStats } from "@/lib/firebase/storageService"
 import { db } from "@/lib/firebase/firebaseConfig"
 import { collection, query, orderBy, limit, getDocs, type Timestamp } from "firebase/firestore"
 import type { CatProfile, PopularCat } from "@/lib/types/cat"
+import { getProxiedImageUrl } from "@/lib/utils/image-utils"
 
 type ActivityItem = {
     id: string
