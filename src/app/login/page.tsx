@@ -69,6 +69,19 @@ export default function LoginPage() {
                 const redirectInput = document.querySelector('input[name="redirect"]') as HTMLInputElement
                 const redirectUrl = redirectInput ? redirectInput.value : "/admin"
 
+                // Check if user is admin before redirecting to admin area
+                if (redirectUrl.startsWith("/admin")) {
+                    // Check admin status
+                    const adminCheckResponse = await fetch("/api/auth/check-admin")
+                    const adminData = await adminCheckResponse.json()
+
+                    if (!adminData.isAdmin) {
+                        // If not admin, redirect to unauthorized page
+                        router.push("/unauthorized")
+                        return
+                    }
+                }
+
                 // Redirect to the admin page or the specified redirect URL
                 router.push(redirectUrl)
             } else {

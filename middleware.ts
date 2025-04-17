@@ -8,6 +8,7 @@ if (!getApps().length) {
     const serviceAccount = {
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+        // Fix the private key formatting
         privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     }
 
@@ -27,21 +28,31 @@ export async function middleware(request: NextRequest) {
             console.log("No session cookie found, redirecting to login")
             const loginUrl = new URL("/login", request.url)
             loginUrl.searchParams.set("redirect", request.nextUrl.pathname)
+            loginUrl.searchParams.set("message", "Please sign in to access the admin area")
             return NextResponse.redirect(loginUrl)
         }
 
         try {
             // Verify the session cookie with Firebase Admin
             // The second parameter (true) checks if the session was revoked
-            await getAuth().verifySessionCookie(sessionCookie, true)
+            const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
 
-            // If verification succeeds, allow access
+            // Check if the user has admin privileges
+            const isAdmin = await import("./src/lib/auth/admin-check").then((module) => module.isUserAdmin(decodedClaims.uid))
+
+            if (!isAdmin) {
+                console.log("User is not an admin, redirecting to unauthorized page")
+                return NextResponse.redirect(new URL("/unauthorized", request.url))
+            }
+
+            // If verification succeeds and user is admin, allow access
             return NextResponse.next()
         } catch (error) {
             console.error("Invalid session cookie:", error)
             // If verification fails (invalid or expired token), redirect to login
             const loginUrl = new URL("/login", request.url)
             loginUrl.searchParams.set("redirect", request.nextUrl.pathname)
+            loginUrl.searchParams.set("message", "Your session has expired. Please sign in again.")
             return NextResponse.redirect(loginUrl)
         }
     }

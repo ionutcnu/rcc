@@ -12,20 +12,41 @@ export default function AdminProtected({ children }: { children: React.ReactNode
     const router = useRouter()
 
     useEffect(() => {
-        // Check if the session cookie exists
-        const checkCookie = async () => {
+        // Check if the session cookie exists and if user is admin
+        const checkAuth = async () => {
             try {
-                // Make a request to a special endpoint that checks if the session is valid
-                const response = await fetch("/api/auth/check-session", {
+                // Check session validity
+                const sessionResponse = await fetch("/api/auth/check-session", {
                     method: "GET",
                     credentials: "include",
                 })
 
-                const data = await response.json()
-                return data.authenticated
+                const sessionData = await sessionResponse.json()
+
+                if (!sessionData.authenticated) {
+                    router.push("/login?redirect=/admin")
+                    return
+                }
+
+                // Check admin status
+                const adminResponse = await fetch("/api/auth/check-admin", {
+                    method: "GET",
+                    credentials: "include",
+                })
+
+                const adminData = await adminResponse.json()
+
+                if (!adminData.isAdmin) {
+                    router.push("/unauthorized")
+                    return
+                }
+
+                // Both authenticated and admin
+                setAuthenticated(true)
+                setLoading(false)
             } catch (error) {
-                console.error("Error checking session:", error)
-                return false
+                console.error("Error checking authentication:", error)
+                router.push("/login?redirect=/admin")
             }
         }
 
@@ -34,18 +55,8 @@ export default function AdminProtected({ children }: { children: React.ReactNode
                 // No user is signed in, redirect to login
                 router.push("/login?redirect=/admin")
             } else {
-                // User is signed in, but also check the cookie
-                const cookieValid = await checkCookie()
-
-                if (!cookieValid) {
-                    // Cookie is invalid, sign out from Firebase and redirect
-                    await auth.signOut()
-                    router.push("/login?redirect=/admin")
-                } else {
-                    // Both Firebase auth and cookie are valid
-                    setAuthenticated(true)
-                    setLoading(false)
-                }
+                // User is signed in, check session and admin status
+                await checkAuth()
             }
         })
 

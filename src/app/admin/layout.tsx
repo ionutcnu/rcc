@@ -1,21 +1,51 @@
 import type React from "react"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { getAuth } from "firebase-admin/auth"
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { CatPopupProvider } from "@/components/CatPopupProvider"
 import AdminProtected from "@/components/admin-protected"
+import { isUserAdmin } from "@/lib/auth/admin-check"
 
-export default function AdminLayout({
-                                        children,
-                                    }: {
+export default async function AdminLayout({
+                                              children,
+                                          }: {
     children: React.ReactNode
 }) {
-    return (
-        <AdminProtected>
-            <CatPopupProvider>
-                <div className="flex min-h-screen bg-gray-50">
-                    <AdminSidebar />
-                    <main className="flex-1 overflow-auto p-6">{children}</main>
-                </div>
-            </CatPopupProvider>
-        </AdminProtected>
-    )
+    // Server-side admin check
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get("session")?.value
+
+    // If no session cookie, redirect to login
+    if (!sessionCookie) {
+        redirect("/login?redirect=/admin")
+    }
+
+    try {
+        // Verify the session cookie
+        const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
+
+        // Check if the user has admin privileges
+        const admin = await isUserAdmin(decodedClaims.uid)
+
+        if (!admin) {
+            // If not an admin, redirect to unauthorized page
+            redirect("/unauthorized")
+        }
+
+        // If user is authenticated and is an admin, render the layout with client-side protection
+        return (
+            <AdminProtected>
+                <CatPopupProvider>
+                    <div className="flex min-h-screen bg-gray-50">
+                        <AdminSidebar />
+                        <main className="flex-1 overflow-auto p-6">{children}</main>
+                    </div>
+                </CatPopupProvider>
+            </AdminProtected>
+        )
+    } catch (error) {
+        // If verification fails, redirect to login
+        redirect("/login?redirect=/admin")
+    }
 }
