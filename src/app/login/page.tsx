@@ -63,6 +63,7 @@ export default function LoginPage() {
             })
 
             const data = await response.json()
+            console.log("Login response:", data)
 
             if (data.success) {
                 // Get the redirect URL from the hidden input
@@ -70,25 +71,18 @@ export default function LoginPage() {
                 const redirectUrl = redirectInput ? redirectInput.value : "/admin"
 
                 // Check if user is admin before redirecting to admin area
-                if (redirectUrl.startsWith("/admin")) {
-                    // Check admin status
-                    const adminCheckResponse = await fetch("/api/auth/check-admin")
-                    const adminData = await adminCheckResponse.json()
-
-                    if (!adminData.isAdmin) {
-                        // If not admin, redirect to unauthorized page
-                        router.push("/unauthorized")
-                        return
-                    }
+                if (redirectUrl.startsWith("/admin") && data.isAdmin === false) {
+                    router.push("/unauthorized")
+                } else {
+                    // Force a full page reload to ensure cookies are properly set
+                    window.location.href = redirectUrl
                 }
-
-                // Redirect to the admin page or the specified redirect URL
-                router.push(redirectUrl)
             } else {
-                setError("Failed to create session")
+                setError(data.error || "Failed to create session")
                 setLoading(false)
             }
         } catch (err: any) {
+            console.error("Login error:", err)
             setError(err.message || "Failed to login")
             setLoading(false)
         }
