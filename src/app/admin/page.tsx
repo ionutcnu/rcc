@@ -3,35 +3,24 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Cat, ImageIcon, BarChart3, TrendingUp, Loader2 } from "lucide-react"
+import { Cat, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { getAllCats } from "@/lib/firebase/catService"
 import { getMediaStats } from "@/lib/firebase/storageService"
-import { db } from "@/lib/firebase/firebaseConfig"
-import { collection, query, orderBy, limit, getDocs, type Timestamp } from "firebase/firestore"
-import type { CatProfile, PopularCat } from "@/lib/types/cat"
+import { getRecentActivity } from "@/lib/firebase/activityService"
+// Import the utility function at the top of the file
 import { getProxiedImageUrl } from "@/lib/utils/image-utils"
-
-type ActivityItem = {
-    id: string
-    action: string
-    catName: string
-    timestamp: Timestamp
-    status: "success" | "info" | "warning"
-}
+import { Badge } from "@/components/ui/badge"
 
 export default function AdminDashboardPage() {
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({
         totalCats: 0,
         mediaFiles: 0,
-        pageViews: 0,
-        growth: 0,
     })
-    const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
-    const [popularCats, setPopularCats] = useState<PopularCat[]>([])
+    const [recentActivity, setRecentActivity] = useState<any[]>([])
+    const [popularCats, setPopularCats] = useState<any[]>([])
 
     useEffect(() => {
         async function fetchDashboardData() {
@@ -42,29 +31,21 @@ export default function AdminDashboardPage() {
                 const cats = await getAllCats()
                 const totalCats = cats.length
 
-                // Calculate actual page views from cat view counts
-                const totalPageViews = cats.reduce((sum, cat) => sum + (cat.views || 0), 0)
-
                 // Fetch media stats
                 const mediaStats = await getMediaStats()
 
                 // Fetch recent activity
-                const activityRef = collection(db, "activity")
-                const activityQuery = query(activityRef, orderBy("timestamp", "desc"), limit(4))
-                const activitySnapshot = await getDocs(activityQuery)
-                const activityData = activitySnapshot.docs.map((doc) => {
-                    const data = doc.data()
-                    return {
-                        id: doc.id,
-                        action: data.action,
-                        catName: data.catName,
-                        timestamp: data.timestamp,
-                        status: data.status || "info",
-                    } as ActivityItem
-                })
+                const activityData = await getRecentActivity(4)
 
-                // Fetch popular cats
-                const popularCatsData: PopularCat[] = cats
+                // Update state with fetched data
+                setStats({
+                    totalCats,
+                    mediaFiles: mediaStats.totalFiles,
+                })
+                setRecentActivity(activityData)
+
+                // Get popular cats based on views
+                const popularCatsData = cats
                     .filter((cat) => cat.views !== undefined)
                     .sort((a, b) => (b.views || 0) - (a.views || 0))
                     .slice(0, 4)
@@ -76,17 +57,6 @@ export default function AdminDashboardPage() {
                         imageUrl: cat.mainImage || cat.images?.[0],
                     }))
 
-                // Calculate real growth based on cat creation dates and view data
-                const growth = calculateRealGrowth(cats)
-
-                // Update state with fetched data
-                setStats({
-                    totalCats,
-                    mediaFiles: mediaStats.totalFiles,
-                    pageViews: totalPageViews || 0,
-                    growth,
-                })
-                setRecentActivity(activityData)
                 setPopularCats(popularCatsData)
             } catch (error) {
                 console.error("Error fetching dashboard data:", error)
@@ -98,68 +68,6 @@ export default function AdminDashboardPage() {
         fetchDashboardData()
     }, [])
 
-    // Calculate growth based on actual view data and creation dates
-    function calculateRealGrowth(cats: CatProfile[]): number {
-        const now = new Date()
-        const currentMonth = now.getMonth()
-        const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
-        const currentYear = now.getFullYear()
-        const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
-
-        // Get cats created this month and last month
-        const catsThisMonth = cats.filter((cat) => {
-            if (!cat.createdAt) return false
-            // Check if createdAt has toDate method (is a Timestamp)
-            if ("toDate" in cat.createdAt) {
-                const createdDate = cat.createdAt.toDate()
-                return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
-            }
-            return false
-        })
-
-        const catsLastMonth = cats.filter((cat) => {
-            if (!cat.createdAt) return false
-            // Check if createdAt has toDate method (is a Timestamp)
-            if ("toDate" in cat.createdAt) {
-                const createdDate = cat.createdAt.toDate()
-                return createdDate.getMonth() === previousMonth && createdDate.getFullYear() === previousYear
-            }
-            return false
-        })
-
-        // Calculate total views this month and last month
-        const viewsThisMonth = catsThisMonth.reduce((sum, cat) => sum + (cat.views || 0), 0)
-        const viewsLastMonth = catsLastMonth.reduce((sum, cat) => sum + (cat.views || 0), 0)
-
-        // Calculate percentage growth
-        if (viewsLastMonth === 0) return viewsThisMonth > 0 ? 100 : 0
-        return Math.round(((viewsThisMonth - viewsLastMonth) / viewsLastMonth) * 100)
-    }
-
-    // Format timestamp to relative time
-    function formatRelativeTime(timestamp: Timestamp): string {
-        if (!timestamp) return ""
-
-        const now = new Date()
-        const date = timestamp.toDate()
-        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-        if (diffInSeconds < 60) return "just now"
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
-        if (diffInSeconds < 172800) return "1 day ago"
-        return `${Math.floor(diffInSeconds / 86400)} days ago`
-    }
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                <span className="ml-2">Loading dashboard data...</span>
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -169,7 +77,7 @@ export default function AdminDashboardPage() {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="hover:shadow-md transition-shadow">
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
@@ -214,7 +122,7 @@ export default function AdminDashboardPage() {
                             <div className="space-y-4">
                                 {recentActivity.map((activity) => (
                                     <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 min-w-0 max-w-[70%]">
                                             <Badge
                                                 variant={
                                                     activity.status === "success"
@@ -223,13 +131,17 @@ export default function AdminDashboardPage() {
                                                             ? "destructive"
                                                             : "secondary"
                                                 }
-                                                className="whitespace-nowrap"
+                                                className="whitespace-nowrap flex-shrink-0"
                                             >
                                                 {activity.action}
                                             </Badge>
-                                            <span className="font-medium text-orange-500">{activity.catName}</span>
+                                            <span className="font-medium text-orange-500 truncate" title={activity.catName}>
+                        {activity.catName}
+                      </span>
                                         </div>
-                                        <span className="text-sm text-muted-foreground">{formatRelativeTime(activity.timestamp)}</span>
+                                        <span className="text-sm text-muted-foreground flex-shrink-0">
+                      {formatRelativeTime(activity.timestamp)}
+                    </span>
                                     </div>
                                 ))}
                             </div>
@@ -253,7 +165,7 @@ export default function AdminDashboardPage() {
                                             <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden relative">
                                                 {cat.imageUrl ? (
                                                     <Image
-                                                        src={cat.imageUrl || "/placeholder.svg"}
+                                                        src={getProxiedImageUrl(cat.imageUrl) || "/placeholder.svg"}
                                                         alt={cat.name}
                                                         fill
                                                         className="object-cover"
@@ -282,4 +194,23 @@ export default function AdminDashboardPage() {
             </div>
         </div>
     )
+}
+
+// Helper function to format date
+function formatRelativeTime(timestamp: any): string {
+    if (!timestamp) return ""
+
+    try {
+        const now = new Date()
+        const date = timestamp.toDate()
+        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+        if (diffInSeconds < 60) return "just now"
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+        if (diffInSeconds < 172800) return "1 day ago"
+        return `${Math.floor(diffInSeconds / 86400)} days ago`
+    } catch (error) {
+        return "recently"
+    }
 }

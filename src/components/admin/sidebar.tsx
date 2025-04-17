@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Cat, ImageIcon, BarChart3, Settings, Menu } from "lucide-react"
+import { Home, Cat, ImageIcon, Settings, Menu, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -77,6 +77,20 @@ export function AdminSidebar() {
             })}
           </ul>
         </nav>
+
+        {/* Return to Homepage button - positioned between nav and footer */}
+        <div className="px-2 pb-2">
+          <Link
+              href="/"
+              className={cn(
+                  "flex items-center p-3 rounded-md transition-colors text-gray-700 hover:bg-gray-100 border border-dashed border-gray-200",
+                  isCollapsed ? "justify-center" : "space-x-3",
+              )}
+          >
+            <ExternalLink size={20} />
+            {!isCollapsed && <span>Return to Site</span>}
+          </Link>
+        </div>
 
         <div className="p-4 border-t text-sm text-gray-500">
           {!isCollapsed && (

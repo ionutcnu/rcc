@@ -5,6 +5,7 @@ import "./styles/globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import SeoHead from "@/components/seo/seo-head"
+import { AuthProvider } from "@/components/auth-provider"
 
 // Configure main fonts
 const inter = Inter({
@@ -62,7 +63,7 @@ export default function RootLayout({
             <SeoHead />
         </head>
         <body className="font-patrick">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
         <Analytics />
         <SpeedInsights />
         </body>

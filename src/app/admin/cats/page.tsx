@@ -16,8 +16,6 @@ import {
     ChevronLeft,
     ChevronRight,
     CatIcon,
-    UserIcon as Male,
-    UserIcon as Female,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -65,6 +63,21 @@ export default function AdminCatsPage() {
     // Get current year for age calculation
     const currentYear = new Date().getFullYear()
 
+    // Function to render gender badge
+    const renderGenderBadge = (gender: string | undefined) => {
+        if (!gender) return null
+
+        const normalizedGender = gender.toLowerCase().trim()
+
+        if (normalizedGender === "male") {
+            return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-300">♂ Male</Badge>
+        } else if (normalizedGender === "female") {
+            return <Badge className="bg-pink-100 text-pink-800 hover:bg-pink-200 border-pink-300">♀ Female</Badge>
+        } else {
+            return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300">{gender}</Badge>
+        }
+    }
+
     useEffect(() => {
         const fetchCats = async () => {
             try {
@@ -97,25 +110,36 @@ export default function AdminCatsPage() {
             )
         }
 
-        // Filter by breed
+        // Filter by breed - with case-insensitive comparison
         if (breedFilter && breedFilter !== "all") {
-            result = result.filter((cat) => cat.breed === breedFilter)
+            result = result.filter((cat) => {
+                const catBreed = cat.breed?.toLowerCase().trim() || ""
+                return catBreed === breedFilter.toLowerCase().trim()
+            })
         }
 
-        // Filter by availability
+        // Filter by availability - with case-insensitive comparison
         if (availabilityFilter && availabilityFilter !== "all") {
-            result = result.filter((cat) => cat.availability === availabilityFilter)
+            result = result.filter((cat) => {
+                const catAvailability = cat.availability?.toLowerCase().trim() || ""
+                return catAvailability === availabilityFilter.toLowerCase().trim()
+            })
         }
 
-        // Filter by gender
+        // Filter by gender - with case-insensitive comparison
         if (genderFilter && genderFilter !== "all") {
-            result = result.filter((cat) => cat.gender === genderFilter)
+            result = result.filter((cat) => {
+                const catGender = cat.gender?.toLowerCase().trim() || ""
+                return catGender === genderFilter.toLowerCase().trim()
+            })
         }
 
         // Filter by age
         if (ageFilter && ageFilter !== "all") {
             const [minAge, maxAge] = ageFilter.split("-").map(Number)
             result = result.filter((cat) => {
+                if (!cat.yearOfBirth) return false
+
                 const age = currentYear - cat.yearOfBirth
                 if (maxAge) {
                     return age >= minAge && age <= maxAge
@@ -153,12 +177,46 @@ export default function AdminCatsPage() {
         setPaginatedCats(paginatedItems)
     }, [filteredCats, currentPage, itemsPerPage])
 
-    // Get unique breeds for filter dropdown
-    const uniqueBreeds = Array.from(new Set(cats.map((cat) => cat.breed))).sort()
+    // Get unique values for filter dropdowns
+    const uniqueBreeds = Array.from(new Set(cats.map((cat) => cat.breed?.trim())))
+        .filter(Boolean)
+        .sort()
+
+    const uniqueAvailabilities = Array.from(new Set(cats.map((cat) => cat.availability?.trim())))
+        .filter(Boolean)
+        .sort()
+
+    const uniqueGenders = Array.from(new Set(cats.map((cat) => cat.gender?.trim())))
+        .filter(Boolean)
+        .sort()
+
+    // Generate age ranges based on actual cat ages
+    const generateAgeRanges = () => {
+        const ages = cats
+            .filter((cat) => cat.yearOfBirth)
+            .map((cat) => currentYear - cat.yearOfBirth)
+            .sort((a, b) => a - b)
+
+        if (ages.length === 0) return []
+
+        // Create standard age ranges
+        const ranges = [
+            { label: "Kitten (0-1 years)", value: "0-1", min: 0, max: 1 },
+            { label: "Adult (1-7 years)", value: "1-7", min: 1, max: 7 },
+            { label: "Senior (8-12 years)", value: "8-12", min: 8, max: 12 },
+            { label: "Elderly (13+ years)", value: "13", min: 13, max: 999 },
+        ]
+
+        // Filter ranges to only include those that have cats
+        return ranges.filter((range) => {
+            return ages.some((age) => age >= range.min && age <= range.max)
+        })
+    }
+
+    const ageRanges = generateAgeRanges()
 
     // Function to handle delete button click
     const handleDeleteClick = (id: string, name: string) => {
-        console.log("Delete clicked for cat:", name)
         setCatToDelete({ id, name })
         setDeleteDialogOpen(true)
     }
@@ -333,6 +391,7 @@ export default function AdminCatsPage() {
                             </Button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Breed Filter - Dynamic Options */}
                             <div>
                                 <Label htmlFor="breed-filter">Breed</Label>
                                 <Select value={breedFilter} onValueChange={setBreedFilter}>
@@ -350,6 +409,7 @@ export default function AdminCatsPage() {
                                 </Select>
                             </div>
 
+                            {/* Availability Filter - Dynamic Options */}
                             <div>
                                 <Label htmlFor="availability-filter">Availability</Label>
                                 <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
@@ -358,14 +418,16 @@ export default function AdminCatsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Statuses</SelectItem>
-                                        <SelectItem value="available">Available</SelectItem>
-                                        <SelectItem value="reserved">Reserved</SelectItem>
-                                        <SelectItem value="adopted">Adopted</SelectItem>
-                                        <SelectItem value="not-available">Not Available</SelectItem>
+                                        {uniqueAvailabilities.map((availability) => (
+                                            <SelectItem key={availability} value={availability}>
+                                                {availability}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
+                            {/* Gender Filter - Dynamic Options */}
                             <div>
                                 <Label htmlFor="gender-filter">Gender</Label>
                                 <Select value={genderFilter} onValueChange={setGenderFilter}>
@@ -374,12 +436,16 @@ export default function AdminCatsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Genders</SelectItem>
-                                        <SelectItem value="male">Male</SelectItem>
-                                        <SelectItem value="female">Female</SelectItem>
+                                        {uniqueGenders.map((gender) => (
+                                            <SelectItem key={gender} value={gender}>
+                                                {gender}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
+                            {/* Age Filter - Dynamic Options based on actual age ranges */}
                             <div>
                                 <Label htmlFor="age-filter">Age</Label>
                                 <Select value={ageFilter} onValueChange={setAgeFilter}>
@@ -388,10 +454,11 @@ export default function AdminCatsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Ages</SelectItem>
-                                        <SelectItem value="0-1">Kitten (0-1 years)</SelectItem>
-                                        <SelectItem value="1-7">Adult (1-7 years)</SelectItem>
-                                        <SelectItem value="8-12">Senior (8-12 years)</SelectItem>
-                                        <SelectItem value="13">Elderly (13+ years)</SelectItem>
+                                        {ageRanges.map((range) => (
+                                            <SelectItem key={range.value} value={range.value}>
+                                                {range.label}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -476,7 +543,10 @@ export default function AdminCatsPage() {
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between">
                                     <div>
-                                        <h2 className="text-xl font-bold">{cat.name}</h2>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h2 className="text-xl font-bold">{cat.name}</h2>
+                                            {renderGenderBadge(cat.gender)}
+                                        </div>
                                         <p className="text-gray-600 text-sm mt-1">
                                             {cat.breed}, {currentYear - cat.yearOfBirth} years old
                                         </p>
@@ -534,24 +604,14 @@ export default function AdminCatsPage() {
                                 </div>
                             </div>
                             <CardContent className="p-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-bold truncate">{cat.name}</h2>
-                                        {cat.gender && (
-                                            <div
-                                                className={`rounded-full p-1 ${cat.gender?.toLowerCase() === "male" ? "bg-blue-100" : "bg-pink-100"}`}
-                                            >
-                                                {cat.gender?.toLowerCase() === "male" ? (
-                                                    <Male className="h-4 w-4 text-blue-500" />
-                                                ) : (
-                                                    <Female className="h-4 w-4 text-pink-500" />
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h2 className="text-lg font-bold truncate">{cat.name}</h2>
                                     <span className="text-sm text-gray-500">{currentYear - cat.yearOfBirth}y</span>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-3 line-clamp-1">{cat.breed}</p>
+                                <div className="flex items-center gap-2 mb-2">
+                                    {renderGenderBadge(cat.gender)}
+                                    <p className="text-sm text-gray-600 line-clamp-1">{cat.breed}</p>
+                                </div>
 
                                 <div className="flex flex-wrap gap-1 mb-3">
                                     {cat.isVaccinated && (

@@ -1,127 +1,159 @@
-'use client';
-import { useState } from "react";
-import { auth } from "@/lib/firebase/firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { useRouter } from "next/navigation";
-import ParticlesLogin from "@/components/elements/ParticlesLogin";
-import Image from "next/image";
+"use client"
 
-const Login = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [passwordVisible, setPasswordVisible] = useState(false);
-    const router = useRouter();
+import type React from "react"
 
-    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+import { useState, Suspense } from "react"
+import { useRouter } from "next/navigation"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase/firebaseConfig"
+import Image from "next/image"
+import Link from "next/link"
+import ParticlesLogin from "@/components/elements/ParticlesLogin"
+
+// First, add the import for the Eye and EyeOff icons from lucide-react at the top of the file
+import { Eye, EyeOff } from "lucide-react"
+
+// Create a separate component that uses useSearchParams
+function LoginRedirect() {
+    // Import useSearchParams inside the component that's wrapped with Suspense
+    const { useSearchParams } = require("next/navigation")
+    const searchParams = useSearchParams()
+    const redirect = searchParams.get("redirect") || "/admin"
+
+    return <input type="hidden" name="redirect" value={redirect} />
+}
+
+export default function LoginPage() {
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [error, setError] = useState("")
+    const [loading, setLoading] = useState(false)
+    const [passwordVisible, setPasswordVisible] = useState(false)
+    const router = useRouter()
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError("")
+
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            router.push("/");
-        } catch (error: any) {
-            setError(error.message);
+            // Sign in with Firebase
+            const userCredential = await signInWithEmailAndPassword(auth, email, password)
+            const user = userCredential.user
+
+            // Get the ID token
+            const idToken = await user.getIdToken()
+
+            // Send the token to your backend to create a session cookie
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ idToken }),
+            })
+
+            const data = await response.json()
+
+            if (data.success) {
+                // Get the redirect URL from the hidden input
+                const redirectInput = document.querySelector('input[name="redirect"]') as HTMLInputElement
+                const redirectUrl = redirectInput ? redirectInput.value : "/admin"
+
+                // Redirect to the admin page or the specified redirect URL
+                router.push(redirectUrl)
+            } else {
+                setError("Failed to create session")
+                setLoading(false)
+            }
+        } catch (err: any) {
+            setError(err.message || "Failed to login")
+            setLoading(false)
         }
-    };
+    }
 
     return (
-        <div className="relative flex items-center justify-center min-h-screen bg-[#1E293B] p-4">
+        <div className="relative flex items-center justify-center min-h-screen bg-gray-100">
+            {/* Particles Background */}
             <ParticlesLogin className="absolute inset-0 z-0" quantity={150} />
 
-            <div className="relative w-full max-w-md p-8 md:p-10 bg-white rounded-lg shadow-xl z-10">
-                <div className="flex flex-col items-center pb-4">
-                    <Image
-                        src="/logo.svg"
-                        width={50}
-                        height={50}
-                        alt="Logo"
-                        priority
-                    />
-                    <h1 className="text-3xl font-bold text-[#4B5563] mt-4">Red Cat Cuasar</h1>
+            <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 z-10">
+                <div className="flex flex-col items-center mb-6">
+                    <Image src="/logo.svg" width={80} height={80} alt="RCC Logo" priority />
+                    <h1 className="text-2xl font-medium text-[#FF6B6B] mt-4">Login to Admin Dashboard</h1>
                 </div>
 
-                <div className="text-sm font-light text-[#6B7280] pb-6 text-center">
-                    Login to your account.
-                </div>
+                {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">{error}</div>
+                )}
 
-                <form onSubmit={handleLogin} className="flex flex-col space-y-4">
-                    {error && <p className="text-red-500 text-center">{error}</p>}
-
+                <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-[#111827]">Email</label>
-                        <div className="relative text-gray-400">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="lucide lucide-mail" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect width="20" height="16" x="2" y="4" rx="2"></rect>
-                                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-                                </svg>
-                            </span>
-                            <input
-                                type="email"
-                                name="email"
-                                id="email"
-                                className="pl-12 bg-gray-50 text-gray-600 border focus:border-transparent border-gray-300 sm:text-sm rounded-lg focus:ring-1 focus:outline-none focus:ring-gray-400 block w-full p-2.5 py-3 px-4"
-                                placeholder="name@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
-                        </div>
+                        <label htmlFor="email" className="block text-sm text-gray-700 mb-1">
+                            Email
+                        </label>
+                        <input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
                     </div>
 
                     <div>
-                        <label htmlFor="password" className="block mb-2 text-sm font-medium text-[#111827]">Password</label>
-                        <div className="relative text-gray-400">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="lucide lucide-lock" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect width="18" height="11" x="3" y="11" rx="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
-                            </span>
-
+                        <label htmlFor="password" className="block text-sm text-gray-700 mb-1">
+                            Password
+                        </label>
+                        <div className="relative">
                             <input
-                                type={passwordVisible ? "text" : "password"}
-                                name="password"
                                 id="password"
-                                placeholder="••••••••••"
-                                className="pl-12 pr-12 bg-gray-50 text-gray-600 border focus:border-transparent border-gray-300 sm:text-sm rounded-lg focus:ring-1 focus:outline-none focus:ring-gray-400 block w-full p-2.5 py-3 px-4"
+                                type={passwordVisible ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
+                                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
-
-                            <span
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer"
+                            <button
+                                type="button"
+                                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
                                 onClick={() => setPasswordVisible(!passwordVisible)}
                             >
-                                {passwordVisible ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="lucide lucide-eye-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.51 21.51 0 0 1 5.6-7.16"></path>
-                                        <path d="M3 3l18 18"></path>
-                                    </svg>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="lucide lucide-eye" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                )}
-                            </span>
+                                {passwordVisible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
                         </div>
                     </div>
 
+                    {/* Wrap useSearchParams in Suspense */}
+                    <Suspense fallback={<input type="hidden" name="redirect" value="/admin" />}>
+                        <LoginRedirect />
+                    </Suspense>
+
                     <button
                         type="submit"
-                        className="w-full text-white bg-[#4F46E5] hover:bg-blue-600 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                        disabled={loading}
+                        className="w-full bg-[#5C6AC4] text-white py-2 px-4 rounded-md hover:bg-[#4F5AA9] transition-colors"
                     >
-                        Login
+                        {loading ? "Logging in..." : "Login"}
                     </button>
-
-                    <div className="text-sm font-light text-center text-[#6B7280]">
-                        You do not have an account yet? <a href="/register" className="font-medium text-[#4F46E5] hover:underline">Register</a>
-                    </div>
                 </form>
+
+                <div className="mt-6 text-center">
+                    <Link href="/" className="inline-flex items-center text-sm text-[#5C6AC4] hover:text-[#4F5AA9]">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Return to Homepage
+                    </Link>
+                </div>
             </div>
         </div>
-    );
-};
-
-export default Login;
+    )
+}

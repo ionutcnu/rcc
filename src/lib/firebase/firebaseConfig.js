@@ -1,9 +1,8 @@
-
-
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps } from "firebase/app"
+import { getAuth } from "firebase/auth"
+import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
+
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,12 +12,14 @@ const firebaseConfig = {
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     measurementId: process.env.NEXT_PUBLIC_MEASUREMENT_ID,
-};
+}
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
+// Initialize Firebase only if it hasn't been initialized already
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0]
 const auth = getAuth(app)
 const db = getFirestore(app)
 const storage = getStorage(app)
+
+
 
 export { auth, db, app, storage }
