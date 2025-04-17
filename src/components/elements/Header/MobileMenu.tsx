@@ -47,7 +47,7 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
             // Sign out from Firebase client
             await auth.signOut()
 
-            // Call server action to revoke session cookie
+            // Call server API to revoke session cookie
             await fetch("/api/auth/logout", {
                 method: "POST",
                 credentials: "include",
@@ -55,9 +55,6 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
 
             // Force a full page reload to clear any cached state
             window.location.href = "/"
-
-            // Close the menu
-            setMenuOpen(false)
         } catch (error) {
             console.error("Logout error:", error)
             window.location.href = "/"
@@ -70,11 +67,11 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
             <div className="md:hidden">
                 <button onClick={toggleMenu} aria-label="Toggle menu">
                     {menuOpen ? (
-                        <svg className="h-6 w-6 text-[#FF6B6B] hover:text-[#FF8C8C]" viewBox="0 0 24 24">
+                        <svg className="h-6 w-6 text-orange-600 hover:text-orange-700" viewBox="0 0 24 24">
                             <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" />
                         </svg>
                     ) : (
-                        <svg className="h-6 w-6 text-[#FF6B6B] hover:text-[#FF8C8C]" viewBox="0 0 24 24">
+                        <svg className="h-6 w-6 text-orange-600 hover:text-orange-700" viewBox="0 0 24 24">
                             <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                         </svg>
                     )}
@@ -88,11 +85,11 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
                     animate="visible"
                     exit="hidden"
                     variants={menuVariants}
-                    className="md:hidden fixed inset-0 bg-[#F4F6FA] bg-opacity-95 z-40 flex flex-col items-center p-4"
+                    className="md:hidden fixed inset-0 bg-amber-50 bg-opacity-95 z-40 flex flex-col items-center p-4"
                 >
                     <button
                         onClick={toggleMenu}
-                        className="absolute top-4 right-4 text-[#FF6B6B] text-3xl"
+                        className="absolute top-4 right-4 text-orange-600 text-3xl"
                         aria-label="Close menu"
                     >
                         ✕
@@ -102,7 +99,7 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
                             <Link
                                 key={link.path}
                                 href={link.path}
-                                className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
+                                className="flex items-center justify-center text-xl text-gray-900 hover:text-orange-700 p-3"
                                 onClick={toggleMenu}
                             >
                                 {link.icon}
@@ -110,43 +107,62 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
                             </Link>
                         ))}
 
-                        <div className="border-t border-[#d1d5db] pt-4">
+                        <div className="border-t border-orange-200 pt-4">
                             {isAuthenticated ? (
                                 <div className="space-y-4">
                                     {/* Admin Dashboard Link */}
                                     <Link
                                         href="/admin"
-                                        className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
+                                        className="flex items-center justify-center text-xl text-gray-900 hover:text-orange-700 p-3"
                                         onClick={toggleMenu}
                                     >
-                                        <MdOutlineDashboard className="text-[#FF6B6B]" />
+                                        <MdOutlineDashboard className="text-orange-600" />
                                         <span className="ml-2">Admin Dashboard</span>
                                     </Link>
 
                                     {/* Logout Button */}
                                     <button
                                         onClick={handleLogout}
-                                        className="flex items-center justify-center w-full text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
+                                        className="flex items-center justify-center w-full text-xl text-gray-900 hover:text-orange-700 p-3"
                                     >
-                                        <GiExitDoor className="text-[#FF6B6B]" />
+                                        <GiExitDoor className="text-orange-600" />
                                         <span className="ml-2">Logout</span>
                                     </button>
 
                                     {/* User Email Display */}
                                     {userEmail && (
-                                        <div className="flex items-center justify-center text-sm text-[#FF6B6B] p-2 mt-2">
+                                        <div className="flex items-center justify-center text-sm text-orange-600 p-2 mt-2">
                                             <GiPawPrint className="mr-1.5" />
                                             {userEmail}
                                         </div>
                                     )}
                                 </div>
                             ) : (
-                                authActions
+                                <>
+                                    <Link
+                                        href="/login"
+                                        className="flex items-center justify-center text-xl text-gray-900 hover:text-orange-700 p-3"
+                                        onClick={toggleMenu}
+                                    >
+                                        <GiPawPrint className="mr-2" />
+                                        Login
+                                    </Link>
+                                    {/* Registration link commented out - can be re-enabled in the future
+                  <Link
+                    href="/register"
+                    className="flex items-center justify-center text-xl text-gray-900 hover:text-orange-700 p-3"
+                    onClick={toggleMenu}
+                  >
+                    <GiCat className="mr-2" />
+                    Register
+                  </Link>
+                  */}
+                                </>
                             )}
                         </div>
 
-                        <div className="mt-4 border-t border-[#d1d5db] pt-4">
-                            <div className="text-[#FF6B6B]">
+                        <div className="mt-4 border-t border-orange-200 pt-4">
+                            <div className="text-orange-600">
                                 <GoogleTranslate />
                             </div>
                         </div>

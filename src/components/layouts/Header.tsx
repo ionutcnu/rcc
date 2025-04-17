@@ -157,13 +157,15 @@ export default function Header() {
                                     <GiPawPrint className="mr-2" />
                                     Login
                                 </Link>
-                                <Link
-                                    href="/register"
-                                    className="flex items-center bg-[#5C6AC4] text-white px-4 py-2 rounded-full hover:bg-[#3F4EB3] transition-colors"
-                                >
-                                    <GiCat className="mr-2" />
-                                    Register
-                                </Link>
+                                {/* Registration link commented out - can be re-enabled in the future
+                <Link
+                  href="/register"
+                  className="flex items-center bg-[#5C6AC4] text-white px-4 py-2 rounded-full hover:bg-[#3F4EB3] transition-colors"
+                >
+                  <GiCat className="mr-2" />
+                  Register
+                </Link>
+                */}
                             </>
                         )}
                     </div>
@@ -193,13 +195,15 @@ export default function Header() {
                                     <GiPawPrint className="mr-2" />
                                     Login
                                 </Link>
-                                <Link
-                                    href="/register"
-                                    className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
-                                >
-                                    <GiCat className="mr-2" />
-                                    Register
-                                </Link>
+                                {/* Registration link commented out - can be re-enabled in the future
+                <Link
+                  href="/register"
+                  className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
+                >
+                  <GiCat className="mr-2" />
+                  Register
+                </Link>
+                */}
                             </>
                         )
                     }

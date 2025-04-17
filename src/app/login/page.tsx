@@ -9,9 +9,7 @@ import { auth } from "@/lib/firebase/firebaseConfig"
 import Image from "next/image"
 import Link from "next/link"
 import ParticlesLogin from "@/components/elements/ParticlesLogin"
-
-// First, add the import for the Eye and EyeOff icons from lucide-react at the top of the file
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, AlertCircle } from "lucide-react"
 
 // Create a separate component that uses useSearchParams
 function LoginRedirect() {
@@ -19,8 +17,19 @@ function LoginRedirect() {
     const { useSearchParams } = require("next/navigation")
     const searchParams = useSearchParams()
     const redirect = searchParams.get("redirect") || "/admin"
+    const message = searchParams.get("message")
 
-    return <input type="hidden" name="redirect" value={redirect} />
+    return (
+        <>
+            <input type="hidden" name="redirect" value={redirect} />
+            {message && (
+                <div className="bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded mb-4 text-sm flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span>{message}</span>
+                </div>
+            )}
+        </>
+    )
 }
 
 export default function LoginPage() {
@@ -84,8 +93,16 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">{error}</div>
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>{error}</span>
+                    </div>
                 )}
+
+                {/* Wrap useSearchParams in Suspense */}
+                <Suspense fallback={null}>
+                    <LoginRedirect />
+                </Suspense>
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
@@ -124,11 +141,6 @@ export default function LoginPage() {
                             </button>
                         </div>
                     </div>
-
-                    {/* Wrap useSearchParams in Suspense */}
-                    <Suspense fallback={<input type="hidden" name="redirect" value="/admin" />}>
-                        <LoginRedirect />
-                    </Suspense>
 
                     <button
                         type="submit"
