@@ -19,10 +19,12 @@ export default function LoginPage() {
 
     const { login, loading, error: authError } = useAuth()
     const [error, setError] = useState<string | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
+        setIsSubmitting(true)
 
         try {
             const result = await login(email, password)
@@ -35,6 +37,8 @@ export default function LoginPage() {
         } catch (err: any) {
             console.error("Login error:", err)
             setError(err.message || "An unexpected error occurred")
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -99,10 +103,10 @@ export default function LoginPage() {
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || isSubmitting}
                         className="w-full bg-[#5C6AC4] text-white py-2 px-4 rounded-md hover:bg-[#4F5AA9] transition-colors disabled:bg-gray-400"
                     >
-                        {loading ? (
+                        {loading || isSubmitting ? (
                             <div className="flex items-center justify-center">
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Logging in...

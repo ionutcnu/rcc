@@ -53,6 +53,10 @@ async function checkAdminStatus(user: FirebaseUser): Promise<boolean> {
         const response = await fetch("/api/auth/check-admin", {
             method: "GET",
             credentials: "include",
+            cache: "no-store",
+            headers: {
+                "Cache-Control": "no-cache",
+            },
         })
 
         if (!response.ok) {
@@ -92,23 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         email: firebaseUser.email,
                         isAdmin: adminStatus,
                     })
-
-                    // Get ID token for session
-                    const idToken = await firebaseUser.getIdToken(true)
-
-                    // Create session on server
-                    const response = await fetch("/api/auth/session", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ idToken }),
-                        credentials: "include",
-                    })
-
-                    if (!response.ok) {
-                        console.error("Failed to create session")
-                    }
                 } catch (err) {
                     console.error("Error setting up user:", err)
                     setUser(null)
@@ -133,9 +120,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null)
 
         try {
+            // Sign in with Firebase
             const userCredential = await signInWithEmailAndPassword(auth, email, password)
 
-            // Check if user is admin
+            // Get ID token
+            const idToken = await userCredential.user.getIdToken(true)
+
+            // Create session on server
+            const response = await fetch("/api/auth/session", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Cache-Control": "no-cache",
+                },
+                body: JSON.stringify({ idToken }),
+                credentials: "include",
+                cache: "no-store",
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                console.error("Session creation failed:", response.status, errorData)
+                throw new Error(errorData.error || "Failed to create session")
+            }
+
+            // Check if user is admin after successful login
             const adminStatus = await checkAdminStatus(userCredential.user)
 
             if (!adminStatus) {
@@ -145,27 +154,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return { success: false, message: "You don't have admin privileges" }
             }
 
-            // Get ID token
-            const idToken = await userCredential.user.getIdToken()
-
-            // Create session on server
-            const response = await fetch("/api/auth/session", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ idToken }),
-                credentials: "include",
+            setIsAdmin(adminStatus)
+            setUser({
+                uid: userCredential.user.uid,
+                email: userCredential.user.email,
+                isAdmin: adminStatus,
             })
-
-            if (!response.ok) {
-                throw new Error("Failed to create session")
-            }
 
             setLoading(false)
             return { success: true }
         } catch (err: any) {
             const errorMessage = err.message || "Failed to login"
+            console.error("Login error:", err)
             setError(errorMessage)
             setLoading(false)
             return { success: false, message: errorMessage }
@@ -182,6 +182,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await fetch("/api/auth/logout", {
                 method: "POST",
                 credentials: "include",
+                cache: "no-store",
+                headers: {
+                    "Cache-Control": "no-cache",
+                },
             })
 
             router.push("/login")
