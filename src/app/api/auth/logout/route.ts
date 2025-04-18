@@ -24,8 +24,8 @@ export async function POST() {
         // Create response
         const response = NextResponse.json({ success: true })
 
-        // Clear the session cookie
-        response.cookies.set({
+        // Clear the session cookie using the cookie store
+        cookieStore.set({
             name: "session",
             value: "",
             expires: new Date(0),
