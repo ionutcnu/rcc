@@ -2,171 +2,30 @@
 
 import type React from "react"
 
-import { useState, Suspense, useEffect } from "react"
+import { useState } from "react"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth"
-import { auth } from "@/lib/firebase/firebaseConfig"
 import Image from "next/image"
 import Link from "next/link"
-import ParticlesLogin from "@/components/elements/ParticlesLogin"
 import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react"
-
-// Create a separate component that uses useSearchParams
-function LoginParams() {
-    // Import useSearchParams inside the component that's wrapped with Suspense
-    const { useSearchParams } = require("next/navigation")
-    const searchParams = useSearchParams()
-    const redirect = searchParams.get("redirect") || "/admin"
-    const message = searchParams.get("message")
-
-    return (
-        <>
-            <input type="hidden" id="redirect-input" name="redirect" value={redirect} />
-            {message && (
-                <div className="bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded mb-4 text-sm flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>{message}</span>
-                </div>
-            )}
-        </>
-    )
-}
+import ParticlesLogin from "@/components/elements/ParticlesLogin"
 
 export default function LoginPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
-    const [error, setError] = useState("")
-    const [loading, setLoading] = useState(false)
     const [passwordVisible, setPasswordVisible] = useState(false)
-    const [checkingAuth, setCheckingAuth] = useState(true)
+    const { login, loading, error, user } = useAuth()
     const router = useRouter()
 
-    // Check if user is already logged in
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                console.log("User already logged in:", user.email)
-
-                // Check if we're in a potential redirect loop
-                const searchParams = new URLSearchParams(window.location.search)
-                const redirectCount = Number.parseInt(searchParams.get("redirectCount") || "0")
-
-                if (redirectCount > 2) {
-                    console.log("Detected potential redirect loop, forcing navigation to admin")
-                    window.location.href = "/admin"
-                    return
-                }
-
-                // Check if session is valid
-                try {
-                    const response = await fetch("/api/auth/check-session", {
-                        method: "GET",
-                        credentials: "include",
-                    })
-
-                    const data = await response.json()
-
-                    if (data.authenticated) {
-                        console.log("Session is valid, checking admin status")
-
-                        // Check if user is admin
-                        const adminResponse = await fetch("/api/auth/check-admin", {
-                            method: "GET",
-                            credentials: "include",
-                        })
-
-                        const adminData = await adminResponse.json()
-
-                        if (adminData.isAdmin) {
-                            console.log("User is admin, redirecting to admin page")
-                            // Get the redirect URL from the hidden input
-                            const redirectInput = document.getElementById("redirect-input") as HTMLInputElement
-                            const redirectUrl = redirectInput ? redirectInput.value : "/admin"
-
-                            // Redirect to admin page
-                            window.location.href = redirectUrl
-                            return
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error checking session:", error)
-                }
-            }
-
-            setCheckingAuth(false)
-        })
-
-        return () => unsubscribe()
-    }, [])
-
-    // Handle login form submission
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        setError("")
-
-        try {
-            // Sign in with Firebase
-            const userCredential = await signInWithEmailAndPassword(auth, email, password)
-            const user = userCredential.user
-
-            // Get the ID token with force refresh
-            const idToken = await user.getIdToken(true)
-            console.log("Got ID token, length:", idToken.length)
-
-            // Send the token to your backend to create a session cookie
-            const response = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ idToken }),
-                credentials: "include", // Important for cookies
-            })
-
-            const data = await response.json()
-            console.log("Login response:", data)
-
-            if (data.success) {
-                // Get the redirect URL from the hidden input
-                const redirectInput = document.getElementById("redirect-input") as HTMLInputElement
-                const redirectUrl = redirectInput ? redirectInput.value : "/admin"
-
-                console.log("Login successful, redirecting to:", redirectUrl)
-
-                // Check if user is admin before redirecting to admin area
-                if (redirectUrl.startsWith("/admin") && data.isAdmin === false) {
-                    console.log("User is not admin, redirecting to unauthorized page")
-                    window.location.href = "/unauthorized"
-                } else {
-                    // Force a full page reload with absolute URL to ensure cookies are properly set
-                    // This is critical for production environments where relative URLs might not work correctly
-                    const baseUrl = window.location.origin
-                    const absoluteRedirectUrl = redirectUrl.startsWith("/") ? `${baseUrl}${redirectUrl}` : redirectUrl
-
-                    console.log("Redirecting to absolute URL:", absoluteRedirectUrl)
-                    window.location.href = absoluteRedirectUrl
-                }
-            } else {
-                setError(data.error || "Failed to create session")
-                setLoading(false)
-            }
-        } catch (err: any) {
-            console.error("Login error:", err)
-            setError(err.message || "Failed to login")
-            setLoading(false)
-        }
+    // If user is already logged in and is admin, redirect to admin
+    if (user?.isAdmin) {
+        router.push("/admin")
+        return null
     }
 
-    if (checkingAuth) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="flex flex-col items-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#5C6AC4]" />
-                    <p className="mt-4 text-gray-600">Checking authentication status...</p>
-                </div>
-            </div>
-        )
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        await login(email, password)
     }
 
     return (
@@ -186,11 +45,6 @@ export default function LoginPage() {
                         <span>{error}</span>
                     </div>
                 )}
-
-                {/* Wrap useSearchParams in Suspense */}
-                <Suspense fallback={null}>
-                    <LoginParams />
-                </Suspense>
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
@@ -235,7 +89,14 @@ export default function LoginPage() {
                         disabled={loading}
                         className="w-full bg-[#5C6AC4] text-white py-2 px-4 rounded-md hover:bg-[#4F5AA9] transition-colors"
                     >
-                        {loading ? "Logging in..." : "Login"}
+                        {loading ? (
+                            <div className="flex items-center justify-center">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Logging in...
+                            </div>
+                        ) : (
+                            "Login"
+                        )}
                     </button>
                 </form>
 

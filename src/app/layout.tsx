@@ -5,7 +5,8 @@ import "./styles/globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import SeoHead from "@/components/seo/seo-head"
-import { AuthProvider } from "@/components/auth-provider"
+import { Suspense } from "react"
+import { Providers } from "./providers"
 
 // Configure main fonts
 const inter = Inter({
@@ -41,7 +42,6 @@ export const metadata: Metadata = {
             },
         ],
     },
-
     alternates: {
         canonical: "https://rcc-kappa.vercel.app",
     },
@@ -63,7 +63,9 @@ export default function RootLayout({
             <SeoHead />
         </head>
         <body className="font-patrick">
-        <AuthProvider>{children}</AuthProvider>
+        <Suspense>
+            <Providers>{children}</Providers>
+        </Suspense>
         <Analytics />
         <SpeedInsights />
         </body>

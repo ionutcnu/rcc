@@ -45,6 +45,7 @@ export default async function AdminLayout({
             </AdminProtected>
         )
     } catch (error) {
+        console.error("Admin layout authentication error:", error)
         // If verification fails, redirect to login
         redirect("/login?redirect=/admin")
     }

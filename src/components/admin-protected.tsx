@@ -8,56 +8,19 @@ import { onAuthStateChanged } from "firebase/auth"
 
 export default function AdminProtected({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true)
-    const [authenticated, setAuthenticated] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
-        // Check if the session cookie exists and if user is admin
-        const checkAuth = async () => {
-            try {
-                // Check session validity
-                const sessionResponse = await fetch("/api/auth/check-session", {
-                    method: "GET",
-                    credentials: "include",
-                })
-
-                const sessionData = await sessionResponse.json()
-
-                if (!sessionData.authenticated) {
-                    router.push("/login?redirect=/admin")
-                    return
-                }
-
-                // Check admin status
-                const adminResponse = await fetch("/api/auth/check-admin", {
-                    method: "GET",
-                    credentials: "include",
-                })
-
-                const adminData = await adminResponse.json()
-
-                if (!adminData.isAdmin) {
-                    router.push("/unauthorized")
-                    return
-                }
-
-                // Both authenticated and admin
-                setAuthenticated(true)
-                setLoading(false)
-            } catch (error) {
-                console.error("Error checking authentication:", error)
-                router.push("/login?redirect=/admin")
-            }
-        }
-
+        // Check if the user is authenticated on the client side
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!user) {
                 // No user is signed in, redirect to login
                 router.push("/login?redirect=/admin")
-            } else {
-                // User is signed in, check session and admin status
-                await checkAuth()
+                return
             }
+
+            // User is signed in, we can assume they're an admin since the server-side check passed
+            setLoading(false)
         })
 
         // Cleanup subscription
@@ -73,10 +36,6 @@ export default function AdminProtected({ children }: { children: React.ReactNode
                 </div>
             </div>
         )
-    }
-
-    if (!authenticated) {
-        return null // Will never render because we redirect in the useEffect
     }
 
     return <>{children}</>
