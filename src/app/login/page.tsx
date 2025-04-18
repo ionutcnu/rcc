@@ -40,7 +40,7 @@ export default function LoginPage() {
     const [passwordVisible, setPasswordVisible] = useState(false)
     const router = useRouter()
 
-    // Update the login function to handle token refresh better
+    // Handle login form submission
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
