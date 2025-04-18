@@ -1,5 +1,4 @@
-import { getAuth } from "firebase-admin/auth"
-import { getFirestore } from "firebase-admin/firestore"
+import { admin } from "@/lib/firebase/admin"
 
 // List of admin email addresses - for initial setup
 const ADMIN_EMAILS = [
@@ -16,7 +15,7 @@ const ADMIN_EMAILS = [
 export async function isUserAdmin(uid: string): Promise<boolean> {
     try {
         // Get the user from Firebase Auth
-        const user = await getAuth().getUser(uid)
+        const user = await admin.auth.getUser(uid)
 
         // Method 1: Check if the user's email is in the admin list
         if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
@@ -30,8 +29,7 @@ export async function isUserAdmin(uid: string): Promise<boolean> {
 
         // Method 3: Check if the user is in the admins collection in Firestore
         try {
-            const db = getFirestore()
-            const adminDoc = await db.collection("admins").doc(uid).get()
+            const adminDoc = await admin.db.collection("admins").doc(uid).get()
             if (adminDoc.exists) {
                 return true
             }
@@ -55,7 +53,7 @@ export async function isUserAdmin(uid: string): Promise<boolean> {
  */
 export async function setUserAdminStatus(uid: string, isAdmin: boolean): Promise<void> {
     try {
-        await getAuth().setCustomUserClaims(uid, { admin: isAdmin })
+        await admin.auth.setCustomUserClaims(uid, { admin: isAdmin })
         console.log(`Set admin=${isAdmin} for user ${uid}`)
     } catch (error) {
         console.error("Error setting admin status:", error)

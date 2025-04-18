@@ -1,11 +1,11 @@
 import type React from "react"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { getAuth } from "firebase-admin/auth"
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { CatPopupProvider } from "@/components/CatPopupProvider"
 import AdminProtected from "@/components/admin-protected"
 import { isUserAdmin } from "@/lib/auth/admin-check"
+import { admin } from "@/lib/firebase/admin"
 
 export default async function AdminLayout({
                                               children,
@@ -23,12 +23,12 @@ export default async function AdminLayout({
 
     try {
         // Verify the session cookie
-        const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
+        const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
 
         // Check if the user has admin privileges
-        const admin = await isUserAdmin(decodedClaims.uid)
+        const isAdmin = await isUserAdmin(decodedClaims.uid)
 
-        if (!admin) {
+        if (!isAdmin) {
             // If not an admin, redirect to unauthorized page
             redirect("/unauthorized")
         }

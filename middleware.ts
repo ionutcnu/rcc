@@ -1,28 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getAuth } from "firebase-admin/auth"
-import { initializeApp, getApps, cert } from "firebase-admin/app"
-
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-    try {
-        const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY
-            ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n")
-            : undefined
-
-        const serviceAccount = {
-            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-            privateKey: privateKey,
-        }
-
-        initializeApp({
-            credential: cert(serviceAccount as any),
-        })
-    } catch (error) {
-        console.error("Firebase admin initialization error in middleware:", error)
-    }
-}
+import { admin } from "@/lib/firebase/admin"
 
 export async function middleware(request: NextRequest) {
     // Only run this middleware for admin routes
@@ -39,7 +17,7 @@ export async function middleware(request: NextRequest) {
 
         try {
             // Verify the session cookie
-            const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
+            const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
 
             // Check if user has admin claim
             const isAdmin = decodedClaims.admin === true

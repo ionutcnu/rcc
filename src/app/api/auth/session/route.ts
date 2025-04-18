@@ -1,25 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { getAuth } from "firebase-admin/auth"
+import { admin } from "@/lib/firebase/admin"
 import { isUserAdmin } from "@/lib/auth/admin-check"
-import { initializeApp, getApps, cert } from "firebase-admin/app"
-
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-    try {
-        const serviceAccount = {
-            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-        }
-
-        initializeApp({
-            credential: cert(serviceAccount as any),
-        })
-    } catch (error) {
-        console.error("Firebase admin initialization error:", error)
-    }
-}
 
 export async function POST(request: Request) {
     try {
@@ -30,7 +12,7 @@ export async function POST(request: Request) {
         }
 
         // Verify the ID token
-        const decodedToken = await getAuth().verifyIdToken(idToken)
+        const decodedToken = await admin.auth.verifyIdToken(idToken)
         const uid = decodedToken.uid
 
         // Check if user is admin
@@ -42,7 +24,7 @@ export async function POST(request: Request) {
 
         // Create a session cookie
         const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
-        const sessionCookie = await getAuth().createSessionCookie(idToken, { expiresIn })
+        const sessionCookie = await admin.auth.createSessionCookie(idToken, { expiresIn })
 
         // Create response
         const response = NextResponse.json({ success: true, isAdmin })

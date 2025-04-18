@@ -1,7 +1,10 @@
-import { initializeApp, getApps, cert } from "firebase-admin/app"
+import { initializeApp, getApps, cert, type App } from "firebase-admin/app"
 import { getAuth } from "firebase-admin/auth"
 import { getFirestore } from "firebase-admin/firestore"
 import { getStorage } from "firebase-admin/storage"
+
+// Keep track of the initialized app
+let adminApp: App | undefined
 
 // Initialize Firebase Admin SDK
 function initAdmin() {
@@ -12,13 +15,17 @@ function initAdmin() {
                 ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n")
                 : undefined
 
+            if (!process.env.FIREBASE_ADMIN_PROJECT_ID || !process.env.FIREBASE_ADMIN_CLIENT_EMAIL || !privateKey) {
+                throw new Error("Missing Firebase Admin credentials in environment variables")
+            }
+
             const serviceAccount = {
                 projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
                 clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
                 privateKey: privateKey,
             }
 
-            initializeApp({
+            adminApp = initializeApp({
                 credential: cert(serviceAccount as any),
             })
 
@@ -27,8 +34,12 @@ function initAdmin() {
             console.error("Firebase Admin initialization error:", error)
             throw new Error("Failed to initialize Firebase Admin")
         }
+    } else {
+        // If already initialized, get the existing app
+        adminApp = getApps()[0]
     }
 
+    // Return the services without passing the app parameter
     return {
         auth: getAuth(),
         db: getFirestore(),

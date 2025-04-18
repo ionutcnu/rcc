@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { getAuth } from "firebase-admin/auth"
+import { admin } from "@/lib/firebase/admin"
 
 export async function GET() {
     try {
@@ -14,10 +14,10 @@ export async function GET() {
 
         try {
             // Verify the session cookie
-            const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
+            const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
 
             // Get user details
-            const userRecord = await getAuth().getUser(decodedClaims.uid)
+            const userRecord = await admin.auth.getUser(decodedClaims.uid)
 
             return NextResponse.json({
                 authenticated: true,

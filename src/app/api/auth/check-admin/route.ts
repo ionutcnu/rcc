@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { getAuth } from "firebase-admin/auth"
+import { admin } from "@/lib/firebase/admin"
 import { isUserAdmin } from "@/lib/auth/admin-check"
 
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
 
         try {
             // Verify the session cookie
-            const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
+            const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
 
             // Check if user is admin
             const adminStatus = await isUserAdmin(decodedClaims.uid)
