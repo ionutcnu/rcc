@@ -18,7 +18,7 @@ if (!getApps().length) {
 
 export async function POST() {
     try {
-        // Get the cookies store
+        // Get the cookies store with await
         const cookieStore = await cookies()
         const sessionCookie = cookieStore.get("session")?.value
 

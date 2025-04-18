@@ -40,6 +40,7 @@ export default function LoginPage() {
     const [passwordVisible, setPasswordVisible] = useState(false)
     const router = useRouter()
 
+    // Update the login function to handle token refresh better
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
@@ -50,8 +51,9 @@ export default function LoginPage() {
             const userCredential = await signInWithEmailAndPassword(auth, email, password)
             const user = userCredential.user
 
-            // Get the ID token
-            const idToken = await user.getIdToken()
+            // Get the ID token with force refresh
+            const idToken = await user.getIdToken(true)
+            console.log("Got ID token, length:", idToken.length)
 
             // Send the token to your backend to create a session cookie
             const response = await fetch("/api/auth/login", {
@@ -60,6 +62,7 @@ export default function LoginPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ idToken }),
+                credentials: "include", // Important for cookies
             })
 
             const data = await response.json()

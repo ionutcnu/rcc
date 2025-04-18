@@ -46,6 +46,10 @@ export async function middleware(request: NextRequest) {
         // Get the session cookie directly from request.cookies
         const sessionCookie = request.cookies.get("session")?.value
 
+        // Add more detailed logging
+        console.log("Admin route accessed:", request.nextUrl.pathname)
+        console.log("Session cookie exists:", !!sessionCookie)
+
         // If no session cookie exists, redirect to login
         if (!sessionCookie) {
             console.log("No session cookie found, redirecting to login")
@@ -57,6 +61,7 @@ export async function middleware(request: NextRequest) {
 
         try {
             // Verify the session cookie with Firebase Admin
+            console.log("Verifying session cookie...")
             const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
             const uid = decodedClaims.uid
 

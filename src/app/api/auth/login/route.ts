@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { getAuth } from "firebase-admin/auth"
 import { initializeApp, getApps, cert } from "firebase-admin/app"
 
@@ -19,27 +20,20 @@ export async function POST(request: Request) {
     try {
         const { idToken } = await request.json()
 
-        if (!idToken) {
-            return NextResponse.json({ success: false, error: "No ID token provided" }, { status: 400 })
-        }
+        // Set session expiration to 5 days
+        const expiresIn = 60 * 60 * 24 * 5 * 1000
 
-        // Verify the ID token
-        const decodedToken = await getAuth().verifyIdToken(idToken)
-        const uid = decodedToken.uid
-
-        // Create a session cookie
-        const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
+        // Create the session cookie
         const sessionCookie = await getAuth().createSessionCookie(idToken, { expiresIn })
 
-        // Create response with the cookie
-        const response = NextResponse.json({
-            success: true,
-            isAdmin: decodedToken.admin === true,
-        })
+        // Get the cookies store with await
+        const cookieStore = await cookies()
 
-        // Set cookie on the response object
-        response.cookies.set("session", sessionCookie, {
-            maxAge: expiresIn / 1000, // Convert to seconds
+        // Set the cookie
+        cookieStore.set({
+            name: "session",
+            value: sessionCookie,
+            maxAge: expiresIn / 1000,
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             path: "/",
@@ -47,15 +41,18 @@ export async function POST(request: Request) {
         })
 
         // Get user details to check admin status
+        const decodedToken = await getAuth().verifyIdToken(idToken)
+        const uid = decodedToken.uid
         const userRecord = await getAuth().getUser(uid)
         const customClaims = userRecord.customClaims || {}
         const isAdmin = customClaims?.admin === true
 
-        console.log(`User ${uid} login successful, admin: ${isAdmin}`)
-
-        return response
+        return NextResponse.json({
+            success: true,
+            isAdmin,
+        })
     } catch (error: any) {
-        console.error("Login error:", error.message)
-        return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+        console.error("Error creating session:", error)
+        return NextResponse.json({ success: false, error: "Failed to create session" }, { status: 500 })
     }
 }
