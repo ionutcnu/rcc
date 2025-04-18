@@ -3,46 +3,59 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useAuth } from "@/lib/auth/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react"
-import ParticlesLogin from "@/components/elements/ParticlesLogin"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export default function LoginPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [passwordVisible, setPasswordVisible] = useState(false)
-    const { login, loading, error, user } = useAuth()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectPath = searchParams.get("redirect") || "/admin"
 
-    // If user is already logged in and is admin, redirect to admin
-    if (user?.isAdmin) {
-        router.push("/admin")
-        return null
-    }
+    const { login, loading, error: authError } = useAuth()
+    const [error, setError] = useState<string | null>(null)
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
-        await login(email, password)
+        setError(null)
+
+        try {
+            const result = await login(email, password)
+
+            if (result.success) {
+                router.push(redirectPath)
+            } else {
+                setError(result.message || "Failed to login")
+            }
+        } catch (err: any) {
+            console.error("Login error:", err)
+            setError(err.message || "An unexpected error occurred")
+        }
     }
 
     return (
         <div className="relative flex items-center justify-center min-h-screen bg-gray-100">
-            {/* Particles Background */}
-            <ParticlesLogin className="absolute inset-0 z-0" quantity={150} />
-
             <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 z-10">
                 <div className="flex flex-col items-center mb-6">
-                    <Image src="/logo.svg" width={80} height={80} alt="RCC Logo" priority />
+                    <Image src="/logo.svg" width={80} height={80} alt="Logo" priority />
                     <h1 className="text-2xl font-medium text-[#FF6B6B] mt-4">Login to Admin Dashboard</h1>
                 </div>
 
-                {error && (
+                {(error || authError) && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm flex items-center">
                         <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span>{error}</span>
+                        <span>{error || authError}</span>
+                    </div>
+                )}
+
+                {searchParams.get("message") && (
+                    <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4 text-sm">
+                        {searchParams.get("message")}
                     </div>
                 )}
 
@@ -87,7 +100,7 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-[#5C6AC4] text-white py-2 px-4 rounded-md hover:bg-[#4F5AA9] transition-colors"
+                        className="w-full bg-[#5C6AC4] text-white py-2 px-4 rounded-md hover:bg-[#4F5AA9] transition-colors disabled:bg-gray-400"
                     >
                         {loading ? (
                             <div className="flex items-center justify-center">

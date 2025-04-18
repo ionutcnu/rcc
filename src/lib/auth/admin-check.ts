@@ -1,9 +1,10 @@
 import { getAuth } from "firebase-admin/auth"
 import { getFirestore } from "firebase-admin/firestore"
 
-// List of admin email addresses
+// List of admin email addresses - for initial setup
 const ADMIN_EMAILS = [
-    "cioncu_ionut@yahoo.com"
+    "cioncu_ionut@yahoo.com",
+    "admin@example.com",
     // Add more admin emails as needed
 ]
 

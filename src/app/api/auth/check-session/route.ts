@@ -1,25 +1,10 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { getAuth } from "firebase-admin/auth"
-import { initializeApp, getApps, cert } from "firebase-admin/app"
-
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        // Fix the private key formatting
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }
-
-    initializeApp({
-        credential: cert(serviceAccount as any),
-    })
-}
 
 export async function GET() {
     try {
-        // Get the cookies store - with await
+        // Get the session cookie - with await to resolve the Promise
         const cookieStore = await cookies()
         const sessionCookie = cookieStore.get("session")?.value
 
@@ -29,12 +14,25 @@ export async function GET() {
 
         try {
             // Verify the session cookie
-            await getAuth().verifySessionCookie(sessionCookie, true)
-            return NextResponse.json({ authenticated: true })
+            const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
+
+            // Get user details
+            const userRecord = await getAuth().getUser(decodedClaims.uid)
+
+            return NextResponse.json({
+                authenticated: true,
+                user: {
+                    uid: userRecord.uid,
+                    email: userRecord.email,
+                    isAdmin: decodedClaims.admin === true || userRecord.customClaims?.admin === true,
+                },
+            })
         } catch (error) {
+            console.error("Error verifying session:", error)
             return NextResponse.json({ authenticated: false })
         }
     } catch (error) {
+        console.error("Error checking session:", error)
         return NextResponse.json({ authenticated: false })
     }
 }

@@ -1,12 +1,17 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut } from "firebase/auth"
+import {
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut as firebaseSignOut,
+    type User as FirebaseUser,
+} from "firebase/auth"
 import { auth } from "@/lib/firebase/firebaseConfig"
 import { useRouter } from "next/navigation"
 
 // Define types
-type AuthUser = {
+export type AuthUser = {
     uid: string
     email: string | null
     isAdmin: boolean
@@ -16,8 +21,9 @@ type AuthContextType = {
     user: AuthUser | null
     loading: boolean
     error: string | null
-    login: (email: string, password: string) => Promise<void>
+    login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>
     logout: () => Promise<void>
+    isAdmin: boolean
 }
 
 // Create context
@@ -32,19 +38,41 @@ export function useAuth() {
     return context
 }
 
-// Admin emails - hardcoded for simplicity
-const ADMIN_EMAILS = ["cioncu_ionut@yahoo.com", "admin@example.com"]
+// Admin check function - can be expanded to check custom claims or Firestore
+async function checkAdminStatus(user: FirebaseUser): Promise<boolean> {
+    try {
+        // Get fresh token to ensure we have the latest claims
+        const idTokenResult = await user.getIdTokenResult(true)
+
+        // Check admin claim in the token
+        if (idTokenResult.claims.admin === true) {
+            return true
+        }
+
+        // If not in token, check with the server
+        const response = await fetch("/api/auth/check-admin", {
+            method: "GET",
+            credentials: "include",
+        })
+
+        if (!response.ok) {
+            return false
+        }
+
+        const data = await response.json()
+        return data.isAdmin === true
+    } catch (error) {
+        console.error("Error checking admin status:", error)
+        return false
+    }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [isAdmin, setIsAdmin] = useState(false)
     const router = useRouter()
-
-    // Check if user is admin based on email
-    const checkIfAdmin = (email: string | null): boolean => {
-        return email ? ADMIN_EMAILS.includes(email.toLowerCase()) : false
-    }
 
     // Set up auth state listener
     useEffect(() => {
@@ -53,17 +81,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (firebaseUser) {
                 // User is signed in
-                const isAdmin = checkIfAdmin(firebaseUser.email)
-
-                // Create user object
-                setUser({
-                    uid: firebaseUser.uid,
-                    email: firebaseUser.email,
-                    isAdmin,
-                })
-
-                // Get ID token for session
                 try {
+                    // Check if user is admin
+                    const adminStatus = await checkAdminStatus(firebaseUser)
+                    setIsAdmin(adminStatus)
+
+                    // Create user object
+                    setUser({
+                        uid: firebaseUser.uid,
+                        email: firebaseUser.email,
+                        isAdmin: adminStatus,
+                    })
+
+                    // Get ID token for session
                     const idToken = await firebaseUser.getIdToken(true)
 
                     // Create session on server
@@ -80,11 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         console.error("Failed to create session")
                     }
                 } catch (err) {
-                    console.error("Error creating session:", err)
+                    console.error("Error setting up user:", err)
+                    setUser(null)
+                    setIsAdmin(false)
                 }
             } else {
                 // User is signed out
                 setUser(null)
+                setIsAdmin(false)
             }
 
             setLoading(false)
@@ -101,19 +134,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password)
-            const isAdmin = checkIfAdmin(userCredential.user.email)
 
-            if (!isAdmin) {
+            // Check if user is admin
+            const adminStatus = await checkAdminStatus(userCredential.user)
+
+            if (!adminStatus) {
                 await firebaseSignOut(auth)
                 setError("You don't have admin privileges")
                 setLoading(false)
-                return
+                return { success: false, message: "You don't have admin privileges" }
             }
 
-            // User will be set by the onAuthStateChanged listener
-        } catch (err: any) {
-            setError(err.message || "Failed to login")
+            // Get ID token
+            const idToken = await userCredential.user.getIdToken()
+
+            // Create session on server
+            const response = await fetch("/api/auth/session", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ idToken }),
+                credentials: "include",
+            })
+
+            if (!response.ok) {
+                throw new Error("Failed to create session")
+            }
+
             setLoading(false)
+            return { success: true }
+        } catch (err: any) {
+            const errorMessage = err.message || "Failed to login"
+            setError(errorMessage)
+            setLoading(false)
+            return { success: false, message: errorMessage }
         }
     }
 
@@ -137,5 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    return <AuthContext.Provider value={{ user, loading, error, login, logout }}>{children}</AuthContext.Provider>
+    return (
+        <AuthContext.Provider value={{ user, loading, error, login, logout, isAdmin }}>{children}</AuthContext.Provider>
+    )
 }

@@ -12,18 +12,18 @@ export default function ProtectedRoute({
     children: ReactNode
     adminOnly?: boolean
 }) {
-    const { user, loading } = useAuth()
+    const { user, loading, isAdmin } = useAuth()
     const router = useRouter()
 
     useEffect(() => {
         if (!loading) {
             if (!user) {
                 router.push("/login")
-            } else if (adminOnly && !user.isAdmin) {
+            } else if (adminOnly && !isAdmin) {
                 router.push("/unauthorized")
             }
         }
-    }, [user, loading, router, adminOnly])
+    }, [user, loading, router, adminOnly, isAdmin])
 
     if (loading) {
         return (
@@ -38,7 +38,7 @@ export default function ProtectedRoute({
         return null
     }
 
-    if (adminOnly && !user.isAdmin) {
+    if (adminOnly && !isAdmin) {
         return null
     }
 
