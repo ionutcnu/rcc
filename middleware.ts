@@ -39,6 +39,15 @@ async function isUserAdmin(uid: string): Promise<boolean> {
 }
 
 export async function middleware(request: NextRequest) {
+    // Add this check at the beginning of the middleware function to detect redirect loops
+    if (request.nextUrl.pathname === "/login" && request.nextUrl.searchParams.has("redirect")) {
+        const redirectCount = Number.parseInt(request.nextUrl.searchParams.get("redirectCount") || "0")
+        if (redirectCount > 2) {
+            console.error("Detected redirect loop! Allowing access to prevent infinite loop.")
+            return NextResponse.redirect(new URL("/admin", request.url))
+        }
+    }
+
     // Only run this middleware for admin routes
     if (request.nextUrl.pathname.startsWith("/admin")) {
         console.log("Admin route accessed:", request.nextUrl.pathname)
@@ -65,6 +74,9 @@ export async function middleware(request: NextRequest) {
             const loginUrl = new URL("/login", baseUrl)
             loginUrl.searchParams.set("redirect", request.nextUrl.pathname)
             loginUrl.searchParams.set("message", "Please sign in to access the admin area")
+            // Also modify the login redirect to include a redirectCount parameter
+            // When creating the loginUrl, add:
+            loginUrl.searchParams.set("redirectCount", (redirectCount + 1).toString())
             console.log("Redirecting to login URL:", loginUrl.toString())
             return NextResponse.redirect(loginUrl)
         }

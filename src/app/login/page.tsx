@@ -47,6 +47,16 @@ export default function LoginPage() {
             if (user) {
                 console.log("User already logged in:", user.email)
 
+                // Check if we're in a potential redirect loop
+                const searchParams = new URLSearchParams(window.location.search)
+                const redirectCount = Number.parseInt(searchParams.get("redirectCount") || "0")
+
+                if (redirectCount > 2) {
+                    console.log("Detected potential redirect loop, forcing navigation to admin")
+                    window.location.href = "/admin"
+                    return
+                }
+
                 // Check if session is valid
                 try {
                     const response = await fetch("/api/auth/check-session", {
