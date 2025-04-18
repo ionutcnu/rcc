@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState, Suspense } from "react"
+import { useState, Suspense, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { signInWithEmailAndPassword } from "firebase/auth"
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/lib/firebase/firebaseConfig"
 import Image from "next/image"
 import Link from "next/link"
 import ParticlesLogin from "@/components/elements/ParticlesLogin"
-import { Eye, EyeOff, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react"
 
 // Create a separate component that uses useSearchParams
 function LoginParams() {
@@ -38,7 +38,56 @@ export default function LoginPage() {
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
     const [passwordVisible, setPasswordVisible] = useState(false)
+    const [checkingAuth, setCheckingAuth] = useState(true)
     const router = useRouter()
+
+    // Check if user is already logged in
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                console.log("User already logged in:", user.email)
+
+                // Check if session is valid
+                try {
+                    const response = await fetch("/api/auth/check-session", {
+                        method: "GET",
+                        credentials: "include",
+                    })
+
+                    const data = await response.json()
+
+                    if (data.authenticated) {
+                        console.log("Session is valid, checking admin status")
+
+                        // Check if user is admin
+                        const adminResponse = await fetch("/api/auth/check-admin", {
+                            method: "GET",
+                            credentials: "include",
+                        })
+
+                        const adminData = await adminResponse.json()
+
+                        if (adminData.isAdmin) {
+                            console.log("User is admin, redirecting to admin page")
+                            // Get the redirect URL from the hidden input
+                            const redirectInput = document.getElementById("redirect-input") as HTMLInputElement
+                            const redirectUrl = redirectInput ? redirectInput.value : "/admin"
+
+                            // Redirect to admin page
+                            window.location.href = redirectUrl
+                            return
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error checking session:", error)
+                }
+            }
+
+            setCheckingAuth(false)
+        })
+
+        return () => unsubscribe()
+    }, [])
 
     // Handle login form submission
     const handleLogin = async (e: React.FormEvent) => {
@@ -73,12 +122,20 @@ export default function LoginPage() {
                 const redirectInput = document.getElementById("redirect-input") as HTMLInputElement
                 const redirectUrl = redirectInput ? redirectInput.value : "/admin"
 
+                console.log("Login successful, redirecting to:", redirectUrl)
+
                 // Check if user is admin before redirecting to admin area
                 if (redirectUrl.startsWith("/admin") && data.isAdmin === false) {
-                    router.push("/unauthorized")
+                    console.log("User is not admin, redirecting to unauthorized page")
+                    window.location.href = "/unauthorized"
                 } else {
-                    // Force a full page reload to ensure cookies are properly set
-                    window.location.href = redirectUrl
+                    // Force a full page reload with absolute URL to ensure cookies are properly set
+                    // This is critical for production environments where relative URLs might not work correctly
+                    const baseUrl = window.location.origin
+                    const absoluteRedirectUrl = redirectUrl.startsWith("/") ? `${baseUrl}${redirectUrl}` : redirectUrl
+
+                    console.log("Redirecting to absolute URL:", absoluteRedirectUrl)
+                    window.location.href = absoluteRedirectUrl
                 }
             } else {
                 setError(data.error || "Failed to create session")
@@ -89,6 +146,17 @@ export default function LoginPage() {
             setError(err.message || "Failed to login")
             setLoading(false)
         }
+    }
+
+    if (checkingAuth) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-100">
+                <div className="flex flex-col items-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#5C6AC4]" />
+                    <p className="mt-4 text-gray-600">Checking authentication status...</p>
+                </div>
+            </div>
+        )
     }
 
     return (

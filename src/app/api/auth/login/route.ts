@@ -7,7 +7,6 @@ if (!getApps().length) {
     const serviceAccount = {
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        // Fix the private key formatting
         privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     }
 
@@ -37,13 +36,15 @@ export async function POST(request: Request) {
         const customClaims = userRecord.customClaims || {}
         const isAdmin = customClaims?.admin === true
 
-        // Create response with the cookie
+        // Create response with the cookie and include redirect information
         const response = NextResponse.json({
             success: true,
             isAdmin: isAdmin,
+            redirectUrl: isAdmin ? "/admin" : "/",
         })
 
-        // Set cookie on the response object
+        // Set cookie on the response object with explicit path
+        // In Next.js 15, use the set method with an options object
         response.cookies.set({
             name: "session",
             value: sessionCookie,
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
             sameSite: "lax",
         })
 
-        console.log(`User ${uid} login successful, admin: ${isAdmin}`)
+        console.log(`User ${uid} login successful, admin: ${isAdmin}, cookie set with path: /`)
 
         return response
     } catch (error: any) {

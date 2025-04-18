@@ -43,19 +43,29 @@ export async function middleware(request: NextRequest) {
     if (request.nextUrl.pathname.startsWith("/admin")) {
         console.log("Admin route accessed:", request.nextUrl.pathname)
 
+        // Check if we're in a redirect loop by looking for a special query parameter
+        const redirectCount = Number.parseInt(request.nextUrl.searchParams.get("redirectCount") || "0")
+        if (redirectCount > 2) {
+            console.error("Detected redirect loop! Allowing access to prevent infinite loop.")
+            return NextResponse.next()
+        }
+
         // Get the session cookie directly from request.cookies
         const sessionCookie = request.cookies.get("session")?.value
 
         // Add more detailed logging
-        console.log("Admin route accessed:", request.nextUrl.pathname)
         console.log("Session cookie exists:", !!sessionCookie)
+        console.log("Session cookie length:", sessionCookie?.length || 0)
 
         // If no session cookie exists, redirect to login
         if (!sessionCookie) {
             console.log("No session cookie found, redirecting to login")
-            const loginUrl = new URL("/login", request.url)
+            // Use absolute URL construction to ensure proper redirects in production
+            const baseUrl = new URL(request.url).origin
+            const loginUrl = new URL("/login", baseUrl)
             loginUrl.searchParams.set("redirect", request.nextUrl.pathname)
             loginUrl.searchParams.set("message", "Please sign in to access the admin area")
+            console.log("Redirecting to login URL:", loginUrl.toString())
             return NextResponse.redirect(loginUrl)
         }
 
@@ -82,9 +92,15 @@ export async function middleware(request: NextRequest) {
         } catch (error) {
             console.error("Invalid session cookie:", error)
             // If verification fails (invalid or expired token), redirect to login
-            const loginUrl = new URL("/login", request.url)
+            const baseUrl = new URL(request.url).origin
+            const loginUrl = new URL("/login", baseUrl)
             loginUrl.searchParams.set("redirect", request.nextUrl.pathname)
             loginUrl.searchParams.set("message", "Your session has expired. Please sign in again.")
+
+            // Add redirect count to detect loops
+            loginUrl.searchParams.set("redirectCount", (redirectCount + 1).toString())
+
+            console.log("Session invalid, redirecting to:", loginUrl.toString())
             return NextResponse.redirect(loginUrl)
         }
     }

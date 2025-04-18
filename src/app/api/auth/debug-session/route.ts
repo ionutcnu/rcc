@@ -23,11 +23,12 @@ export async function GET() {
         const allCookies = cookieStore.getAll()
         const sessionCookie = cookieStore.get("session")?.value
 
-        // Basic cookie info
+        // Basic cookie info - only include name and value which are guaranteed to exist
         const cookieInfo = {
             allCookies: allCookies.map((c) => ({
                 name: c.name,
                 value: c.name === "session" ? "***" : c.value.substring(0, 5) + "...",
+                // Remove all properties that don't exist on RequestCookie in Next.js 15
             })),
             hasSessionCookie: !!sessionCookie,
             sessionCookieLength: sessionCookie ? sessionCookie.length : 0,
@@ -47,11 +48,13 @@ export async function GET() {
                     email: userRecord.email,
                     isAdmin: userRecord.customClaims?.admin === true,
                     expiresAt: new Date(decodedClaims.exp * 1000).toISOString(),
+                    claims: decodedClaims,
                 }
             } catch (error: any) {
                 sessionInfo = {
                     valid: false,
                     error: error.message,
+                    errorCode: error.code,
                 }
             }
         }
