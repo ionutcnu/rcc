@@ -12,7 +12,7 @@ import ParticlesLogin from "@/components/elements/ParticlesLogin"
 import { Eye, EyeOff, AlertCircle } from "lucide-react"
 
 // Create a separate component that uses useSearchParams
-function LoginRedirect() {
+function LoginParams() {
     // Import useSearchParams inside the component that's wrapped with Suspense
     const { useSearchParams } = require("next/navigation")
     const searchParams = useSearchParams()
@@ -21,7 +21,7 @@ function LoginRedirect() {
 
     return (
         <>
-            <input type="hidden" name="redirect" value={redirect} />
+            <input type="hidden" id="redirect-input" name="redirect" value={redirect} />
             {message && (
                 <div className="bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded mb-4 text-sm flex items-center">
                     <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
@@ -70,7 +70,7 @@ export default function LoginPage() {
 
             if (data.success) {
                 // Get the redirect URL from the hidden input
-                const redirectInput = document.querySelector('input[name="redirect"]') as HTMLInputElement
+                const redirectInput = document.getElementById("redirect-input") as HTMLInputElement
                 const redirectUrl = redirectInput ? redirectInput.value : "/admin"
 
                 // Check if user is admin before redirecting to admin area
@@ -111,7 +111,7 @@ export default function LoginPage() {
 
                 {/* Wrap useSearchParams in Suspense */}
                 <Suspense fallback={null}>
-                    <LoginRedirect />
+                    <LoginParams />
                 </Suspense>
 
                 <form onSubmit={handleLogin} className="space-y-6">
