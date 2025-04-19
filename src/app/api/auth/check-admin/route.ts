@@ -22,11 +22,15 @@ export async function GET() {
 
             return NextResponse.json({ isAdmin: adminStatus })
         } catch (error) {
-            console.error("Error verifying session:", error)
+            if (process.env.NODE_ENV !== "production") {
+                console.error("Session verification error")
+            }
             return NextResponse.json({ isAdmin: false })
         }
     } catch (error) {
-        console.error("Error checking admin status:", error)
+        if (process.env.NODE_ENV !== "production") {
+            console.error("Permission check error")
+        }
         return NextResponse.json({ isAdmin: false })
     }
 }

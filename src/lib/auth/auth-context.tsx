@@ -9,6 +9,7 @@ import {
 } from "firebase/auth"
 import { auth } from "@/lib/firebase/firebaseConfig"
 import { useRouter } from "next/navigation"
+import { safeErrorLog, sanitizeError } from "@/lib/utils/security"
 
 // Define types
 export type AuthUser = {
@@ -66,7 +67,7 @@ async function checkAdminStatus(user: FirebaseUser): Promise<boolean> {
         const data = await response.json()
         return data.isAdmin === true
     } catch (error) {
-        console.error("Error checking admin status:", error)
+        safeErrorLog("Admin status check failed", error)
         return false
     }
 }
@@ -97,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         isAdmin: adminStatus,
                     })
                 } catch (err) {
-                    console.error("Error setting up user:", err)
+                    safeErrorLog("User setup error", err)
                     setUser(null)
                     setIsAdmin(false)
                 }
@@ -140,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}))
-                console.error("Session creation failed:", response.status, errorData)
+                safeErrorLog("Session creation failed", { status: response.status })
                 throw new Error(errorData.error || "Failed to create session")
             }
 
@@ -149,9 +150,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (!adminStatus) {
                 await firebaseSignOut(auth)
-                setError("You don't have admin privileges")
+                setError("You don't have permission to access the admin area")
                 setLoading(false)
-                return { success: false, message: "You don't have admin privileges" }
+                return { success: false, message: "You don't have permission to access the admin area" }
             }
 
             setIsAdmin(adminStatus)
@@ -164,11 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false)
             return { success: true }
         } catch (err: any) {
-            const errorMessage = err.message || "Failed to login"
-            console.error("Login error:", err)
-            setError(errorMessage)
+            const sanitizedError = sanitizeError(err)
+            safeErrorLog("Authentication error", err)
+            setError(sanitizedError.message)
             setLoading(false)
-            return { success: false, message: errorMessage }
+            return { success: false, message: sanitizedError.message }
         }
     }
 
@@ -190,7 +191,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             router.push("/login")
         } catch (err: any) {
-            setError(err.message || "Failed to logout")
+            safeErrorLog("Logout error", err)
+            setError("Failed to log out. Please try again.")
         } finally {
             setLoading(false)
         }

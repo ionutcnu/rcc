@@ -9,6 +9,9 @@ import Image from "next/image"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth/auth-context"
 
+// Import the logger at the top of the file
+import { safeErrorLog } from "@/lib/utils/logger"
+
 export default function LoginPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -35,8 +38,8 @@ export default function LoginPage() {
                 setError(result.message || "Failed to login")
             }
         } catch (err: any) {
-            console.error("Login error:", err)
-            setError(err.message || "An unexpected error occurred")
+            safeErrorLog("Login process error", err)
+            setError("An unexpected error occurred. Please try again later.")
         } finally {
             setIsSubmitting(false)
         }

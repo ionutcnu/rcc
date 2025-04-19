@@ -16,6 +16,10 @@ export default function AdminProtected({ children }: { children: React.ReactNode
             if (!user) {
                 // No user is signed in, redirect to login
                 router.push("/login?redirect=/admin")
+                // Add environment check for any console logs
+                if (process.env.NODE_ENV !== "production") {
+                    console.error("Authentication verification failed")
+                }
                 return
             }
 

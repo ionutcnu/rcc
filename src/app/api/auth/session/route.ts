@@ -41,11 +41,15 @@ export async function POST(request: Request) {
             sameSite: "lax",
         })
 
-        console.log(`Session created for user ${uid}, admin: ${isAdmin}, cookie set with path: /`)
+        if (process.env.NODE_ENV !== "production") {
+            console.log(`User session created successfully`)
+        }
 
         return response
     } catch (error: any) {
-        console.error("Session creation error:", error.message)
+        if (process.env.NODE_ENV !== "production") {
+            console.error("Session creation error occurred")
+        }
         return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
     }
 }

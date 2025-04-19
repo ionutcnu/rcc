@@ -30,7 +30,9 @@ export async function middleware(request: NextRequest) {
             // If verification succeeds and user is admin, allow access
             return NextResponse.next()
         } catch (error) {
-            console.error("Session verification failed:", error)
+            if (process.env.NODE_ENV !== "production") {
+                console.error("Access verification failed")
+            }
             // If verification fails, redirect to login
             const url = new URL("/login", request.url)
             url.searchParams.set("redirect", request.nextUrl.pathname)

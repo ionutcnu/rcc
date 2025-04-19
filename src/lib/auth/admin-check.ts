@@ -41,7 +41,9 @@ export async function isUserAdmin(uid: string): Promise<boolean> {
         // If none of the above checks pass, the user is not an admin
         return false
     } catch (error) {
-        console.error("Error checking admin status:", error)
+        if (process.env.NODE_ENV !== "production") {
+            console.error("Permission verification error")
+        }
         return false
     }
 }
@@ -56,7 +58,9 @@ export async function setUserAdminStatus(uid: string, isAdmin: boolean): Promise
         await admin.auth.setCustomUserClaims(uid, { admin: isAdmin })
         console.log(`Set admin=${isAdmin} for user ${uid}`)
     } catch (error) {
-        console.error("Error setting admin status:", error)
+        if (process.env.NODE_ENV !== "production") {
+            console.error("Permission update error")
+        }
         throw error
     }
 }

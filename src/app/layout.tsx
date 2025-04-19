@@ -1,26 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Patrick_Hand } from "next/font/google"
-import "./styles/globals.css"
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import SeoHead from "@/components/seo/seo-head"
-import { Suspense } from "react"
-import { Providers } from "./providers"
-
-// Configure main fonts
-const inter = Inter({
-    subsets: ["latin"],
-    variable: "--font-inter",
-    display: "swap",
-})
-
-const patrickHand = Patrick_Hand({
-    weight: "400",
-    subsets: ["latin"],
-    variable: "--font-patrick",
-    display: "swap",
-})
+import ClientLayout from "./ClientLayout"
 
 export const metadata: Metadata = {
     title: "Meet Our Gorgeous Red Cats | Family Tree & Videos Included",
@@ -56,19 +36,5 @@ export default function RootLayout({
                                    }: Readonly<{
     children: React.ReactNode
 }>) {
-    return (
-        <html lang="en" className={`${inter.variable} ${patrickHand.variable}`}>
-        <head>
-            <link rel="icon" href="/favicon.ico" />
-            <SeoHead />
-        </head>
-        <body className="font-patrick">
-        <Suspense>
-            <Providers>{children}</Providers>
-        </Suspense>
-        <Analytics />
-        <SpeedInsights />
-        </body>
-        </html>
-    )
+    return <ClientLayout>{children}</ClientLayout>
 }

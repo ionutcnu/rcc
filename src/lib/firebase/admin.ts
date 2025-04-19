@@ -29,8 +29,13 @@ function initAdmin() {
                 credential: cert(serviceAccount as any),
             })
 
-            console.log("Firebase Admin initialized successfully")
+            if (process.env.NODE_ENV !== "production") {
+                console.log("Admin services initialized successfully")
+            }
         } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+                console.error("Admin services initialization error")
+            }
             console.error("Firebase Admin initialization error:", error)
             throw new Error("Failed to initialize Firebase Admin")
         }

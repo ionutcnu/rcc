@@ -17,7 +17,9 @@ export async function POST() {
                 await admin.auth.revokeRefreshTokens(decodedClaims.sub)
             } catch (error) {
                 // If verification fails, just continue to delete the cookie
-                console.error("Error verifying session during logout:", error)
+                if (process.env.NODE_ENV !== "production") {
+                    console.error("Session verification error during logout")
+                }
             }
         }
 
@@ -34,7 +36,9 @@ export async function POST() {
 
         return response
     } catch (error) {
-        console.error("Logout error:", error)
+        if (process.env.NODE_ENV !== "production") {
+            console.error("Logout process error")
+        }
         return NextResponse.json({ success: false, error: "Failed to logout" }, { status: 500 })
     }
 }

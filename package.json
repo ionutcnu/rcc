@@ -5,10 +5,17 @@
   "scripts": {
     "dev": "bun run next dev",
     "build": "bun run next build",
+    "build:production": "NEXT_PUBLIC_NODE_ENV=production bun run next build",
+    "build:secure": "bun run build:production && bun run obfuscate",
+    "obfuscate": "bun run javascript-obfuscator ./out --output ./out --compact true --self-defending true --disable-console-output true --string-array true --string-array-encoding 'rc4'",
     "clean": "bun run rimraf .next",
     "start": "bun run next start",
     "lint": "bun run next lint",
-    "lint:css": "stylelint \"**/*.css\""
+    "lint:css": "stylelint \"**/*.css\"",
+    "security:audit": "bun run npm audit --production",
+    "security:scan": "bun run next-secure-headers check",
+    "analyze": "ANALYZE=true bun run build",
+    "prepare:deploy": "bun run clean && bun run build:secure && bun run security:audit"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.6.0",

@@ -20,4 +20,14 @@ const auth = getAuth(app)
 const db = getFirestore(app)
 const storage = getStorage(app)
 
-export { app, auth, db, storage }
+// Add error handling for Firebase operations
+const handleFirebaseError = (error: any) => {
+    // In production, don't expose the error details
+    if (process.env.NODE_ENV !== "production") {
+        console.error("Firebase operation error:", error)
+    }
+    // You could send to an error reporting service here
+}
+
+// Export the initialized services
+export { app, auth, db, storage, handleFirebaseError }

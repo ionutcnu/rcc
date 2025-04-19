@@ -2,14 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Cat, ImageIcon, Settings, Menu, ExternalLink } from "lucide-react"
+import { Home, Cat, ImageIcon, Settings, Menu, ExternalLink, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import LogoutButton from "@/components/admin/logout-button"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export function AdminSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
+  const { user } = useAuth()
 
   const navItems = [
     {
@@ -27,10 +30,21 @@ export function AdminSidebar() {
       href: "/admin/media",
       icon: ImageIcon,
     },
+
     {
       title: "Settings",
       href: "/admin/settings",
       icon: Settings,
+    },
+    {
+      title: "Users",
+      href: "/admin/users",
+      icon: Users,
+    },
+    {
+        title: "Debug",
+      href: "/admin/debug",
+      icon: Users,
     },
   ]
 
@@ -92,11 +106,28 @@ export function AdminSidebar() {
           </Link>
         </div>
 
-        <div className="p-4 border-t text-sm text-gray-500">
-          {!isCollapsed && (
-              <div>
-                <p>Cat Showcase Admin</p>
-                <p>v1.0</p>
+        <div className="p-4 border-t">
+          {!isCollapsed ? (
+              <div className="space-y-4">
+                <div className="text-sm text-gray-500">
+                  <p>Logged in as:</p>
+                  <p className="font-medium truncate">{user?.email}</p>
+                </div>
+                <LogoutButton />
+              </div>
+          ) : (
+              <div className="flex justify-center">
+                <Button
+                    variant="destructive"
+                    size="icon"
+                    className="bg-red-500 hover:bg-red-600"
+                    onClick={() => {
+                      const logoutBtn = document.querySelector('button[type="button"]') as HTMLButtonElement
+                      if (logoutBtn) logoutBtn.click()
+                    }}
+                >
+                  <ExternalLink size={16} className="rotate-180" />
+                </Button>
               </div>
           )}
         </div>
