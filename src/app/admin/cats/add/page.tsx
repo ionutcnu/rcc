@@ -190,9 +190,25 @@ export default function CatEntryForm() {
             const mimeType = base64String.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)![1]
             const fileExt = mimeType.split("/")[1]
 
-            // Convert base64 to file
-            const fetchResponse = await fetch(base64String)
-            const blob = await fetchResponse.blob()
+            // Convert base64 to blob directly without using fetch
+            // This avoids the "Failed to fetch" error
+            const base64Data = base64String.split(",")[1]
+            const byteCharacters = atob(base64Data)
+            const byteArrays = []
+
+            for (let i = 0; i < byteCharacters.length; i += 512) {
+                const slice = byteCharacters.slice(i, i + 512)
+                const byteNumbers = new Array(slice.length)
+
+                for (let j = 0; j < slice.length; j++) {
+                    byteNumbers[j] = slice.charCodeAt(j)
+                }
+
+                const byteArray = new Uint8Array(byteNumbers)
+                byteArrays.push(byteArray)
+            }
+
+            const blob = new Blob(byteArrays, { type: mimeType })
             const file = new File([blob], `image-${Date.now()}.${fileExt}`, { type: mimeType })
 
             // Upload to Firebase Storage

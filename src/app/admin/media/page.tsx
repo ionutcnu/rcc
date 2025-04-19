@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Upload, Film, Trash2, Search, Loader2, AlertCircle, Download, Filter, X } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Upload, Film, Trash2, Search, Loader2, AlertCircle, Download, Filter, X, AlertTriangle } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -15,6 +15,13 @@ import { Pagination } from "@/components/ui/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { format } from "date-fns"
+
+// Add these imports and state variables at the appropriate places
+import { mediaLogger } from "@/lib/utils/media-logger"
+import { auth } from "@/lib/firebase/firebaseConfig"
+import { getCurrentUserInfo } from "@/lib/utils/user-info"
+
+// Add this state for bulk operations confirmation
 
 // Helper function to format date
 function formatDate(date: Date | undefined | null): string {
@@ -54,6 +61,17 @@ export default function MediaManagerPage() {
     const [sizeFilter, setSizeFilter] = useState<string>("all")
     const [showFilters, setShowFilters] = useState(false)
 
+    // State to hold items that need review before cleanup
+    const [itemsToReview, setItemsToReview] = useState<MediaItem[]>([])
+
+    // Add this state for bulk operations confirmation
+    const [bulkActionDialogOpen, setBulkActionDialogOpen] = useState(false)
+    const [bulkAction, setBulkAction] = useState<{ type: string; items: MediaItem[] } | null>(null)
+
+    // Add this state at the top with other state variables
+    const [showIssuesPanel, setShowIssuesPanel] = useState(false)
+    const [potentialIssues, setPotentialIssues] = useState<MediaItem[]>([])
+
     // Fetch media on component mount
     const fetchMedia = async () => {
         try {
@@ -69,43 +87,72 @@ export default function MediaManagerPage() {
             // Clean up any media items that return 404 errors
             const mediaToCleanup: MediaItem[] = []
 
-            for (const item of validMedia) {
-                try {
-                    // Test if the URL is accessible
-                    const response = await fetch(item.url, { method: "HEAD" })
-                    if (response.status === 404) {
-                        console.log(`Found 404 for media item: ${item.name} (${item.id})`)
-                        mediaToCleanup.push(item)
-                    }
-                } catch (error) {
-                    console.error(`Error checking media URL ${item.url}:`, error)
-                    // Add to cleanup if there's an error accessing the URL
-                    mediaToCleanup.push(item)
-                }
+            // DISABLED AUTOMATIC CLEANUP - Only log potential issues
+            console.log("Media validation check running - cleanup disabled")
+
+            // Create a list of potentially problematic items but don't take action
+            const potentialIssues: MediaItem[] = []
+
+            // Use Promise.allSettled to prevent one failure from stopping the whole process
+            const checkPromises = validMedia.map(
+                (item) =>
+                    new Promise<void>(async (resolve) => {
+                        try {
+                            // Skip placeholder images and empty URLs
+                            if (!item.url || item.url.includes("placeholder")) {
+                                resolve()
+                                return
+                            }
+
+                            // Use a timeout to prevent hanging
+                            const controller = new AbortController()
+                            const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+                            try {
+                                const response = await fetch(item.url, {
+                                    method: "HEAD",
+                                    signal: controller.signal,
+                                })
+
+                                clearTimeout(timeoutId)
+
+                                if (response.status === 404) {
+                                    console.log(`Found 404 for media item: ${item.name} (${item.id}) - manual review required`)
+                                    potentialIssues.push(item)
+                                }
+                            } catch (error) {
+                                clearTimeout(timeoutId)
+                                console.error(`Error checking media URL ${item.url}:`, error)
+                                // Don't add to cleanup anymore
+                            }
+                        } catch (e) {
+                            console.error("Error in media validation:", e)
+                        } finally {
+                            resolve() // Always resolve to continue with other items
+                        }
+                    }),
+            )
+
+            // Wait for all checks to complete
+            await Promise.allSettled(checkPromises)
+
+            // If issues found, show a notification but DON'T take action
+            if (potentialIssues.length > 0) {
+                console.log(`Found ${potentialIssues.length} potential issues that need manual review`)
+                // Just show a notification, don't set items for review/cleanup
+                showPopup(`Found ${potentialIssues.length} items that may need review. No action taken.`)
             }
 
-            // Clean up any 404 media items from Firestore
-            if (mediaToCleanup.length > 0) {
-                console.log(`Cleaning up ${mediaToCleanup.length} missing media items`)
-                for (const item of mediaToCleanup) {
-                    try {
-                        await deleteMedia(item)
-                        console.log(`Cleaned up missing media: ${item.name} (${item.id})`)
-                    } catch (cleanupError) {
-                        console.error(`Failed to clean up media item ${item.id}:`, cleanupError)
-                    }
-                }
+            // Remove the automatic cleanup code entirely
+            // if (mediaToCleanup.length > 0) {
+            //   const confirmCleanup = window.confirm(...);
+            //   if (confirmCleanup) {
+            //     setItemsToReview(mediaToCleanup);
+            //     ...
+            //   }
+            // }
 
-                // Filter out the cleaned up items from our list
-                const filteredMedia = validMedia.filter(
-                    (item) => !mediaToCleanup.some((cleanupItem) => cleanupItem.id === item.id),
-                )
-
-                setMediaItems(filteredMedia)
-                showPopup(`Cleaned up ${mediaToCleanup.length} missing media files`)
-            } else {
-                setMediaItems(validMedia)
-            }
+            setMediaItems(validMedia)
 
             // Apply initial filtering based on activeFilter
             applyFilters(
@@ -205,7 +252,7 @@ export default function MediaManagerPage() {
         }
 
         setFilteredItems(result)
-        setTotalPages(Math.ceil(result.length / itemsPerPage) || 1) // Ensure at least 1 page
+        setTotalPages(Math.ceil(result.length / itemsPerPage))
 
         // Update paginated items
         const startIndex = (currentPage - 1) * itemsPerPage
@@ -231,11 +278,23 @@ export default function MediaManagerPage() {
         setDeleteDialogOpen(true)
     }
 
+    // Add this function to handle bulk operations
+    const handleBulkAction = (type: string, items: MediaItem[]) => {
+        setBulkAction({ type, items })
+        setBulkActionDialogOpen(true)
+    }
+
     // Function to handle actual deletion after confirmation
     const handleDeleteConfirm = async () => {
         if (!mediaToDelete) return
 
         try {
+            // Get user info for logging
+            const { userId, userEmail } = getCurrentUserInfo()
+
+            // Log the deletion attempt with user email
+            mediaLogger.mediaDelete(mediaToDelete.id, mediaToDelete.path || mediaToDelete.url, userId)
+
             const success = await deleteMedia(mediaToDelete)
             if (success) {
                 // Remove the deleted item from the state
@@ -250,6 +309,47 @@ export default function MediaManagerPage() {
         } finally {
             setDeleteDialogOpen(false)
             setMediaToDelete(null)
+        }
+    }
+
+    // Add this function to confirm bulk operations
+    const confirmBulkAction = async () => {
+        if (!bulkAction) return
+
+        const { type, items } = bulkAction
+        const userId = auth.currentUser?.uid || "unknown"
+
+        try {
+            // Log the bulk operation
+            mediaLogger.mediaBulkOperation(
+                type,
+                items.length,
+                {
+                    itemIds: items.map((item) => item.id),
+                    itemTypes: items.map((item) => item.type),
+                },
+                userId,
+            )
+
+            // Perform the bulk operation
+            if (type === "delete") {
+                // Delete each item
+                for (const item of items) {
+                    await deleteMedia(item)
+                }
+
+                // Update the UI
+                setMediaItems(mediaItems.filter((item) => !items.includes(item)))
+                showPopup(`Successfully deleted ${items.length} items`)
+            }
+            // Add other bulk operations as needed
+        } catch (error) {
+            console.error(`Error performing bulk ${type}:`, error)
+            mediaLogger.error(`Bulk ${type} operation failed`, error, userId)
+            showPopup(`Error performing bulk ${type}`)
+        } finally {
+            setBulkActionDialogOpen(false)
+            setBulkAction(null)
         }
     }
 
@@ -319,10 +419,78 @@ export default function MediaManagerPage() {
         setActiveFilter("all")
         setSortOption("dateDesc")
         setSizeFilter("all")
-        setItemsPerPage(12)
         setCurrentPage(1)
-        // Force re-filtering with the reset values
-        applyFilters(mediaItems, "all", "", "dateDesc", "all")
+    }
+
+    // Add this function to handle manual validation
+    const handleManualValidation = async () => {
+        try {
+            setLoading(true)
+            showPopup("Starting media validation check...")
+
+            const issues: MediaItem[] = []
+
+            // Use Promise.allSettled to prevent one failure from stopping the whole process
+            const checkPromises = mediaItems.map(
+                (item) =>
+                    new Promise<void>(async (resolve) => {
+                        try {
+                            // Skip placeholder images and empty URLs
+                            if (!item.url || item.url.includes("placeholder")) {
+                                resolve()
+                                return
+                            }
+
+                            // Use a timeout to prevent hanging
+                            const controller = new AbortController()
+                            const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+                            try {
+                                const response = await fetch(item.url, {
+                                    method: "HEAD",
+                                    signal: controller.signal,
+                                })
+
+                                clearTimeout(timeoutId)
+
+                                if (response.status === 404) {
+                                    console.log(`Found 404 for media item: ${item.name} (${item.id})`)
+                                    issues.push(item)
+                                }
+                            } catch (error) {
+                                clearTimeout(timeoutId)
+                                console.error(`Error checking media URL ${item.url}:`, error)
+                                // Only add to issues if it's a network error, not a timeout
+                                if (error instanceof TypeError && !error.message.includes("aborted")) {
+                                    issues.push(item)
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Error in media validation:", e)
+                        } finally {
+                            resolve() // Always resolve to continue with other items
+                        }
+                    }),
+            )
+
+            // Wait for all checks to complete
+            await Promise.allSettled(checkPromises)
+
+            // Update state with found issues
+            setPotentialIssues(issues)
+
+            if (issues.length > 0) {
+                showPopup(`Found ${issues.length} items that may need review.`)
+                setShowIssuesPanel(true)
+            } else {
+                showPopup("No media issues found.")
+            }
+        } catch (error) {
+            console.error("Error during manual validation:", error)
+            showPopup("Error during media validation.")
+        } finally {
+            setLoading(false)
+        }
     }
 
     if (loading) {
@@ -350,21 +518,29 @@ export default function MediaManagerPage() {
 
     return (
         <div className="space-y-6">
+            {/* Add this button to the UI near the top of the component return */}
+            {/* Find the section with the Upload Media button and add this: */}
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">Media Manager</h1>
-                <Button onClick={handleUpload} disabled={isUploading}>
-                    {isUploading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                        </>
-                    ) : (
-                        <>
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload Media
-                        </>
-                    )}
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleManualValidation} disabled={loading || isUploading}>
+                        <Search className="mr-2 h-4 w-4" />
+                        Validate Media
+                    </Button>
+                    <Button onClick={handleUpload} disabled={isUploading}>
+                        {isUploading ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Uploading...
+                            </>
+                        ) : (
+                            <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload Media
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             <Card>
@@ -552,17 +728,15 @@ export default function MediaManagerPage() {
                                             ;(e.target as HTMLImageElement).src = "/placeholder.svg?height=200&width=300"
                                             console.error(`Failed to load image: ${item.url}`)
 
-                                            // Automatically clean up this item if it's a 404
-                                            if (item.id) {
-                                                deleteMedia(item)
-                                                    .then(() => {
-                                                        setMediaItems((prev) => prev.filter((media) => media.id !== item.id))
-                                                        showPopup(`Removed missing media: ${item.name}`)
-                                                    })
-                                                    .catch((err) => {
-                                                        console.error(`Failed to auto-clean media item ${item.id}:`, err)
-                                                    })
-                                            }
+                                            // Log the issue but DO NOT automatically delete
+                                            mediaLogger.warn(`Failed to load media image: ${item.name}`, {
+                                                id: item.id,
+                                                url: item.url,
+                                                path: item.path,
+                                            })
+
+                                            // Add a visual indicator that this item might have issues
+                                            e.currentTarget.parentElement?.classList.add("border-red-300", "border-2")
                                         }}
                                     />
                                 ) : (
@@ -601,6 +775,71 @@ export default function MediaManagerPage() {
                 </div>
             )}
 
+            {/* Add this panel to show issues - add it before the pagination component */}
+            {showIssuesPanel && potentialIssues.length > 0 && (
+                <Card className="mb-6">
+                    <CardHeader>
+                        <CardTitle className="flex items-center text-amber-600">
+                            <AlertTriangle className="mr-2 h-5 w-5" />
+                            Media Issues Found ({potentialIssues.length})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="mb-4">The following media items may have issues. Please review before taking action.</p>
+
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {potentialIssues.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between p-2 border rounded">
+                                    <div className="flex items-center">
+                                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden mr-3">
+                                            {item.type === "image" ? (
+                                                <img
+                                                    src="/placeholder.svg?height=48&width=48"
+                                                    alt={item.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <Film className="h-6 w-6 text-gray-400" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-sm truncate max-w-[200px]">{item.name}</p>
+                                            <p className="text-xs text-gray-500 truncate max-w-[200px]">{item.path || item.url}</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => {
+                                            // Set up for deletion confirmation
+                                            setMediaToDelete(item)
+                                            setDeleteDialogOpen(true)
+                                        }}
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-1" />
+                                        Delete
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 flex justify-end">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowIssuesPanel(false)
+                                    setPotentialIssues([])
+                                }}
+                            >
+                                Close
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Pagination */}
             {filteredItems.length > 0 && (
                 <Pagination
@@ -618,6 +857,18 @@ export default function MediaManagerPage() {
                 message={`Are you sure you want to delete ${mediaToDelete?.name || "this media"}? This action cannot be undone.`}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleCancelDelete}
+            />
+
+            {/* Bulk Action Confirmation Dialog */}
+            <SimpleConfirmDialog
+                isOpen={bulkActionDialogOpen}
+                title={`Confirm ${bulkAction?.type}`}
+                message={`Are you sure you want to ${bulkAction?.type} ${bulkAction?.items.length} items? This action cannot be undone.`}
+                onConfirm={confirmBulkAction}
+                onCancel={() => {
+                    setBulkActionDialogOpen(false)
+                    setBulkAction(null)
+                }}
             />
         </div>
     )

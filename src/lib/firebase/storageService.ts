@@ -1,9 +1,13 @@
 import { storage } from "./firebaseConfig"
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll } from "firebase/storage"
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll, getMetadata } from "firebase/storage"
 import { v4 as uuidv4 } from "uuid"
 import { collection, addDoc, getDocs, Timestamp, doc, deleteDoc } from "firebase/firestore"
 import { db } from "./firebaseConfig"
 import { getSettings } from "./settingsService"
+
+// Add this import at the top of the file
+import { mediaLogger } from "@/lib/utils/media-logger"
+import { auth } from "@/lib/firebase/firebaseConfig"
 
 // Check if storage is initialized
 if (!storage) {
@@ -134,6 +138,17 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
                         console.error("Go to Firebase Console > Storage > Rules and set: allow read, write;")
                     }
 
+                    // Log the error
+                    const currentUser = auth.currentUser
+                    mediaLogger.error(
+                        `Upload failed for ${file.name}`,
+                        {
+                            error,
+                            userEmail: currentUser?.email, // Include email directly in details
+                        },
+                        currentUser?.uid,
+                    )
+
                     reject(error)
                 },
                 async () => {
@@ -148,6 +163,22 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
                         // Determine file type
                         const fileType = file.type.startsWith("image/") ? "image" : "video"
 
+                        // Log the successful upload
+                        const currentUser = auth.currentUser
+                        const userId = currentUser?.uid || undefined
+                        const userEmail = currentUser?.email || undefined
+
+                        mediaLogger.info(
+                            `Uploaded ${fileType}: ${file.name}`,
+                            {
+                                path: `${folder}/${uniqueName}`,
+                                size: formatFileSize(file.size),
+                                type: fileType,
+                                userEmail: currentUser?.email, // Include email directly in details
+                            },
+                            currentUser?.uid,
+                        )
+
                         // Add record to media collection
                         await addDoc(collection(db, "media"), {
                             name: file.name,
@@ -160,16 +191,78 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
 
                         resolve(downloadURL)
                     } catch (urlError) {
+                        // Log the error
+                        const currentUser = auth.currentUser
+                        mediaLogger.error(
+                            `Failed to get download URL for ${file.name}`,
+                            {
+                                urlError,
+                                userEmail: currentUser?.email, // Include email directly in details
+                            },
+                            currentUser?.uid,
+                        )
+
                         console.error(`Error getting download URL for ${file.name}:`, urlError)
                         reject(urlError)
                     }
                 },
             )
         } catch (error) {
+            // Log the error
+            const currentUser = auth.currentUser
+            mediaLogger.error(
+                `Failed to initialize upload for ${file.name}`,
+                {
+                    error,
+                    userEmail: currentUser?.email, // Include email directly in details
+                },
+                currentUser?.uid,
+            )
+
             console.error("Error initializing upload:", error)
             reject(error)
         }
     })
+}
+
+// Add this function to safely check URLs without triggering cleanup
+export async function validateMediaUrl(url: string): Promise<boolean> {
+    if (!url || url.includes("placeholder")) {
+        return true // Skip placeholder images
+    }
+
+    try {
+        // Use a more reliable method to check if file exists
+        // For Firebase Storage URLs, we can check if the file exists directly
+        if (url.includes("firebasestorage.googleapis.com")) {
+            // Extract the path and check if the file exists in storage
+            const urlObj = new URL(url)
+            const pathStartIndex = urlObj.pathname.indexOf("/o/") + 3
+
+            if (pathStartIndex > 3) {
+                let filePath = urlObj.pathname.substring(pathStartIndex)
+                filePath = decodeURIComponent(filePath)
+
+                // Check if file exists without trying to fetch the URL
+                const fileRef = ref(storage, filePath)
+                try {
+                    // Just get metadata instead of full download
+                    await getMetadata(fileRef)
+                    return true
+                } catch (error: any) {
+                    // Only return false for "object-not-found" errors
+                    return error.code !== "storage/object-not-found"
+                }
+            }
+        }
+
+        // For other URLs, assume they're valid without checking
+        return true
+    } catch (error) {
+        console.error(`Error validating URL ${url}:`, error)
+        // Assume URL is valid if we can't check it
+        return true
+    }
 }
 
 // Removed getSupportedVideoMimeType function as it's no longer needed
@@ -232,6 +325,20 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
 
             console.log(`Attempting to delete file: ${filePath}`)
 
+            // Get user info for logging
+            const currentUser = auth.currentUser
+            const userId = currentUser?.uid || undefined
+            const userEmail = currentUser?.email || undefined
+
+            mediaLogger.warn(
+                `Attempting to delete file from storage`,
+                {
+                    path: filePath,
+                    userEmail, // Include email directly in details
+                },
+                userId,
+            )
+
             try {
                 // Create a reference to the file
                 const fileRef = ref(storage, filePath)
@@ -239,13 +346,47 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
                 // Delete the file
                 await deleteObject(fileRef)
                 console.log(`Successfully deleted file: ${filePath}`)
+
+                // Log the successful deletion
+                mediaLogger.info(
+                    `Successfully deleted file from storage`,
+                    {
+                        path: filePath,
+                        userEmail, // Include email directly in details
+                    },
+                    userId,
+                )
+
                 return true
             } catch (deleteError: any) {
                 // If the file doesn't exist, consider it a success
                 if (deleteError.code === "storage/object-not-found") {
                     console.log(`File already deleted: ${filePath}`)
+
+                    // Log the already deleted state
+                    mediaLogger.info(
+                        `File already deleted from storage`,
+                        {
+                            path: filePath,
+                            userEmail, // Include email directly in details
+                        },
+                        userId,
+                    )
+
                     return true
                 }
+
+                // Log the error
+                mediaLogger.error(
+                    `Failed to delete file from storage`,
+                    {
+                        path: filePath,
+                        error: deleteError,
+                        userEmail, // Include email directly in details
+                    },
+                    userId,
+                )
+
                 throw deleteError
             }
         }
@@ -253,6 +394,22 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
         console.error(`Could not extract file path from URL: ${fileUrl}`)
         return false
     } catch (error) {
+        // Get user info for logging
+        const currentUser = auth.currentUser
+        const userId = currentUser?.uid || undefined
+        const userEmail = currentUser?.email || undefined
+
+        // Log the error
+        mediaLogger.error(
+            `Error deleting file from URL`,
+            {
+                url: fileUrl,
+                error,
+                userEmail, // Include email directly in details
+            },
+            userId,
+        )
+
         console.error(`Error deleting file ${fileUrl}:`, error)
         return false
     }
@@ -500,18 +657,44 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
  */
 export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
     try {
+        const currentUser = auth.currentUser
+        const userId = currentUser?.uid || undefined
+
         // Delete from Storage if path exists
         if (mediaItem.path) {
             try {
                 const fileRef = ref(storage, mediaItem.path)
                 await deleteObject(fileRef)
                 console.log(`Deleted file from storage: ${mediaItem.path}`)
+
+                // Log successful deletion
+                mediaLogger.info(
+                    `Deleted file from storage: ${mediaItem.path}`,
+                    {
+                        id: mediaItem.id,
+                        name: mediaItem.name,
+                    },
+                    userId,
+                )
             } catch (storageError: any) {
                 // If the file doesn't exist (already deleted), just log and continue
                 if (storageError.code === "storage/object-not-found") {
                     console.log(`File already deleted from storage: ${mediaItem.path}`)
+
+                    // Log already deleted state
+                    mediaLogger.info(
+                        `File already deleted from storage: ${mediaItem.path}`,
+                        {
+                            id: mediaItem.id,
+                            name: mediaItem.name,
+                        },
+                        userId,
+                    )
                 } else {
                     console.error(`Error deleting from storage: ${mediaItem.path}`, storageError)
+
+                    // Log error
+                    mediaLogger.error(`Error deleting from storage: ${mediaItem.path}`, storageError, userId)
                     // Continue with Firestore deletion even if Storage deletion fails
                 }
             }
@@ -529,9 +712,24 @@ export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
             const mediaDoc = doc(db, "media", mediaItem.id)
             await deleteDoc(mediaDoc)
             console.log(`Deleted media record from Firestore: ${mediaItem.id}`)
+
+            // Log successful Firestore deletion
+            mediaLogger.info(
+                `Deleted media record from Firestore: ${mediaItem.id}`,
+                {
+                    name: mediaItem.name,
+                    type: mediaItem.type,
+                },
+                userId,
+            )
+
             return true
         } catch (firestoreError) {
             console.error(`Error deleting media from Firestore: ${mediaItem.id}`, firestoreError)
+
+            // Log Firestore deletion error
+            mediaLogger.error(`Error deleting media from Firestore: ${mediaItem.id}`, firestoreError, userId)
+
             return false
         }
     } catch (error) {

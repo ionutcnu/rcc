@@ -29,7 +29,7 @@ export function SimpleConfirmDialog({ isOpen, title, message, onConfirm, onCance
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
-                    <DialogDescription>{message}</DialogDescription>
+                    <DialogDescription className="max-w-full overflow-hidden text-ellipsis">{message}</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                     <Button variant="outline" onClick={onCancel}>

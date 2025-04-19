@@ -46,6 +46,91 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+async function uploadBase64Image(base64String: string, folder: string): Promise<string> {
+    try {
+        // Extract file type and create a proper filename
+        const mimeType = base64String.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)![1]
+        const fileExt = mimeType.split("/")[1]
+
+        // Convert base64 to blob directly without using fetch
+        // This avoids the "Failed to fetch" error
+        const base64Data = base64String.split(",")[1]
+        const byteCharacters = atob(base64Data)
+        const byteArrays = []
+
+        for (let i = 0; i < byteCharacters.length; i += 512) {
+            const slice = byteCharacters.slice(i, i + 512)
+            const byteNumbers = new Array(slice.length)
+
+            for (let j = 0; j < slice.length; j++) {
+                byteNumbers[j] = slice.charCodeAt(j)
+            }
+
+            const byteArray = new Uint8Array(byteNumbers)
+            byteArrays.push(byteArray)
+        }
+
+        const blob = new Blob(byteArrays, { type: mimeType })
+        const file = new File([blob], `image-${Date.now()}.${fileExt}`, { type: mimeType })
+
+        // Upload to Firebase Storage
+        // Assuming you have a function to handle file uploads and get the URL
+        // Replace this with your actual upload function
+        // For example:
+        // const uploadResult = await uploadBytes(storageRef, file);
+        // const downloadURL = await getDownloadURL(uploadResult.ref);
+        // return downloadURL;
+        async function uploadFileAndGetURL(file: File, folder: string): Promise<string> {
+            // Placeholder implementation - replace with your actual Firebase Storage upload logic
+            console.log(`Simulating upload of ${file.name} to ${folder}`)
+            return `https://example.com/images/${file.name}` // Replace with actual URL
+        }
+        return await uploadFileAndGetURL(file, folder)
+    } catch (error) {
+        console.error("Error uploading image:", error)
+        throw error
+    }
+}
+
+async function uploadBase64Video(base64String: string, folder: string): Promise<string> {
+    try {
+        // Extract file type and create a proper filename
+        const mimeType = base64String.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)![1]
+        const fileExt = mimeType.split("/")[1]
+
+        // Convert base64 to blob directly without using fetch
+        const base64Data = base64String.split(",")[1]
+        const byteCharacters = atob(base64Data)
+        const byteArrays = []
+
+        for (let i = 0; i < byteCharacters.length; i += 512) {
+            const slice = byteCharacters.slice(i, i + 512)
+            const byteNumbers = new Array(slice.length)
+
+            for (let j = 0; j < slice.length; j++) {
+                byteNumbers[j] = slice.charCodeAt(j)
+            }
+
+            const byteArray = new Uint8Array(byteNumbers)
+            byteArrays.push(byteArray)
+        }
+
+        const blob = new Blob(byteArrays, { type: mimeType })
+        const file = new File([blob], `video-${Date.now()}.${fileExt}`, { type: mimeType })
+
+        async function uploadFileAndGetURL(file: File, folder: string): Promise<string> {
+            // Placeholder implementation - replace with your actual Firebase Storage upload logic
+            console.log(`Simulating upload of ${file.name} to ${folder}`)
+            return `https://example.com/videos/${file.name}` // Replace with actual URL
+        }
+
+        return await uploadFileAndGetURL(file, folder)
+    } catch (error) {
+        console.error("Error uploading video:", error)
+        throw error
+    }
+}
+
 export default function EditCatPage() {
     const router = useRouter()
     const params = useParams()

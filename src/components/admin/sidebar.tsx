@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Cat, ImageIcon, Settings, Menu, ExternalLink, Users } from "lucide-react"
+import { Home, Cat, ImageIcon, Settings, Menu, ExternalLink, Users, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -40,6 +40,11 @@ export function AdminSidebar() {
       title: "Users",
       href: "/admin/users",
       icon: Users,
+    },
+    {
+      title: "Logs",
+      href: "/admin/logs",
+      icon: FileText,
     },
     {
         title: "Debug",
