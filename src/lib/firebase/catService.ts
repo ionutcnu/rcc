@@ -1,15 +1,37 @@
 import { db } from "@/lib/firebase/firebaseConfig"
 import type { CatProfile } from "@/lib/types/cat"
-import { collection, doc, getDocs, getDoc, addDoc, setDoc, deleteDoc, Timestamp, updateDoc } from "firebase/firestore"
+import {
+    collection,
+    doc,
+    getDocs,
+    getDoc,
+    addDoc,
+    setDoc,
+    deleteDoc,
+    Timestamp,
+    updateDoc,
+    query,
+    where,
+} from "firebase/firestore"
 import { deleteFileFromStorage, uploadFileAndGetURL } from "./storageService"
 import { logActivity } from "./activityService"
+import { auth } from "./firebaseConfig"
 
 // Reference the correct root-level cats collection
 const catsRef = collection(db, "cats")
 
-export async function getAllCats(): Promise<CatProfile[]> {
+export async function getAllCats(includeDeleted = false): Promise<CatProfile[]> {
     try {
-        const snapshot = await getDocs(catsRef)
+        let q
+        if (!includeDeleted) {
+            // Only get non-deleted cats
+            q = query(collection(db, "cats"), where("isDeleted", "!=", true))
+        } else {
+            // Get all cats including deleted ones
+            q = collection(db, "cats")
+        }
+
+        const snapshot = await getDocs(q)
         return snapshot.docs.map((docSnap) => {
             const data = docSnap.data() as CatProfile
             // Avoid duplicate id property by destructuring data first
@@ -116,13 +138,18 @@ export async function updateCat(id: string, cat: Partial<Omit<CatProfile, "id" |
     }
 }
 
-export async function deleteCat(id: string): Promise<void> {
+// Update the deleteCat function to implement soft delete
+export async function deleteCat(id: string, permanent = false): Promise<void> {
     try {
         // First get the cat to find its associated media files and name
         const cat = await getCatById(id)
 
-        if (cat) {
-            // Delete main image if it exists
+        if (!cat) {
+            throw new Error(`Cat with ID ${id} not found`)
+        }
+
+        if (permanent) {
+            // Permanent deletion - delete media files and the document
             if (cat.mainImage) {
                 await deleteFileFromStorage(cat.mainImage)
             }
@@ -141,16 +168,78 @@ export async function deleteCat(id: string): Promise<void> {
                 }
             }
 
-            // Log the activity with minimal details to avoid undefined values
-            await logActivity("delete", cat.name, id, { deleted: true })
-        }
+            // Delete the Firestore document
+            const docRef = doc(db, "cats", id)
+            await deleteDoc(docRef)
 
-        // Delete the Firestore document
-        const docRef = doc(db, "cats", id)
-        await deleteDoc(docRef)
-        console.log(`Cat with ID ${id} and all associated media deleted successfully`)
+            // Log the activity with minimal details to avoid undefined values
+            await logActivity("delete", cat.name, id, { deleted: true, permanent: true })
+
+            console.log(`Cat with ID ${id} and all associated media permanently deleted`)
+        } else {
+            // Soft deletion - just mark as deleted
+            const docRef = doc(db, "cats", id)
+            await updateDoc(docRef, {
+                isDeleted: true,
+                deletedAt: Timestamp.now(),
+                deletedBy: auth.currentUser?.uid || null,
+            })
+
+            // Log the activity
+            await logActivity("delete", cat.name, id, { deleted: true, permanent: false })
+
+            console.log(`Cat with ID ${id} moved to trash`)
+        }
     } catch (error: any) {
         console.error(`Error deleting cat with ID ${id}:`, error)
+        throw error
+    }
+}
+
+// Add a function to restore a soft-deleted cat
+export async function restoreCat(id: string): Promise<void> {
+    try {
+        const docRef = doc(db, "cats", id)
+        const catSnap = await getDoc(docRef)
+
+        if (!catSnap.exists()) {
+            throw new Error(`Cat with ID ${id} not found`)
+        }
+
+        const cat = catSnap.data() as CatProfile
+
+        // Update the document to mark as not deleted
+        await updateDoc(docRef, {
+            isDeleted: false,
+            deletedAt: null,
+            deletedBy: null,
+        })
+
+        // Log the activity
+        await logActivity("update", cat.name, id, { restored: true })
+
+        console.log(`Cat with ID ${id} restored from trash`)
+    } catch (error: any) {
+        console.error(`Error restoring cat with ID ${id}:`, error)
+        throw error
+    }
+}
+
+// Add a function to get deleted cats
+export async function getDeletedCats(): Promise<CatProfile[]> {
+    try {
+        const catsRef = collection(db, "cats")
+        const q = query(catsRef, where("isDeleted", "==", true))
+        const snapshot = await getDocs(q)
+
+        return snapshot.docs.map((docSnap) => {
+            const data = docSnap.data() as CatProfile
+            // Avoid duplicate id property by destructuring data first
+            const { id: _, ...restData } = data
+            return { id: docSnap.id, ...restData }
+        })
+    } catch (error: any) {
+        console.error("Error getting deleted cats:", error)
         throw error
     }
 }

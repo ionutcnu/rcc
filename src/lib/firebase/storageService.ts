@@ -1,11 +1,22 @@
 import { storage } from "./firebaseConfig"
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll, getMetadata } from "firebase/storage"
 import { v4 as uuidv4 } from "uuid"
-import { collection, addDoc, getDocs, Timestamp, doc, deleteDoc } from "firebase/firestore"
+import {
+    collection,
+    addDoc,
+    getDocs,
+    Timestamp,
+    doc,
+    deleteDoc,
+    updateDoc,
+    query,
+    where,
+    getDoc,
+} from "firebase/firestore"
 import { db } from "./firebaseConfig"
 import { getSettings } from "./settingsService"
 
-// Add this import at the top of the file
+// Add these imports at the top of the file
 import { mediaLogger } from "@/lib/utils/media-logger"
 import { auth } from "@/lib/firebase/firebaseConfig"
 
@@ -25,6 +36,9 @@ export interface MediaItem {
     size?: string
     createdAt: Date
     path: string
+    deleted?: boolean // Flag to indicate if the item is soft-deleted
+    deletedAt?: Date // When the item was soft-deleted
+    deletedBy?: string // Who deleted the item
 }
 
 /**
@@ -109,9 +123,6 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
                 }
             }
 
-            // For videos, we'll just upload the original file without compression
-            // No video compression code here - removed as requested
-
             // Upload the file with metadata
             const metadata = {
                 contentType: fileToUpload.type,
@@ -187,6 +198,7 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
                             size: formatFileSize(file.size),
                             path: `${folder}/${uniqueName}`,
                             createdAt: Timestamp.now(),
+                            deleted: false, // Initialize as not deleted
                         })
 
                         resolve(downloadURL)
@@ -264,8 +276,6 @@ export async function validateMediaUrl(url: string): Promise<boolean> {
         return true
     }
 }
-
-// Removed getSupportedVideoMimeType function as it's no longer needed
 
 /**
  * Uploads a cat image to Firebase Storage with progress tracking
@@ -465,13 +475,23 @@ export async function uploadCatVideos(files: File[], catId: string): Promise<str
  * Gets statistics about media files in storage
  * @returns Promise with media statistics
  */
-export async function getMediaStats(): Promise<{ totalFiles: number; totalViews: number }> {
+export async function getMediaStats(): Promise<{ totalFiles: number; totalViews: number; deletedFiles: number }> {
     try {
         // Get a reference to the media collection to count files
         const mediaRef = collection(db, "media")
         const mediaSnapshot = await getDocs(mediaRef)
 
-        const totalFiles = mediaSnapshot.size
+        let totalFiles = 0
+        let deletedFiles = 0
+
+        mediaSnapshot.forEach((doc) => {
+            const data = doc.data()
+            if (data.deleted) {
+                deletedFiles++
+            } else {
+                totalFiles++
+            }
+        })
 
         // Get a reference to the cats collection to count views
         const catsRef = collection(db, "cats")
@@ -485,18 +505,19 @@ export async function getMediaStats(): Promise<{ totalFiles: number; totalViews:
             }
         })
 
-        return { totalFiles, totalViews }
+        return { totalFiles, totalViews, deletedFiles }
     } catch (error) {
         console.error("Error getting media stats:", error)
-        return { totalFiles: 0, totalViews: 0 }
+        return { totalFiles: 0, totalViews: 0, deletedFiles: 0 }
     }
 }
 
 /**
  * Gets all media files from Firestore
+ * @param includeDeleted Whether to include soft-deleted items
  * @returns Promise with array of media items
  */
-export async function getAllMedia(): Promise<MediaItem[]> {
+export async function getAllMedia(includeDeleted = false): Promise<MediaItem[]> {
     try {
         // Get media from Firestore collection
         const mediaRef = collection(db, "media")
@@ -506,6 +527,63 @@ export async function getAllMedia(): Promise<MediaItem[]> {
             console.log("No media found in Firestore, fetching from Storage")
             return await fetchMediaFromStorage()
         }
+
+        const mediaItems: MediaItem[] = []
+
+        mediaSnapshot.forEach((doc) => {
+            const data = doc.data()
+
+            // Skip deleted items if not requested
+            if (data.deleted && !includeDeleted) {
+                return
+            }
+
+            // Determine file type based on data or URL extension
+            let fileType: "image" | "video" = "image"
+            if (data.type) {
+                fileType = data.type as "image" | "video"
+            } else if (data.url) {
+                // Fallback to checking URL extension
+                const url = data.url.toLowerCase()
+                if (url.match(/\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i)) {
+                    fileType = "video"
+                }
+            }
+
+            mediaItems.push({
+                id: doc.id,
+                name: data.name || "Unnamed file",
+                url: data.url,
+                type: fileType,
+                catId: data.catId,
+                catName: data.catName,
+                size: data.size || "Unknown",
+                createdAt: data.createdAt?.toDate() || new Date(),
+                path: data.path || "",
+                deleted: data.deleted || false,
+                deletedAt: data.deletedAt?.toDate(),
+                deletedBy: data.deletedBy,
+            })
+        })
+
+        // Sort by creation date, newest first
+        return mediaItems.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    } catch (error) {
+        console.error("Error getting media:", error)
+        return []
+    }
+}
+
+/**
+ * Gets only deleted media files from Firestore
+ * @returns Promise with array of deleted media items
+ */
+export async function getDeletedMedia(): Promise<MediaItem[]> {
+    try {
+        // Get media from Firestore collection with deleted=true
+        const mediaRef = collection(db, "media")
+        const q = query(mediaRef, where("deleted", "==", true))
+        const mediaSnapshot = await getDocs(q)
 
         const mediaItems: MediaItem[] = []
 
@@ -534,13 +612,20 @@ export async function getAllMedia(): Promise<MediaItem[]> {
                 size: data.size || "Unknown",
                 createdAt: data.createdAt?.toDate() || new Date(),
                 path: data.path || "",
+                deleted: true,
+                deletedAt: data.deletedAt?.toDate(),
+                deletedBy: data.deletedBy,
             })
         })
 
-        // Sort by creation date, newest first
-        return mediaItems.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        // Sort by deletion date, newest first
+        return mediaItems.sort((a, b) => {
+            const dateA = a.deletedAt ? a.deletedAt.getTime() : 0
+            const dateB = b.deletedAt ? b.deletedAt.getTime() : 0
+            return dateB - dateA
+        })
     } catch (error) {
-        console.error("Error getting media:", error)
+        console.error("Error getting deleted media:", error)
         return []
     }
 }
@@ -576,6 +661,7 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
                         catId,
                         createdAt: new Date(),
                         path: `cats/${catId}/images/${imageRef.name}`,
+                        deleted: false,
                     })
                 }
             } catch (e) {
@@ -597,6 +683,7 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
                         catId,
                         createdAt: new Date(),
                         path: `cats/${catId}/videos/${videoRef.name}`,
+                        deleted: false,
                     })
                 }
             } catch (e) {
@@ -618,6 +705,7 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
                     type: "image",
                     createdAt: new Date(),
                     path: `images/${imageRef.name}`,
+                    deleted: false,
                 })
             }
         } catch (e) {
@@ -637,6 +725,7 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
                     type: "video",
                     createdAt: new Date(),
                     path: `videos/${videoRef.name}`,
+                    deleted: false,
                 })
             }
         } catch (e) {
@@ -651,8 +740,121 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
 }
 
 /**
- * Deletes a media item by ID
- * @param mediaId The ID of the media item to delete
+ * Soft deletes a media item by ID (marks as deleted without removing from storage)
+ * @param mediaItem The media item to soft delete
+ * @returns Promise<boolean> indicating success
+ */
+export async function softDeleteMedia(mediaItem: MediaItem): Promise<boolean> {
+    try {
+        const currentUser = auth.currentUser
+        const userId = currentUser?.uid || "unknown"
+        const userEmail = currentUser?.email || "unknown"
+
+        // Update Firestore document to mark as deleted
+        const mediaDoc = doc(db, "media", mediaItem.id)
+
+        await updateDoc(mediaDoc, {
+            deleted: true,
+            deletedAt: Timestamp.now(),
+            deletedBy: userId,
+        })
+
+        console.log(`Soft deleted media: ${mediaItem.id}`)
+
+        // Log the soft deletion
+        mediaLogger.info(
+            `Soft deleted media: ${mediaItem.name}`,
+            {
+                id: mediaItem.id,
+                path: mediaItem.path,
+                userEmail,
+            },
+            userId,
+        )
+
+        return true
+    } catch (error) {
+        console.error("Error soft deleting media:", error)
+
+        // Log the error
+        const currentUser = auth.currentUser
+        mediaLogger.error(
+            `Failed to soft delete media: ${mediaItem.name}`,
+            {
+                error,
+                id: mediaItem.id,
+                userEmail: currentUser?.email,
+            },
+            currentUser?.uid,
+        )
+
+        return false
+    }
+}
+
+/**
+ * Restores a soft-deleted media item
+ * @param mediaItem The media item to restore
+ * @returns Promise<boolean> indicating success
+ */
+export async function restoreMedia(mediaItem: MediaItem): Promise<boolean> {
+    try {
+        const currentUser = auth.currentUser
+        const userId = currentUser?.uid || "unknown"
+        const userEmail = currentUser?.email || "unknown"
+
+        // Check if the media item exists
+        const mediaDoc = doc(db, "media", mediaItem.id)
+        const mediaSnapshot = await getDoc(mediaDoc)
+
+        if (!mediaSnapshot.exists()) {
+            console.error(`Media item ${mediaItem.id} does not exist`)
+            return false
+        }
+
+        // Update Firestore document to unmark as deleted
+        await updateDoc(mediaDoc, {
+            deleted: false,
+            deletedAt: null,
+            deletedBy: null,
+        })
+
+        console.log(`Restored media: ${mediaItem.id}`)
+
+        // Log the restoration
+        mediaLogger.info(
+            `Restored media: ${mediaItem.name}`,
+            {
+                id: mediaItem.id,
+                path: mediaItem.path,
+                userEmail,
+            },
+            userId,
+        )
+
+        return true
+    } catch (error) {
+        console.error("Error restoring media:", error)
+
+        // Log the error
+        const currentUser = auth.currentUser
+        mediaLogger.error(
+            `Failed to restore media: ${mediaItem.name}`,
+            {
+                error,
+                id: mediaItem.id,
+                userEmail: currentUser?.email,
+            },
+            currentUser?.uid,
+        )
+
+        return false
+    }
+}
+
+/**
+ * Permanently deletes a media item by ID
+ * @param mediaItem The media item to permanently delete
  * @returns Promise<boolean> indicating success
  */
 export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
@@ -683,7 +885,7 @@ export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
 
                     // Log already deleted state
                     mediaLogger.info(
-                        `File already deleted from storage: ${mediaItem.path}`,
+                        `File already deleted from storage`,
                         {
                             id: mediaItem.id,
                             name: mediaItem.name,

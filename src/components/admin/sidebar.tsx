@@ -30,7 +30,6 @@ export function AdminSidebar() {
       href: "/admin/media",
       icon: ImageIcon,
     },
-
     {
       title: "Settings",
       href: "/admin/settings",
@@ -47,7 +46,7 @@ export function AdminSidebar() {
       icon: FileText,
     },
     {
-        title: "Debug",
+      title: "Debug",
       href: "/admin/debug",
       icon: Users,
     },

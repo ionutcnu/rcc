@@ -1,45 +1,57 @@
 "use client"
-
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 
-interface SimpleConfirmDialogProps {
+type SimpleConfirmDialogProps = {
     isOpen: boolean
     title: string
     message: string
     onConfirm: () => void
     onCancel: () => void
+    confirmText?: string
+    cancelText?: string
+    confirmVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
 }
 
-export function SimpleConfirmDialog({ isOpen, title, message, onConfirm, onCancel }: SimpleConfirmDialogProps) {
-    // Handle dialog close event
-    const handleOpenChange = (open: boolean) => {
-        if (!open) onCancel()
-    }
-
+export function SimpleConfirmDialog({
+                                        isOpen,
+                                        title,
+                                        message,
+                                        onConfirm,
+                                        onCancel,
+                                        confirmText = "Confirm",
+                                        cancelText = "Cancel",
+                                        confirmVariant = "default",
+                                    }: SimpleConfirmDialogProps) {
     return (
-        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                    <DialogDescription className="max-w-full overflow-hidden text-ellipsis">{message}</DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button variant="outline" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button variant="destructive" onClick={onConfirm}>
-                        Delete
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <AlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{title}</AlertDialogTitle>
+                    <AlertDialogDescription>{message}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel asChild>
+                        <Button variant="outline" onClick={onCancel}>
+                            {cancelText}
+                        </Button>
+                    </AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                        <Button variant={confirmVariant} onClick={onConfirm}>
+                            {confirmText}
+                        </Button>
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     )
 }

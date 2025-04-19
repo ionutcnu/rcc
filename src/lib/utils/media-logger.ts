@@ -88,8 +88,8 @@ export const mediaLogger = {
     mediaAccess: (mediaId: string, url: string, userId?: string | null) =>
         mediaLogger.info(`Accessed media: ${mediaId}`, { url }, userId),
 
-    mediaDelete: (mediaId: string, path: string, userId?: string | null) =>
-        mediaLogger.warn(`Deleted media: ${mediaId}`, { path }, userId),
+    mediaDelete: (mediaId: string, path: string, userId?: string | null, isSoftDelete = false) =>
+        mediaLogger.warn(`${isSoftDelete ? "Soft deleted" : "Deleted"} media: ${mediaId}`, { path, isSoftDelete }, userId),
 
     mediaBulkOperation: (operation: string, count: number, details?: any, userId?: string | null) =>
         mediaLogger.warn(`Bulk operation: ${operation} on ${count} items`, details, userId),

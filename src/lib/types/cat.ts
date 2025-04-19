@@ -21,6 +21,8 @@ export interface CatProfile {
     createdAt: Timestamp | FieldValue
     updatedAt: Timestamp | FieldValue
     isDeleted: boolean
+    deletedAt?: Timestamp | FieldValue
+    deletedBy?: string | null
     views?: number
     lastViewed?: Timestamp | FieldValue
 }
