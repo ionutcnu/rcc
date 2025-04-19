@@ -6,9 +6,9 @@ export const metadata: Metadata = {
     title: "Meet Our Gorgeous Red Cats | Family Tree & Videos Included",
     description:
         "Adopt beautiful red cats with full lineage info, stunning photos, and short videos. Find your next feline companion today.",
-    metadataBase: new URL("https://rcc-kappa.vercel.app"),
+    metadataBase: new URL("https://redcatcuasar.vercel.app/"),
     openGraph: {
-        url: "https://rcc-kappa.vercel.app",
+        url: "https://redcatcuasar.vercel.app/",
         type: "website",
         title: "Meet Our Gorgeous Red Cats | Family Tree & Videos Included",
         description:
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
         ],
     },
     alternates: {
-        canonical: "https://rcc-kappa.vercel.app",
+        canonical: "https://redcatcuasar.vercel.app/",
     },
     robots: {
         index: true,
