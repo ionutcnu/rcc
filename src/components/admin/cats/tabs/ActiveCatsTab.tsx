@@ -338,15 +338,7 @@ export default function ActiveCatsTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Cat Profiles</h1>
-                <Button asChild>
-                    <Link href="/admin/cats/add">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add New Cat
-                    </Link>
-                </Button>
-            </div>
+
 
             {/* Search and View Toggle */}
             <div className="flex flex-col md:flex-row gap-4">
@@ -588,10 +580,10 @@ export default function ActiveCatsTab() {
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {paginatedCats.map((cat) => (
                         <Card key={cat.id} className="overflow-hidden h-full">
-                            <div className="aspect-square relative">
+                            <div className="aspect-[4/3] relative">
                                 <Image
                                     src={cat.mainImage || cat.images?.[0] || "/placeholder.svg?height=200&width=300"}
                                     alt={cat.name}
@@ -603,10 +595,10 @@ export default function ActiveCatsTab() {
                                     <Badge className="bg-orange-500 hover:bg-orange-600">{cat.availability}</Badge>
                                 </div>
                             </div>
-                            <CardContent className="p-4">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h2 className="text-lg font-bold truncate">{cat.name}</h2>
-                                    <span className="text-sm text-gray-500">{currentYear - cat.yearOfBirth}y</span>
+                            <CardContent className="p-2">
+                                <div className="flex justify-between items-start mb-1">
+                                    <h2 className="text-sm font-bold truncate">{cat.name}</h2>
+                                    <span className="text-xs text-gray-500">{currentYear - cat.yearOfBirth}y</span>
                                 </div>
                                 <div className="flex items-center gap-2 mb-2">
                                     {renderGenderBadge(cat.gender)}
@@ -617,7 +609,7 @@ export default function ActiveCatsTab() {
                                     {cat.isVaccinated && (
                                         <Badge
                                             variant="secondary"
-                                            className="text-xs bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-800"
+                                            className="text-xs px-1 py-0 h-5 bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-800"
                                         >
                                             Vaccinated
                                         </Badge>
@@ -625,7 +617,7 @@ export default function ActiveCatsTab() {
                                     {cat.isMicrochipped && (
                                         <Badge
                                             variant="secondary"
-                                            className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-800"
+                                            className="text-xs px-1 py-0 h-5 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-800"
                                         >
                                             Microchipped
                                         </Badge>
@@ -633,26 +625,26 @@ export default function ActiveCatsTab() {
                                     {cat.isCastrated && (
                                         <Badge
                                             variant="secondary"
-                                            className="text-xs bg-purple-100 text-purple-800 hover:bg-purple-200 hover:text-purple-800"
+                                            className="text-xs px-1 py-0 h-5 bg-purple-100 text-purple-800 hover:bg-purple-200 hover:text-purple-800"
                                         >
                                             Castrated
                                         </Badge>
                                     )}
                                 </div>
 
-                                <div className="flex justify-end gap-2">
-                                    <Button variant="outline" size="sm" className="h-8 px-2" asChild>
+                                <div className="flex justify-end gap-1 mt-1">
+                                    <Button variant="outline" size="sm" className="h-6 px-1 text-xs" asChild>
                                         <Link href={`/admin/cats/edit/${cat.id}`}>
-                                            <Pencil className="h-3.5 w-3.5" />
+                                            <Pencil className="h-3 w-3" />
                                         </Link>
                                     </Button>
                                     <Button
                                         variant="destructive"
                                         size="sm"
-                                        className="h-8 px-2"
+                                        className="h-6 px-1 text-xs"
                                         onClick={() => handleDeleteClick(cat.id, cat.name)}
                                     >
-                                        <Trash2 className="h-3.5 w-3.5" />
+                                        <Trash2 className="h-3 w-3" />
                                     </Button>
                                 </div>
                             </CardContent>

@@ -15,6 +15,7 @@ import { safeErrorLog, sanitizeError } from "@/lib/utils/security"
 export type AuthUser = {
     uid: string
     email: string | null
+    photoURL?: string | null // Add this line if it doesn't exist
     isAdmin: boolean
 }
 

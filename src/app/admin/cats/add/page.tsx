@@ -356,33 +356,35 @@ export default function CatEntryForm() {
     }
 
     return (
-        <div className="container mx-auto py-8 px-4 max-w-4xl">
+        <div className="container mx-auto py-10 px-4 sm:px-6 max-w-5xl">
             <motion.div initial="hidden" animate="visible" variants={containerVariants}>
                 <motion.div variants={itemVariants}>
-                    <Card className="border-2 shadow-lg">
-                        <CardHeader className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-t-lg">
-                            <CardTitle className="text-2xl font-bold text-center">Add New Cat</CardTitle>
-                            <CardDescription className="text-center">
+                    <Card className="border border-gray-200 shadow-xl rounded-xl overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-pink-50 to-purple-50 border-b pb-8 pt-6">
+                            <CardTitle className="text-3xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
+                                Add New Cat
+                            </CardTitle>
+                            <CardDescription className="text-center text-base mt-2">
                                 Enter the details to add a new cat to the database
                             </CardDescription>
                         </CardHeader>
 
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)}>
-                                <CardContent className="space-y-6 pt-6">
-                                    <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-6">
+                                <CardContent className="space-y-10 pt-8 px-6 sm:px-8">
+                                    <motion.div variants={itemVariants} className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
                                         {/* Basic Information */}
                                         <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">Basic Information</h3>
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">Basic Information</h3>
 
                                             <FormField
                                                 control={form.control}
                                                 name="name"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Name</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Name</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="e.g. Gura Mare" {...field} />
+                                                            <Input placeholder="e.g. Gura Mare" {...field} className="h-11" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -393,10 +395,10 @@ export default function CatEntryForm() {
                                                 control={form.control}
                                                 name="description"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Description</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Description</FormLabel>
                                                         <FormControl>
-                                                            <Textarea placeholder="Describe the cat..." {...field} />
+                                                            <Textarea placeholder="Describe the cat..." {...field} className="h-28" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -406,20 +408,20 @@ export default function CatEntryForm() {
 
                                         {/* Images & Videos */}
                                         <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">Images & Videos</h3>
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">Images & Videos</h3>
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="mainImage">
-                                                    Main Image <span className="text-red-500">*</span>
+                                            <div className="space-y-3">
+                                                <Label htmlFor="mainImage" className="text-base flex items-center">
+                                                    Main Image <span className="text-red-500 ml-1">*</span>
                                                 </Label>
                                                 <div className="flex items-center gap-2">
                                                     <Button
                                                         type="button"
                                                         variant="outline"
                                                         onClick={() => document.getElementById("mainImage")?.click()}
-                                                        className="w-full"
+                                                        className="w-full h-12 border-dashed border-2 hover:bg-pink-50 transition-colors"
                                                     >
-                                                        <Upload className="mr-2 h-4 w-4" /> Upload Main Image
+                                                        <Upload className="mr-2 h-5 w-5 text-pink-500" /> Upload Main Image
                                                     </Button>
                                                     <input
                                                         id="mainImage"
@@ -431,13 +433,13 @@ export default function CatEntryForm() {
                                                 </div>
 
                                                 {mainImage && (
-                                                    <div className="relative mt-2 inline-block">
+                                                    <div className="relative mt-3 inline-block">
                                                         <img
                                                             src={mainImage || "/placeholder.svg"}
                                                             alt="Main cat image"
-                                                            className="h-20 w-20 object-cover rounded-md border-2 border-pink-300"
+                                                            className="h-24 w-24 object-cover rounded-lg border-2 border-pink-300 shadow-sm"
                                                         />
-                                                        <span className="absolute -top-2 -right-2 bg-pink-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                                        <span className="absolute -top-2 -right-2 bg-pink-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md">
                               ★
                             </span>
                                                     </div>
@@ -445,15 +447,17 @@ export default function CatEntryForm() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="additionalImages">Additional Images</Label>
+                                                <Label htmlFor="additionalImages" className="text-base">
+                                                    Additional Images
+                                                </Label>
                                                 <div className="flex items-center gap-2">
                                                     <Button
                                                         type="button"
                                                         variant="outline"
                                                         onClick={() => document.getElementById("additionalImages")?.click()}
-                                                        className="w-full"
+                                                        className="w-full h-12 border-dashed border-2 hover:bg-pink-50 transition-colors"
                                                     >
-                                                        <Upload className="mr-2 h-4 w-4" /> Add Multiple Images
+                                                        <Upload className="mr-2 h-5 w-5 text-pink-500" /> Add Multiple Images
                                                     </Button>
                                                     <input
                                                         id="additionalImages"
@@ -466,19 +470,23 @@ export default function CatEntryForm() {
                                                 </div>
 
                                                 {images.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                    <div className="flex flex-wrap gap-3 mt-4">
                                                         {images.map((img, index) => (
-                                                            <div key={index} className="relative">
+                                                            <div key={index} className="relative group">
                                                                 <img
                                                                     src={img || "/placeholder.svg"}
                                                                     alt={`Cat image ${index + 1}`}
-                                                                    className={`h-16 w-16 object-cover rounded-md ${mainImage === img ? "border-2 border-pink-300" : ""}`}
+                                                                    className={`h-20 w-20 object-cover rounded-lg transition-all hover:scale-105 cursor-pointer ${
+                                                                        mainImage === img
+                                                                            ? "border-2 border-pink-300 ring-2 ring-pink-200"
+                                                                            : "border border-gray-200"
+                                                                    }`}
                                                                     onClick={() => setMainImage(img)}
                                                                 />
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => removeImage(index)}
-                                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
+                                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-90 hover:opacity-100 shadow-sm"
                                                                 >
                                                                     <X className="h-3 w-3" />
                                                                 </button>
@@ -489,15 +497,17 @@ export default function CatEntryForm() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="videos">Videos</Label>
+                                                <Label htmlFor="videos" className="text-base">
+                                                    Videos
+                                                </Label>
                                                 <div className="flex items-center gap-2">
                                                     <Button
                                                         type="button"
                                                         variant="outline"
                                                         onClick={() => document.getElementById("videos")?.click()}
-                                                        className="w-full"
+                                                        className="w-full h-12 border-dashed border-2 hover:bg-pink-50 transition-colors"
                                                     >
-                                                        <Upload className="mr-2 h-4 w-4" /> Add Multiple Videos
+                                                        <Upload className="mr-2 h-5 w-5 text-pink-500" /> Add Multiple Videos
                                                     </Button>
                                                     <input
                                                         id="videos"
@@ -510,12 +520,21 @@ export default function CatEntryForm() {
                                                 </div>
 
                                                 {videos.length > 0 && (
-                                                    <div className="space-y-2 mt-2">
+                                                    <div className="space-y-2 mt-4">
                                                         {videos.map((video, index) => (
-                                                            <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded-md">
-                                                                <span className="text-sm truncate max-w-[200px]">Video {index + 1}</span>
-                                                                <Button type="button" variant="ghost" size="sm" onClick={() => removeVideo(index)}>
-                                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                            <div
+                                                                key={index}
+                                                                className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors"
+                                                            >
+                                                                <span className="text-sm font-medium truncate max-w-[200px]">Video {index + 1}</span>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => removeVideo(index)}
+                                                                    className="hover:bg-red-50 hover:text-red-500"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-red-400" />
                                                                 </Button>
                                                             </div>
                                                         ))}
@@ -529,19 +548,21 @@ export default function CatEntryForm() {
                                         <hr className="my-6" />
                                     </motion.div>
 
-                                    <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-6">
+                                    <motion.div variants={itemVariants} className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
                                         {/* Physical Characteristics */}
                                         <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">Physical Characteristics</h3>
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">
+                                                Physical Characteristics
+                                            </h3>
 
                                             <FormField
                                                 control={form.control}
                                                 name="color"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Color</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Color</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="e.g. White" {...field} />
+                                                            <Input placeholder="e.g. White" {...field} className="h-11" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -552,11 +573,11 @@ export default function CatEntryForm() {
                                                 control={form.control}
                                                 name="gender"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Gender</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Gender</FormLabel>
                                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                             <FormControl>
-                                                                <SelectTrigger>
+                                                                <SelectTrigger className="h-11">
                                                                     <SelectValue placeholder="Select gender" />
                                                                 </SelectTrigger>
                                                             </FormControl>
@@ -574,10 +595,10 @@ export default function CatEntryForm() {
                                                 control={form.control}
                                                 name="yearOfBirth"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Year of Birth</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Year of Birth</FormLabel>
                                                         <FormControl>
-                                                            <Input type="number" {...field} />
+                                                            <Input type="number" {...field} className="h-11" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -588,10 +609,10 @@ export default function CatEntryForm() {
                                                 control={form.control}
                                                 name="breed"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Breed</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Breed</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="e.g. Persian" {...field} />
+                                                            <Input placeholder="e.g. Persian" {...field} className="h-11" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -602,11 +623,11 @@ export default function CatEntryForm() {
                                                 control={form.control}
                                                 name="category"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Category</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Category</FormLabel>
                                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                             <FormControl>
-                                                                <SelectTrigger>
+                                                                <SelectTrigger className="h-11">
                                                                     <SelectValue placeholder="Select category" />
                                                                 </SelectTrigger>
                                                             </FormControl>
@@ -624,20 +645,26 @@ export default function CatEntryForm() {
 
                                         {/* Additional Information */}
                                         <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">Additional Information</h3>
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">
+                                                Additional Information
+                                            </h3>
 
                                             <div className="space-y-4">
                                                 <FormField
                                                     control={form.control}
                                                     name="isVaccinated"
                                                     render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                            <div className="space-y-0.5">
-                                                                <FormLabel>Vaccinated</FormLabel>
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm hover:bg-gray-50 transition-colors">
+                                                            <div className="space-y-1">
+                                                                <FormLabel className="text-base">Vaccinated</FormLabel>
                                                                 <FormDescription>Has this cat received all necessary vaccinations?</FormDescription>
                                                             </div>
                                                             <FormControl>
-                                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                                <Switch
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                    className="data-[state=checked]:bg-pink-500"
+                                                                />
                                                             </FormControl>
                                                         </FormItem>
                                                     )}
@@ -647,13 +674,17 @@ export default function CatEntryForm() {
                                                     control={form.control}
                                                     name="isMicrochipped"
                                                     render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                            <div className="space-y-0.5">
-                                                                <FormLabel>Microchipped</FormLabel>
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm hover:bg-gray-50 transition-colors">
+                                                            <div className="space-y-1">
+                                                                <FormLabel className="text-base">Microchipped</FormLabel>
                                                                 <FormDescription>Does this cat have an identification microchip?</FormDescription>
                                                             </div>
                                                             <FormControl>
-                                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                                <Switch
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                    className="data-[state=checked]:bg-pink-500"
+                                                                />
                                                             </FormControl>
                                                         </FormItem>
                                                     )}
@@ -663,13 +694,17 @@ export default function CatEntryForm() {
                                                     control={form.control}
                                                     name="isCastrated"
                                                     render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                            <div className="space-y-0.5">
-                                                                <FormLabel>Castrated/Spayed</FormLabel>
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm hover:bg-gray-50 transition-colors">
+                                                            <div className="space-y-1">
+                                                                <FormLabel className="text-base">Castrated/Spayed</FormLabel>
                                                                 <FormDescription>Has this cat been castrated or spayed?</FormDescription>
                                                             </div>
                                                             <FormControl>
-                                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                                <Switch
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                    className="data-[state=checked]:bg-pink-500"
+                                                                />
                                                             </FormControl>
                                                         </FormItem>
                                                     )}
@@ -681,8 +716,8 @@ export default function CatEntryForm() {
                                                     control={form.control}
                                                     name="motherId"
                                                     render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Mother Cat</FormLabel>
+                                                        <FormItem className="mb-5">
+                                                            <FormLabel className="text-base">Mother Cat</FormLabel>
                                                             <FormControl>
                                                                 <ComboboxSelect
                                                                     options={motherOptions}
@@ -697,6 +732,7 @@ export default function CatEntryForm() {
                                                                     placeholder="Select mother cat"
                                                                     searchPlaceholder="Search cats..."
                                                                     emptyMessage={isLoadingCats ? "Loading cats..." : "No female cats found."}
+                                                                    className="h-11"
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -708,8 +744,8 @@ export default function CatEntryForm() {
                                                     control={form.control}
                                                     name="fatherId"
                                                     render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Father Cat</FormLabel>
+                                                        <FormItem className="mb-5">
+                                                            <FormLabel className="text-base">Father Cat</FormLabel>
                                                             <FormControl>
                                                                 <ComboboxSelect
                                                                     options={fatherOptions}
@@ -724,6 +760,7 @@ export default function CatEntryForm() {
                                                                     placeholder="Select father cat"
                                                                     searchPlaceholder="Search cats..."
                                                                     emptyMessage={isLoadingCats ? "Loading cats..." : "No male cats found."}
+                                                                    className="h-11"
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -736,11 +773,11 @@ export default function CatEntryForm() {
                                                 control={form.control}
                                                 name="availability"
                                                 render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Availability</FormLabel>
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Availability</FormLabel>
                                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                             <FormControl>
-                                                                <SelectTrigger>
+                                                                <SelectTrigger className="h-11">
                                                                     <SelectValue placeholder="Select availability" />
                                                                 </SelectTrigger>
                                                             </FormControl>
@@ -759,7 +796,7 @@ export default function CatEntryForm() {
                                     </motion.div>
                                 </CardContent>
 
-                                <CardFooter className="flex justify-between border-t p-6 bg-gray-50 rounded-b-lg">
+                                <CardFooter className="flex justify-between border-t p-8 bg-gradient-to-r from-pink-50 to-purple-50 rounded-b-xl gap-4">
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -769,18 +806,19 @@ export default function CatEntryForm() {
                                             setVideos([])
                                             setMainImage("")
                                         }}
+                                        className="px-6 border-gray-300 hover:bg-white"
                                     >
-                                        Reset
+                                        Reset Form
                                     </Button>
-                                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                                         <Button
                                             type="submit"
-                                            className="bg-gradient-to-r from-pink-500 to-purple-500 text-white"
+                                            className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-8 h-11 text-base shadow-md hover:shadow-lg transition-shadow"
                                             disabled={isSubmitting}
                                         >
                                             {isSubmitting ? (
                                                 <div className="flex items-center">
-                                                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                                    <div className="animate-spin mr-2 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                                                     Saving...
                                                 </div>
                                             ) : (

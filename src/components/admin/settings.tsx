@@ -107,27 +107,14 @@ export function Settings() {
     return (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-          <span className="ml-2">Loading settings...</span>
+          <span className="ml-2 text-lg">Loading settings...</span>
         </div>
     )
   }
 
   return (
-      <>
-        <Alert className="mb-6" variant="default">
-          <InfoIcon className="h-4 w-4" />
-          <AlertTitle>Image Quality Setting</AlertTitle>
-          <AlertDescription>
-            The Image Quality setting is now active. When "Enable Image Compression" is checked, images will be compressed
-            according to the quality setting:
-            <ul className="list-disc ml-6 mt-2">
-              <li>Low: 60% quality (smallest file size)</li>
-              <li>Medium: 80% quality (balanced)</li>
-              <li>High: 90% quality (best appearance)</li>
-            </ul>
-            This will help save storage space in Firebase.
-          </AlertDescription>
-        </Alert>
+      <div className="container px-4 md:px-6">
+
 
         <SettingsUi
             seoSettings={seoSettings}
@@ -139,6 +126,6 @@ export function Settings() {
             savingSeo={saving.seo}
             savingFirebase={saving.firebase}
         />
-      </>
+      </div>
   )
 }

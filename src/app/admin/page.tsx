@@ -69,59 +69,72 @@ export default function AdminDashboardPage() {
     }, [])
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-                <Button asChild>
-                    <Link href="/admin/cats/add">Add New Cat</Link>
+        <div className="space-y-8 py-4">
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+                <Button asChild size="default" className="gap-2">
+                    <Link href="/admin/cats/add">
+                        <Cat className="h-4 w-4" />
+                        Add New Cat
+                    </Link>
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <Card className="hover:shadow-md transition-shadow overflow-hidden border-l-4 border-l-orange-400">
+                    <CardContent className="p-8">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm text-gray-500">Total Cats</p>
-                                <p className="text-3xl font-bold mt-1">{stats.totalCats}</p>
-                                <Link href="/admin/cats" className="text-sm text-gray-500 hover:underline">
+                                <p className="text-sm font-medium text-gray-500 mb-2">Total Cats</p>
+                                <p className="text-4xl font-bold mb-3">{stats.totalCats}</p>
+                                <Link
+                                    href="/admin/cats"
+                                    className="text-sm font-medium text-orange-500 hover:underline flex items-center gap-1"
+                                >
                                     View details
+                                    <span className="inline-block">→</span>
                                 </Link>
                             </div>
-                            <div className="p-3 rounded-full bg-orange-100 text-orange-500">
-                                <Cat className="h-5 w-5" />
+                            <div className="p-4 rounded-full bg-orange-100 text-orange-500">
+                                <Cat className="h-6 w-6" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
+                <Card className="hover:shadow-md transition-shadow overflow-hidden border-l-4 border-l-blue-400">
+                    <CardContent className="p-8">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm text-gray-500">Media Files</p>
-                                <p className="text-3xl font-bold mt-1">{stats.mediaFiles}</p>
-                                <Link href="/admin/media" className="text-sm text-gray-500 hover:underline">
+                                <p className="text-sm font-medium text-gray-500 mb-2">Media Files</p>
+                                <p className="text-4xl font-bold mb-3">{stats.mediaFiles}</p>
+                                <Link
+                                    href="/admin/media"
+                                    className="text-sm font-medium text-blue-500 hover:underline flex items-center gap-1"
+                                >
                                     View details
+                                    <span className="inline-block">→</span>
                                 </Link>
                             </div>
-                            <div className="p-3 rounded-full bg-blue-100 text-blue-500">
-                                <ImageIcon className="h-5 w-5" />
+                            <div className="p-4 rounded-full bg-blue-100 text-blue-500">
+                                <ImageIcon className="h-6 w-6" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                    <CardContent className="p-6">
-                        <h2 className="text-xl font-bold mb-2">Recent Activity</h2>
-                        <p className="text-sm text-gray-500 mb-4">Latest actions in the admin panel</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-0">
+                        <div className="p-6 border-b bg-gray-50">
+                            <h2 className="text-xl font-bold">Recent Activity</h2>
+                            <p className="text-sm text-gray-500 mt-1">Latest actions in the admin panel</p>
+                        </div>
                         {recentActivity.length > 0 ? (
-                            <div className="space-y-4">
+                            <div className="divide-y">
                                 {recentActivity.map((activity) => (
-                                    <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                                    <div key={activity.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
                                         <div className="flex items-center gap-3 min-w-0 max-w-[70%]">
                                             <Badge
                                                 variant={
@@ -131,7 +144,7 @@ export default function AdminDashboardPage() {
                                                             ? "destructive"
                                                             : "secondary"
                                                 }
-                                                className="whitespace-nowrap flex-shrink-0"
+                                                className="whitespace-nowrap flex-shrink-0 px-2 py-1"
                                             >
                                                 {activity.action}
                                             </Badge>
@@ -146,33 +159,35 @@ export default function AdminDashboardPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-12 text-gray-500">
                                 <p>No recent activity</p>
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardContent className="p-6">
-                        <h2 className="text-xl font-bold mb-2">Popular Cats</h2>
-                        <p className="text-sm text-gray-500 mb-4">Based on page views</p>
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-0">
+                        <div className="p-6 border-b bg-gray-50">
+                            <h2 className="text-xl font-bold">Popular Cats</h2>
+                            <p className="text-sm text-gray-500 mt-1">Based on page views</p>
+                        </div>
                         {popularCats.length > 0 ? (
-                            <div className="space-y-4">
+                            <div className="divide-y">
                                 {popularCats.map((cat) => (
-                                    <div key={cat.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden relative">
+                                    <div key={cat.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-12 w-12 rounded-full bg-gray-200 overflow-hidden relative border-2 border-orange-100">
                                                 {cat.imageUrl ? (
                                                     <Image
                                                         src={getProxiedImageUrl(cat.imageUrl) || "/placeholder.svg"}
                                                         alt={cat.name}
                                                         fill
                                                         className="object-cover"
-                                                        sizes="40px"
+                                                        sizes="48px"
                                                     />
                                                 ) : (
-                                                    <Cat className="h-6 w-6 m-2 text-gray-400" />
+                                                    <Cat className="h-6 w-6 m-3 text-gray-400" />
                                                 )}
                                             </div>
                                             <div>
@@ -180,12 +195,12 @@ export default function AdminDashboardPage() {
                                                 <p className="text-sm text-muted-foreground">{cat.breed}</p>
                                             </div>
                                         </div>
-                                        <span className="text-sm">{cat.views} views</span>
+                                        <span className="text-sm font-medium bg-gray-100 px-3 py-1 rounded-full">{cat.views} views</span>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-12 text-gray-500">
                                 <p>No data available</p>
                             </div>
                         )}

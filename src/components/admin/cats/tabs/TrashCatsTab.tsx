@@ -363,10 +363,10 @@ export default function TrashCatsTab() {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                             {paginatedCats.map((cat) => (
                                 <Card key={cat.id} className="overflow-hidden border-dashed">
-                                    <div className="aspect-square relative">
+                                    <div className="aspect-[4/3] relative">
                                         <Image
                                             src={cat.mainImage || cat.images?.[0] || "/placeholder.svg?height=200&width=300"}
                                             alt={cat.name}
@@ -378,23 +378,35 @@ export default function TrashCatsTab() {
                                             <Badge variant="destructive">Deleted</Badge>
                                         </div>
                                     </div>
-                                    <CardContent className="p-4">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h2 className="text-lg font-bold truncate">{cat.name}</h2>
-                                            <span className="text-sm text-gray-500">{currentYear - cat.yearOfBirth}y</span>
+                                    <CardContent className="p-2">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h2 className="text-sm font-bold truncate">{cat.name}</h2>
+                                            <span className="text-xs text-gray-500">{currentYear - cat.yearOfBirth}y</span>
                                         </div>
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Badge variant="outline">{cat.gender}</Badge>
+                                            <Badge variant="outline" className="text-xs px-1 py-0 h-5">
+                                                {cat.gender}
+                                            </Badge>
                                             <p className="text-sm text-gray-600 line-clamp-1">{cat.breed}</p>
                                         </div>
 
-                                        <div className="flex justify-between gap-2 mt-4">
-                                            <Button variant="outline" size="sm" onClick={() => handleRestoreClick(cat)}>
-                                                <ArchiveRestore className="mr-2 h-4 w-4" />
+                                        <div className="flex justify-between gap-1 mt-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-6 px-1 text-xs"
+                                                onClick={() => handleRestoreClick(cat)}
+                                            >
+                                                <ArchiveRestore className="h-3 w-3 mr-1" />
                                                 Restore
                                             </Button>
-                                            <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(cat)}>
-                                                <Trash2 className="mr-2 h-4 w-4" />
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                className="h-6 px-1 text-xs"
+                                                onClick={() => handleDeleteClick(cat)}
+                                            >
+                                                <Trash2 className="h-3 w-3 mr-1" />
                                                 Delete
                                             </Button>
                                         </div>
