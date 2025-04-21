@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Film, Search, Filter, X, Download, ArchiveIcon, Upload, Loader2 } from "lucide-react"
+import { Film, Search, Filter, X, Download, ArchiveIcon, Upload, Loader2, LockIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Pagination } from "@/components/ui/pagination"
 import { mediaLogger } from "@/lib/utils/media-logger"
 import type { MediaItem } from "@/lib/firebase/storageService"
+import { lockMedia } from "@/lib/firebase/storageService"
+import { LockMediaDialog } from "../LockMediaDialog"
 
 interface ActiveMediaTabProps {
     mediaItems: MediaItem[]
@@ -32,6 +34,9 @@ interface ActiveMediaTabProps {
     isUploading: boolean
     imageCount: number
     videoCount: number
+    handleLockMedia: (item: MediaItem) => void
+    handleUnlockMedia: (item: MediaItem) => void
+    showPopup: (message: string) => void
 }
 
 export default function ActiveMediaTab({
@@ -53,6 +58,9 @@ export default function ActiveMediaTab({
                                            isUploading,
                                            imageCount,
                                            videoCount,
+                                           handleLockMedia,
+                                           handleUnlockMedia,
+                                           showPopup,
                                        }: ActiveMediaTabProps) {
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1)
@@ -60,6 +68,35 @@ export default function ActiveMediaTab({
     const [filteredItems, setFilteredItems] = useState<MediaItem[]>([])
     const [paginatedItems, setPaginatedItems] = useState<MediaItem[]>([])
     const [totalPages, setTotalPages] = useState(1)
+
+    const [lockDialogOpen, setLockDialogOpen] = useState(false)
+    const [mediaToLock, setMediaToLock] = useState<MediaItem | null>(null)
+
+    const handleLockClick = (item: MediaItem) => {
+        setMediaToLock(item)
+        setLockDialogOpen(true)
+    }
+
+    const handleLockConfirm = async (reason: string) => {
+        if (!mediaToLock) return
+
+        try {
+            const success = await lockMedia(mediaToLock, reason)
+            if (success) {
+                // Remove the item from the displayed list since it's now locked
+                setFilteredItems(filteredItems.filter((item) => item.id !== mediaToLock.id))
+                showPopup(`Media "${mediaToLock.name}" locked. It's now protected from deletion.`)
+            } else {
+                showPopup("Failed to lock media")
+            }
+        } catch (err) {
+            console.error("Error locking media:", err)
+            showPopup("Error locking media")
+        } finally {
+            setLockDialogOpen(false)
+            setMediaToLock(null)
+        }
+    }
 
     // Apply filters when filter criteria change
     useEffect(() => {
@@ -347,6 +384,17 @@ export default function ActiveMediaTab({
                                         <Film className="h-8 w-8 text-white" />
                                     </div>
                                 )}
+                                {item.locked && (
+                                    <div className="absolute top-2 left-2">
+                                        <Badge
+                                            className="bg-amber-500 text-white flex items-center gap-1"
+                                            title={item.lockedReason || "Protected"}
+                                        >
+                                            <LockIcon className="h-3 w-3" />
+                                            Locked
+                                        </Badge>
+                                    </div>
+                                )}
                             </div>
                             <CardContent className="p-4">
                                 <div className="flex flex-col space-y-2">
@@ -366,16 +414,39 @@ export default function ActiveMediaTab({
                                             <Download className="h-4 w-4 mr-1" />
                                             Download
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(item, "soft")}>
-                                            <ArchiveIcon className="h-4 w-4" />
-                                            <span className="sr-only">Move to Trash</span>
-                                        </Button>
+                                        <div className="flex gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleLockClick(item)}
+                                                title="Lock this media to prevent deletion"
+                                            >
+                                                <LockIcon className="h-4 w-4 text-amber-500" />
+                                                <span className="sr-only">Lock Media</span>
+                                            </Button>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(item, "soft")}>
+                                                <ArchiveIcon className="h-4 w-4" />
+                                                <span className="sr-only">Move to Trash</span>
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
+            )}
+
+            {mediaToLock && (
+                <LockMediaDialog
+                    isOpen={lockDialogOpen}
+                    onClose={() => {
+                        setLockDialogOpen(false)
+                        setMediaToLock(null)
+                    }}
+                    onConfirm={handleLockConfirm}
+                    mediaName={mediaToLock.name}
+                />
             )}
 
             {/* Pagination */}

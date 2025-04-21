@@ -12,6 +12,7 @@ import {
     query,
     where,
     getDoc,
+    serverTimestamp,
 } from "firebase/firestore"
 import { db } from "./firebaseConfig"
 import { getSettings } from "./settingsService"
@@ -39,6 +40,10 @@ export interface MediaItem {
     deleted?: boolean // Flag to indicate if the item is soft-deleted
     deletedAt?: Date // When the item was soft-deleted
     deletedBy?: string // Who deleted the item
+    locked?: boolean // Flag to indicate if the item is locked for protection
+    lockedReason?: string // Reason why the item is locked (e.g. "OpenGraph image", "System image")
+    lockedAt?: any
+    lockedBy?: string
 }
 
 /**
@@ -563,6 +568,10 @@ export async function getAllMedia(includeDeleted = false): Promise<MediaItem[]> 
                 deleted: data.deleted || false,
                 deletedAt: data.deletedAt?.toDate(),
                 deletedBy: data.deletedBy,
+                locked: data.locked || false,
+                lockedReason: data.lockedReason || undefined,
+                lockedAt: data.lockedAt?.toDate(),
+                lockedBy: data.lockedBy,
             })
         })
 
@@ -615,6 +624,10 @@ export async function getDeletedMedia(): Promise<MediaItem[]> {
                 deleted: true,
                 deletedAt: data.deletedAt?.toDate(),
                 deletedBy: data.deletedBy,
+                locked: data.locked || false,
+                lockedReason: data.lockedReason || undefined,
+                lockedAt: data.lockedAt?.toDate(),
+                lockedBy: data.lockedBy,
             })
         })
 
@@ -740,12 +753,103 @@ async function fetchMediaFromStorage(): Promise<MediaItem[]> {
 }
 
 /**
+ * Locks a media item to prevent deletion
+ * @param item The media item to lock
+ * @param reason The reason for locking
+ * @returns Promise<boolean> indicating success
+ */
+export async function lockMedia(item: MediaItem, reason: string): Promise<boolean> {
+    try {
+        const mediaDoc = doc(db, "media", item.id)
+
+        await updateDoc(mediaDoc, {
+            locked: true,
+            lockedReason: reason,
+            lockedAt: serverTimestamp(),
+            lockedBy: auth.currentUser?.uid || "unknown",
+        })
+
+        // Log the action
+        const currentUser = auth.currentUser
+        mediaLogger.info(
+            `Locked media: ${item.name}`,
+            {
+                id: item.id,
+                reason,
+                userEmail: currentUser?.email,
+            },
+            currentUser?.uid,
+        )
+
+        return true
+    } catch (error) {
+        console.error("Error locking media:", error)
+        return false
+    }
+}
+
+/**
+ * Unlocks a media item to allow deletion
+ * @param item The media item to unlock
+ * @returns Promise<boolean> indicating success
+ */
+export async function unlockMedia(item: MediaItem): Promise<boolean> {
+    try {
+        const mediaDoc = doc(db, "media", item.id)
+
+        await updateDoc(mediaDoc, {
+            locked: false,
+            lockedReason: null,
+            lockedAt: null,
+            lockedBy: null,
+        })
+
+        // Log the action
+        const currentUser = auth.currentUser
+        mediaLogger.warn(
+            `Unlocked media: ${item.name}`,
+            {
+                id: item.id,
+                path: item.path,
+                userEmail: currentUser?.email,
+            },
+            currentUser?.uid,
+        )
+
+        return true
+    } catch (error) {
+        console.error("Error unlocking media:", error)
+        return false
+    }
+}
+
+/**
  * Soft deletes a media item by ID (marks as deleted without removing from storage)
  * @param mediaItem The media item to soft delete
  * @returns Promise<boolean> indicating success
  */
 export async function softDeleteMedia(mediaItem: MediaItem): Promise<boolean> {
     try {
+        // Check if the item is locked
+        if (mediaItem.locked) {
+            console.error(`Cannot delete locked media: ${mediaItem.name}`)
+
+            // Log the attempted deletion
+            const currentUser = auth.currentUser
+            mediaLogger.warn(
+                `Attempted to delete locked media: ${mediaItem.name}`,
+                {
+                    id: mediaItem.id,
+                    path: mediaItem.path,
+                    lockedReason: mediaItem.lockedReason,
+                    userEmail: currentUser?.email,
+                },
+                currentUser?.uid,
+            )
+
+            return false
+        }
+
         const currentUser = auth.currentUser
         const userId = currentUser?.uid || "unknown"
         const userEmail = currentUser?.email || "unknown"
@@ -804,8 +908,8 @@ export async function restoreMedia(mediaItem: MediaItem): Promise<boolean> {
         const userEmail = currentUser?.email || "unknown"
 
         // Check if the media item exists
-        const mediaDoc = doc(db, "media", mediaItem.id)
-        const mediaSnapshot = await getDoc(mediaDoc)
+        const mediaDocRef = doc(db, "media", mediaItem.id)
+        const mediaSnapshot = await getDoc(mediaDocRef)
 
         if (!mediaSnapshot.exists()) {
             console.error(`Media item ${mediaItem.id} does not exist`)
@@ -813,7 +917,7 @@ export async function restoreMedia(mediaItem: MediaItem): Promise<boolean> {
         }
 
         // Update Firestore document to unmark as deleted
-        await updateDoc(mediaDoc, {
+        await updateDoc(mediaDocRef, {
             deleted: false,
             deletedAt: null,
             deletedBy: null,
@@ -859,6 +963,26 @@ export async function restoreMedia(mediaItem: MediaItem): Promise<boolean> {
  */
 export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
     try {
+        // Check if the item is locked
+        if (mediaItem.locked) {
+            console.error(`Cannot delete locked media: ${mediaItem.name}`)
+
+            // Log the attempted deletion
+            const currentUser = auth.currentUser
+            mediaLogger.warn(
+                `Attempted to permanently delete locked media: ${mediaItem.name}`,
+                {
+                    id: mediaItem.id,
+                    path: mediaItem.path,
+                    lockedReason: mediaItem.lockedReason,
+                    userEmail: currentUser?.email,
+                },
+                currentUser?.uid,
+            )
+
+            return false
+        }
+
         const currentUser = auth.currentUser
         const userId = currentUser?.uid || undefined
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Film, TrashIcon, ArchiveRestore, Trash2, Search, X } from "lucide-react"
+import { Film, TrashIcon, ArchiveRestore, Trash2, Search, X, LockIcon } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -233,7 +233,10 @@ export default function TrashTab({
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                     {paginatedItems.map((item) => (
-                                        <Card key={item.id} className="overflow-hidden border-dashed">
+                                        <Card
+                                            key={item.id}
+                                            className={`overflow-hidden border-dashed ${item.locked ? "border-amber-300" : ""}`}
+                                        >
                                             <div className="aspect-video relative bg-muted/50">
                                                 {item.type === "image" ? (
                                                     <Image
@@ -251,8 +254,14 @@ export default function TrashTab({
                                                         <Film className="h-8 w-8 text-gray-400" />
                                                     </div>
                                                 )}
-                                                <div className="absolute top-2 right-2">
+                                                <div className="absolute top-2 right-2 flex gap-1">
                                                     <Badge variant="destructive">Deleted</Badge>
+                                                    {item.locked && (
+                                                        <Badge className="bg-amber-500 text-white flex items-center gap-1">
+                                                            <LockIcon className="h-3 w-3" />
+                                                            Locked
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                             <CardContent className="p-4">
@@ -274,6 +283,9 @@ export default function TrashTab({
                                                             variant="destructive"
                                                             size="icon"
                                                             onClick={() => handleDeleteClick(item, "permanent")}
+                                                            disabled={item.locked}
+                                                            title={item.locked ? "Cannot delete locked media" : "Delete Permanently"}
+                                                            className={item.locked ? "opacity-50 cursor-not-allowed" : ""}
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                             <span className="sr-only">Delete Permanently</span>

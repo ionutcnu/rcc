@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, AlertCircle, Upload, Search } from "lucide-react"
+import { Loader2, AlertCircle, Upload, Search, LockIcon } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,6 +15,8 @@ import {
     uploadFileAndGetURL,
     softDeleteMedia,
     restoreMedia,
+    lockMedia,
+    unlockMedia,
 } from "@/lib/firebase/storageService"
 import { mediaLogger } from "@/lib/utils/media-logger"
 import { auth } from "@/lib/firebase/firebaseConfig"
@@ -24,6 +26,8 @@ import { getCurrentUserInfo } from "@/lib/utils/user-info"
 import ActiveMediaTab from "./tabs/ActiveMediaTab"
 import TrashTab from "./tabs/TrashTab"
 import IssuesPanel from "./tabs/IssuesPanel"
+// Import the new LockedMediaManager component
+import LockedMediaManager from "./LockedMediaManager"
 
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -31,8 +35,8 @@ export default function MediaManager() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const { showPopup } = useCatPopup()
-    const [activeTab, setActiveTab] = useState<"active" | "trash">("active")
-    const [isUploading, setIsUploading] = useState(false)
+    const [activeTab, setActiveTab] = useState<"active" | "trash" | "locked">("active")
+    const [isUploading, setIsUploading] = useState<boolean>(false)
 
     // Filter and search state
     const [activeFilter, setActiveFilter] = useState<"all" | "image" | "video">("all")
@@ -149,6 +153,56 @@ export default function MediaManager() {
     const handleBulkAction = (type: string, items: MediaItem[]) => {
         setBulkAction({ type, items })
         setBulkActionDialogOpen(true)
+    }
+
+    // Function to handle locking media
+    const handleLockMedia = async (item: MediaItem) => {
+        try {
+            // Prompt user for a reason
+            const reason = window.prompt("Please enter a reason for locking this media:", "Important system media")
+            if (reason === null) return // User canceled
+
+            const success = await lockMedia(item, reason)
+            if (success) {
+                // Update the state
+                setMediaItems(
+                    mediaItems.map((media) => (media.id === item.id ? { ...media, locked: true, lockedReason: reason } : media)),
+                )
+                showPopup(`Media "${item.name}" locked. It's now protected from deletion.`)
+            } else {
+                showPopup("Failed to lock media")
+            }
+        } catch (err) {
+            console.error("Error locking media:", err)
+            showPopup("Error locking media")
+        }
+    }
+
+    // Function to handle unlocking media
+    const handleUnlockMedia = async (item: MediaItem) => {
+        try {
+            // Confirm before unlocking
+            const confirmed = window.confirm(
+                `Are you sure you want to unlock "${item.name}"? This will allow it to be deleted.`,
+            )
+            if (!confirmed) return
+
+            const success = await unlockMedia(item)
+            if (success) {
+                // Update the state
+                setMediaItems(
+                    mediaItems.map((media) =>
+                        media.id === item.id ? { ...media, locked: false, lockedReason: undefined } : media,
+                    ),
+                )
+                showPopup(`Media "${item.name}" unlocked. It can now be deleted.`)
+            } else {
+                showPopup("Failed to unlock media")
+            }
+        } catch (err) {
+            console.error("Error unlocking media:", err)
+            showPopup("Error unlocking media")
+        }
     }
 
     // Function to handle actual deletion after confirmation
@@ -483,10 +537,18 @@ export default function MediaManager() {
                 </div>
             </div>
 
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "active" | "trash")} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+            <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as "active" | "trash" | "locked")}
+                className="w-full"
+            >
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="active" className="flex items-center">
                         Active Media ({mediaItems.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="locked" className="flex items-center">
+                        <LockIcon className="h-4 w-4 mr-1" />
+                        Locked
                     </TabsTrigger>
                     <TabsTrigger value="trash" className="flex items-center">
                         Trash ({deletedMediaItems.length})
@@ -521,7 +583,14 @@ export default function MediaManager() {
                         isUploading={isUploading}
                         imageCount={imageCount}
                         videoCount={videoCount}
+                        handleLockMedia={handleLockMedia}
+                        handleUnlockMedia={handleUnlockMedia}
+                        showPopup={showPopup}
                     />
+                </TabsContent>
+
+                <TabsContent value="locked">
+                    <LockedMediaManager />
                 </TabsContent>
 
                 <TabsContent value="trash">

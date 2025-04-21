@@ -1,6 +1,9 @@
 import { db } from "@/lib/firebase/firebaseConfig"
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
 
+// Import the necessary functions at the top of the file if they don't already exist
+import { lockMedia, getAllMedia } from "./storageService"
+
 // Define SEO settings interface
 export interface SeoSettings {
     metaTitle: string
@@ -57,12 +60,16 @@ async function initializeSeoSettings(): Promise<void> {
     }
 }
 
-/**
- * Update SEO settings
- */
+// Update the updateSeoSettings function to lock the OG image
 export async function updateSeoSettings(settings: SeoSettings): Promise<boolean> {
     try {
         const settingsRef = doc(db, "settings", SEO_SETTINGS_DOC_ID)
+
+        // Check if the OG image has changed
+        const currentSettings = await getSeoSettings()
+        const ogImageChanged = currentSettings.ogImage !== settings.ogImage && settings.ogImage
+
+        // Update the settings
         await setDoc(
             settingsRef,
             {
@@ -71,6 +78,25 @@ export async function updateSeoSettings(settings: SeoSettings): Promise<boolean>
             },
             { merge: true },
         )
+
+        // If the OG image has changed, lock the new image
+        if (ogImageChanged) {
+            try {
+                // Find the media item for this URL
+                const allMedia = await getAllMedia(true)
+                const mediaItem = allMedia.find((item) => item.url === settings.ogImage)
+
+                if (mediaItem) {
+                    // Lock the media item
+                    await lockMedia(mediaItem, "OpenGraph image used in SEO settings")
+                    console.log("Locked OpenGraph image:", settings.ogImage)
+                }
+            } catch (lockError) {
+                console.error("Error locking OpenGraph image:", lockError)
+                // Continue even if locking fails - the settings were updated successfully
+            }
+        }
+
         return true
     } catch (error) {
         console.error("Error updating SEO settings:", error)
