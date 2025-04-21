@@ -170,6 +170,31 @@ export default function MediaManager() {
         fetchMedia()
     }, [])
 
+    // Add the beforeunload event listener in a useEffect hook after the existing useEffect hooks
+
+    // Add this useEffect after the existing useEffect hooks (around line 85, after the fetchMedia useEffect)
+    useEffect(() => {
+        // Function to handle beforeunload event
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isUploading) {
+                // Standard way to show a confirmation dialog when leaving the page
+                const message =
+                    "You have an upload in progress. If you leave now, your upload will be canceled. Are you sure you want to leave?"
+                e.preventDefault()
+                e.returnValue = message // For older browsers
+                return message // For modern browsers
+            }
+        }
+
+        // Add event listener when component mounts or isUploading changes
+        window.addEventListener("beforeunload", handleBeforeUnload)
+
+        // Clean up event listener when component unmounts or isUploading changes
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload)
+        }
+    }, [isUploading]) // Only re-run effect when isUploading changes
+
     // Clear selected items when tab changes
     useEffect(() => {
         // Clear selected items when changing tabs

@@ -1,22 +1,54 @@
-"use client";
-import { Swiper, SwiperSlide } from 'swiper/react';
-import 'swiper/swiper-bundle.css';
-import { Navigation, Pagination, Autoplay } from 'swiper/modules';
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
+"use client"
+import { Swiper, SwiperSlide } from "swiper/react"
+import "swiper/swiper-bundle.css"
+import { Navigation, Pagination, Autoplay } from "swiper/modules"
+import { useState, useEffect, useCallback } from "react"
+import Image from "next/image"
+import { getProxiedImageUrl } from "@/lib/utils/image-utils"
+import { getAllMedia, type MediaItem } from "@/lib/firebase/storageService"
+import useMobile from "@/hooks/use-mobile"
+
+function shuffleArray(array: any[]) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[array[i], array[j]] = [array[j], array[i]]
+    }
+    return array
+}
 
 export default function HeroSlideshow() {
-    const [isMobile, setIsMobile] = useState(false);
+    const isMobile = useMobile()
+    const [slides, setSlides] = useState<MediaItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    const fetchLockedMedia = useCallback(async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const allMedia = await getAllMedia(false)
+            const lockedMedia = allMedia.filter((item) => item.locked && item.type === "image")
+            const shuffledMedia = shuffleArray(lockedMedia)
+            setSlides(shuffledMedia)
+        } catch (err) {
+            console.error("Error fetching locked media:", err)
+            setError("Failed to load locked media")
+        } finally {
+            setLoading(false)
+        }
+    }, [])
 
     useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth <= 768);
-        };
+        fetchLockedMedia()
+    }, [fetchLockedMedia])
 
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    if (loading) {
+        return <div className="text-center py-4">Loading slideshow...</div>
+    }
+
+    if (error) {
+        return <div className="text-center py-4 text-red-500">Error: {error}</div>
+    }
 
     return (
         <section className="relative">
@@ -28,67 +60,32 @@ export default function HeroSlideshow() {
                 modules={[Navigation, Pagination, Autoplay]}
                 className="w-full h-full"
             >
-                <SwiperSlide>
-                    <div className="relative flex items-center justify-center h-[870px] bg-gray-200 border-4 border-gray-300">
-                        <div className="absolute inset-0 w-full h-full">
-                            <Image
-                                src={isMobile ? "/Cats/Images/Garfield.jpeg" : "/Cats/Images/Glori.jpeg"}
-                                alt="Hero slide 1"
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 100vw, 100vw"
-                                priority
-                            />
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center z-10">
-                            <div className="text-center text-white p-4">
-                                <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
-                                <p className="mt-4">THE JOURNEY STARTS HERE</p>
+                {slides.map((slide, index) => (
+                    <SwiperSlide key={slide.id}>
+                        <div className="relative flex items-center justify-center h-[870px] bg-gray-200 border-4 border-gray-300">
+                            <div className="absolute inset-0 w-full h-full">
+                                <Image
+                                    src={getProxiedImageUrl(slide.url) || "/placeholder.svg?height=870&width=1546"}
+                                    alt={slide.name}
+                                    fill
+                                    className="object-cover"
+                                    style={{
+                                        objectFit: "cover",
+                                    }}
+                                    sizes="(max-width: 768px) 100vw, 100vw"
+                                    priority={index < 3}
+                                />
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center z-10">
+                                <div className="text-center text-white p-4">
+                                    <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
+                                    <p className="mt-4">THE JOURNEY STARTS HERE</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </SwiperSlide>
-
-                <SwiperSlide>
-                    <div className="relative flex items-center justify-center h-[870px] bg-gray-200">
-                        <div className="absolute inset-0 w-full h-full">
-                            <Image
-                                src={isMobile ? "/Cats/Images/catm.jpg" : "/Cats/Images/catd.jpg"}
-                                alt="Hero slide 2"
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 100vw, 100vw"
-                            />
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center z-10">
-                            <div className="text-center text-white p-4">
-                                <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
-                                <p className="mt-4">THE JOURNEY STARTS HERE</p>
-                            </div>
-                        </div>
-                    </div>
-                </SwiperSlide>
-
-                <SwiperSlide>
-                    <div className="relative flex items-center justify-center h-[870px] bg-gray-200">
-                        <div className="absolute inset-0 w-full h-full">
-                            <Image
-                                src={isMobile ? "/Cats/Images/catm3.jpg" : "/Cats/Images/catd3.jpg"}
-                                alt="Hero slide 3"
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 100vw, 100vw"
-                            />
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center z-10">
-                            <div className="text-center text-white p-4">
-                                <h1 className="text-4xl font-bold">RED CAT CUASAR</h1>
-                                <p className="mt-4">THE JOURNEY STARTS HERE</p>
-                            </div>
-                        </div>
-                    </div>
-                </SwiperSlide>
+                    </SwiperSlide>
+                ))}
             </Swiper>
         </section>
-    );
+    )
 }
