@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Film, Search, Filter, X, Download, ArchiveIcon, Upload, Loader2, LockIcon } from "lucide-react"
+import { Film, Search, Filter, X, Download, ArchiveIcon, Upload, Loader2, LockIcon, Trash2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,8 @@ import { mediaLogger } from "@/lib/utils/media-logger"
 import type { MediaItem } from "@/lib/firebase/storageService"
 import { lockMedia } from "@/lib/firebase/storageService"
 import { LockMediaDialog } from "../LockMediaDialog"
+import { BulkLockMediaDialog } from "../BulkLockMediaDialog"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface ActiveMediaTabProps {
     mediaItems: MediaItem[]
@@ -37,6 +39,10 @@ interface ActiveMediaTabProps {
     handleLockMedia: (item: MediaItem) => void
     handleUnlockMedia: (item: MediaItem) => void
     showPopup: (message: string) => void
+    selectedItems: MediaItem[]
+    setSelectedItems: (items: MediaItem[]) => void
+    handleBulkAction: (type: string, items: MediaItem[]) => void
+    handleBulkLock: (items: MediaItem[], reason: string) => void
 }
 
 export default function ActiveMediaTab({
@@ -61,6 +67,10 @@ export default function ActiveMediaTab({
                                            handleLockMedia,
                                            handleUnlockMedia,
                                            showPopup,
+                                           selectedItems,
+                                           setSelectedItems,
+                                           handleBulkAction,
+                                           handleBulkLock,
                                        }: ActiveMediaTabProps) {
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1)
@@ -71,6 +81,9 @@ export default function ActiveMediaTab({
 
     const [lockDialogOpen, setLockDialogOpen] = useState(false)
     const [mediaToLock, setMediaToLock] = useState<MediaItem | null>(null)
+
+    // Bulk lock dialog state
+    const [bulkLockDialogOpen, setBulkLockDialogOpen] = useState(false)
 
     const handleLockClick = (item: MediaItem) => {
         setMediaToLock(item)
@@ -97,6 +110,38 @@ export default function ActiveMediaTab({
             setMediaToLock(null)
         }
     }
+
+    const handleBulkLockClick = () => {
+        if (selectedItems.length === 0) return
+        setBulkLockDialogOpen(true)
+    }
+
+    const handleBulkLockConfirm = (reason: string) => {
+        handleBulkLock(selectedItems, reason)
+        setBulkLockDialogOpen(false)
+    }
+
+    const handleSelectItem = (item: MediaItem, isSelected: boolean) => {
+        if (isSelected) {
+            setSelectedItems([...selectedItems, item])
+        } else {
+            setSelectedItems(selectedItems.filter((selectedItem) => selectedItem.id !== item.id))
+        }
+    }
+
+    const handleSelectAll = (isSelected: boolean) => {
+        if (isSelected) {
+            setSelectedItems([...paginatedItems])
+        } else {
+            setSelectedItems([])
+        }
+    }
+
+    const isItemSelected = (item: MediaItem) => {
+        return selectedItems.some((selectedItem) => selectedItem.id === item.id)
+    }
+
+    const areAllSelected = paginatedItems.length > 0 && selectedItems.length === paginatedItems.length
 
     // Apply filters when filter criteria change
     useEffect(() => {
@@ -245,6 +290,28 @@ export default function ActiveMediaTab({
                             >
                                 <Filter className="h-4 w-4" />
                             </Button>
+                            {selectedItems.length > 0 && (
+                                <>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => handleBulkAction("softDelete", selectedItems)}
+                                        className="ml-2"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Move {selectedItems.length} to Trash
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleBulkLockClick}
+                                        className="ml-2 border-amber-500 text-amber-500 hover:bg-amber-50"
+                                    >
+                                        <LockIcon className="h-4 w-4 mr-2" />
+                                        Lock {selectedItems.length} Items
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -320,10 +387,26 @@ export default function ActiveMediaTab({
                 </CardContent>
             </Card>
 
-            {/* Results count */}
-            <div className="text-sm text-gray-500">
-                Showing {paginatedItems.length} of {filteredItems.length} media items
-                {filteredItems.length !== mediaItems.length && ` (filtered from ${mediaItems.length} total)`}
+            <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-500">
+                    Showing {paginatedItems.length} of {filteredItems.length} media items
+                    {filteredItems.length !== mediaItems.length && ` (filtered from ${mediaItems.length} total)`}
+                </div>
+                {paginatedItems.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <Checkbox
+                            checked={areAllSelected}
+                            onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                            id="select-all"
+                        />
+                        <label htmlFor="select-all" className="text-sm cursor-pointer">
+                            Select All
+                        </label>
+                        {selectedItems.length > 0 && (
+                            <span className="text-sm text-muted-foreground ml-2">({selectedItems.length} selected)</span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {filteredItems.length === 0 ? (
@@ -356,6 +439,13 @@ export default function ActiveMediaTab({
                     {paginatedItems.map((item) => (
                         <Card key={item.id} className="overflow-hidden">
                             <div className="aspect-video relative bg-muted">
+                                <div className="absolute top-2 right-2 z-10">
+                                    <Checkbox
+                                        checked={isItemSelected(item)}
+                                        onCheckedChange={(checked) => handleSelectItem(item, checked === true)}
+                                        className="bg-white/80 border-gray-400"
+                                    />
+                                </div>
                                 {item.type === "image" ? (
                                     <Image
                                         src={item.url || "/placeholder.svg?height=200&width=300"}
@@ -448,6 +538,15 @@ export default function ActiveMediaTab({
                     mediaName={mediaToLock.name}
                 />
             )}
+
+            {/* Bulk Lock Dialog */}
+            <BulkLockMediaDialog
+                isOpen={bulkLockDialogOpen}
+                onClose={() => setBulkLockDialogOpen(false)}
+                onConfirm={handleBulkLockConfirm}
+                itemCount={selectedItems.length}
+                items={selectedItems}
+            />
 
             {/* Pagination */}
             {filteredItems.length > 0 && (

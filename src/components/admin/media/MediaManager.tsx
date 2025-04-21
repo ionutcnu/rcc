@@ -75,6 +75,12 @@ export default function MediaManager() {
     const [showIssuesPanel, setShowIssuesPanel] = useState(false)
     const [potentialIssues, setPotentialIssues] = useState<MediaItem[]>([])
 
+    // Add state for selected items
+    const [selectedItems, setSelectedItems] = useState<MediaItem[]>([])
+
+    // State for bulk operations
+    const [isBulkProcessing, setIsBulkProcessing] = useState(false)
+
     // Fetch media on component mount
     const fetchMedia = async () => {
         try {
@@ -151,6 +157,12 @@ export default function MediaManager() {
         fetchMedia()
     }, [])
 
+    // Clear selected items when tab changes
+    useEffect(() => {
+        // Clear selected items when changing tabs
+        setSelectedItems([])
+    }, [activeTab])
+
     // Function to handle delete button click
     const handleDeleteClick = (item: MediaItem, mode: "soft" | "permanent" = "soft") => {
         setMediaToDelete(item)
@@ -168,6 +180,73 @@ export default function MediaManager() {
     const handleBulkAction = (type: string, items: MediaItem[]) => {
         setBulkAction({ type, items })
         setBulkActionDialogOpen(true)
+    }
+
+    // Function to handle bulk lock operation
+    const handleBulkLock = async (items: MediaItem[], reason: string) => {
+        if (items.length === 0) return
+
+        const userId = auth.currentUser?.uid || "unknown"
+
+        try {
+            setIsBulkProcessing(true)
+
+            // Log the bulk lock operation
+            mediaLogger.mediaBulkOperation(
+                "lock",
+                items.length,
+                {
+                    itemIds: items.map((item) => item.id),
+                    itemTypes: items.map((item) => item.type),
+                    reason: reason,
+                },
+                userId,
+            )
+
+            let successCount = 0
+            let failCount = 0
+
+            // Process each item
+            for (const item of items) {
+                try {
+                    const success = await lockMedia(item, reason)
+                    if (success) {
+                        successCount++
+                    } else {
+                        failCount++
+                    }
+                } catch (err) {
+                    console.error(`Error locking media item ${item.id}:`, err)
+                    failCount++
+                }
+            }
+
+            // Update the UI - remove locked items from the active view
+            if (successCount > 0) {
+                const lockedItemIds = items.map((item) => item.id)
+                setMediaItems((prevItems) =>
+                    prevItems.map((item) =>
+                        lockedItemIds.includes(item.id) ? { ...item, locked: true, lockedReason: reason } : item,
+                    ),
+                )
+            }
+
+            // Show result message
+            if (failCount === 0) {
+                showPopup(`Successfully locked ${successCount} items`)
+            } else {
+                showPopup(`Locked ${successCount} items, failed to lock ${failCount} items`)
+            }
+
+            // Clear selected items
+            setSelectedItems([])
+        } catch (error) {
+            console.error("Error performing bulk lock:", error)
+            mediaLogger.error("Bulk lock operation failed", error, userId)
+            showPopup("Error performing bulk lock")
+        } finally {
+            setIsBulkProcessing(false)
+        }
     }
 
     // Function to handle locking media
@@ -312,6 +391,8 @@ export default function MediaManager() {
         const userId = auth.currentUser?.uid || "unknown"
 
         try {
+            setIsBulkProcessing(true)
+
             // Log the bulk operation
             mediaLogger.mediaBulkOperation(
                 type,
@@ -360,6 +441,9 @@ export default function MediaManager() {
                 ])
                 showPopup(`Successfully restored ${items.length} items`)
             }
+
+            // Clear selected items after operation
+            setSelectedItems([])
         } catch (error) {
             console.error(`Error performing bulk ${type}:`, error)
             mediaLogger.error(`Bulk ${type} operation failed`, error, userId)
@@ -367,6 +451,7 @@ export default function MediaManager() {
         } finally {
             setBulkActionDialogOpen(false)
             setBulkAction(null)
+            setIsBulkProcessing(false)
         }
     }
 
@@ -636,7 +721,7 @@ export default function MediaManager() {
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">Media Manager</h1>
                 <div className="flex gap-2">
-                    <Button onClick={handleUpload} disabled={isUploading}>
+                    <Button onClick={handleUpload} disabled={isUploading || isBulkProcessing}>
                         {isUploading ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -651,6 +736,15 @@ export default function MediaManager() {
                     </Button>
                 </div>
             </div>
+
+            {/* Processing Indicator */}
+            {isBulkProcessing && (
+                <Alert className="bg-blue-50 border-blue-200">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500 mr-2" />
+                    <AlertTitle>Processing</AlertTitle>
+                    <AlertDescription>Processing bulk operation. Please wait...</AlertDescription>
+                </Alert>
+            )}
 
             {/* Upload Progress Overlay */}
             {showUploadProgress && uploadProgress && (
@@ -751,6 +845,10 @@ export default function MediaManager() {
                         handleLockMedia={handleLockMedia}
                         handleUnlockMedia={handleUnlockMedia}
                         showPopup={showPopup}
+                        selectedItems={selectedItems}
+                        setSelectedItems={setSelectedItems}
+                        handleBulkAction={handleBulkAction}
+                        handleBulkLock={handleBulkLock}
                     />
                 </TabsContent>
 
@@ -822,12 +920,18 @@ export default function MediaManager() {
             {/* Bulk Action Confirmation Dialog */}
             <SimpleConfirmDialog
                 isOpen={bulkActionDialogOpen}
-                title={`Confirm ${bulkAction?.type}`}
+                title={`Confirm ${
+                    bulkAction?.type === "delete"
+                        ? "Permanent Delete"
+                        : bulkAction?.type === "softDelete"
+                            ? "Move to Trash"
+                            : "Restore"
+                }`}
                 message={
                     bulkAction?.type === "delete"
                         ? `Are you sure you want to permanently delete ${bulkAction?.items.length} items? This action cannot be undone.`
                         : bulkAction?.type === "softDelete"
-                            ? `Are you sure you want to move ${bulkAction?.items.length} items to trash?`
+                            ? `Are you sure you want to move ${bulkAction?.items.length} items to trash? You can restore them later.`
                             : `Are you sure you want to restore ${bulkAction?.items.length} items?`
                 }
                 onConfirm={confirmBulkAction}
@@ -836,6 +940,13 @@ export default function MediaManager() {
                     setBulkAction(null)
                 }}
                 confirmVariant={bulkAction?.type === "delete" ? "destructive" : "default"}
+                confirmText={
+                    bulkAction?.type === "delete"
+                        ? "Delete Permanently"
+                        : bulkAction?.type === "softDelete"
+                            ? "Move to Trash"
+                            : "Restore"
+                }
             />
         </div>
     )
