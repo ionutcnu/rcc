@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { LockIcon } from "lucide-react"
+import { UnlockIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import type { MediaItem } from "@/lib/firebase/storageService"
 
@@ -39,12 +39,12 @@ export function BulkLockMediaDialog({ isOpen, onClose, onConfirm, itemCount, ite
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <div className="flex items-center gap-2 text-amber-500 mb-2">
-                            <LockIcon className="h-5 w-5" />
+                            <UnlockIcon className="h-5 w-5" />
                             <DialogTitle>Lock {itemCount} Media Items</DialogTitle>
                         </div>
                         <DialogDescription>
-                            Locking these {itemCount} items will protect them from being deleted. Please provide a reason for locking
-                            these media items.
+                            Unlocking these {itemCount} items will protect them from being deleted. Please provide a reason for
+                            locking these media items.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
@@ -74,7 +74,7 @@ export function BulkLockMediaDialog({ isOpen, onClose, onConfirm, itemCount, ite
                             </div>
                         )}
 
-                        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-3 text-blue-800 text-sm">
+                        <div className="mt-4 bg-green-50 border border-blue-200 rounded-md p-3 text-blue-800 text-sm">
                             <p>
                                 <strong>Tip:</strong> Locked media cannot be deleted until unlocked. This helps prevent accidental
                                 deletion of important files.
@@ -86,8 +86,8 @@ export function BulkLockMediaDialog({ isOpen, onClose, onConfirm, itemCount, ite
                             Cancel
                         </Button>
                         <Button type="submit" className="bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1">
-                            <LockIcon className="h-4 w-4" />
-                            Lock {itemCount} Items
+                            <UnlockIcon className="h-4 w-4" />
+                            Unlock {itemCount} Items
                         </Button>
                     </DialogFooter>
                 </form>

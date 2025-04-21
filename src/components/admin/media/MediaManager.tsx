@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, AlertCircle, Upload, LockIcon, X } from "lucide-react"
+import { Loader2, Upload, LockIcon, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -42,6 +42,7 @@ interface UploadProgress {
 
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
+    const [lockedMediaItems, setLockedMediaItems] = useState<MediaItem[]>([])
     const [deletedMediaItems, setDeletedMediaItems] = useState<MediaItem[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -81,21 +82,29 @@ export default function MediaManager() {
     // State for bulk operations
     const [isBulkProcessing, setIsBulkProcessing] = useState(false)
 
+    // Declare imageCount and videoCount
+    const [imageCount, setImageCount] = useState(0)
+    const [videoCount, setVideoCount] = useState(0)
+
     // Fetch media on component mount
     const fetchMedia = async () => {
         try {
             setLoading(true)
 
-            // Fetch active media (not deleted)
-            const media = await getAllMedia(false)
-            setMediaItems(media)
+            // Fetch active media (not deleted and not locked)
+            const activeMedia = await getAllMedia(false)
+            setMediaItems(activeMedia.filter((item) => !item.locked))
+
+            // Fetch locked media
+            const lockedMedia = await getAllMedia(false)
+            setLockedMediaItems(lockedMedia.filter((item) => item.locked))
 
             // Fetch deleted media separately
             const deletedMedia = await getDeletedMedia()
             setDeletedMediaItems(deletedMedia)
 
             // Check for potential issues
-            const validMedia = media.filter((item) => item.url && item.url.trim() !== "")
+            const validMedia = activeMedia.filter((item) => item.url && item.url.trim() !== "")
             const potentialIssues: MediaItem[] = []
 
             // Use Promise.allSettled to prevent one failure from stopping the whole process
@@ -145,6 +154,10 @@ export default function MediaManager() {
                 console.log(`Found ${potentialIssues.length} potential issues that need manual review`)
                 showPopup(`Found ${potentialIssues.length} items that may need review. No action taken.`)
             }
+
+            // Update image and video counts
+            setImageCount(activeMedia.filter((item) => item.type === "image").length)
+            setVideoCount(activeMedia.filter((item) => item.type === "video").length)
         } catch (err) {
             console.error("Error fetching media:", err)
             setError("Failed to load media files. Please try again later.")
@@ -224,11 +237,11 @@ export default function MediaManager() {
             // Update the UI - remove locked items from the active view
             if (successCount > 0) {
                 const lockedItemIds = items.map((item) => item.id)
-                setMediaItems((prevItems) =>
-                    prevItems.map((item) =>
-                        lockedItemIds.includes(item.id) ? { ...item, locked: true, lockedReason: reason } : item,
-                    ),
-                )
+                setMediaItems((prevItems) => prevItems.filter((item) => !lockedItemIds.includes(item.id)))
+                setLockedMediaItems((prevItems) => [
+                    ...prevItems,
+                    ...items.map((item) => ({ ...item, locked: true, lockedReason: reason })),
+                ])
             }
 
             // Show result message
@@ -245,6 +258,8 @@ export default function MediaManager() {
             mediaLogger.error("Bulk lock operation failed", error, userId)
             showPopup("Error performing bulk lock")
         } finally {
+            setBulkActionDialogOpen(false)
+            setBulkAction(null)
             setIsBulkProcessing(false)
         }
     }
@@ -259,9 +274,8 @@ export default function MediaManager() {
             const success = await lockMedia(item, reason)
             if (success) {
                 // Update the state
-                setMediaItems(
-                    mediaItems.map((media) => (media.id === item.id ? { ...media, locked: true, lockedReason: reason } : media)),
-                )
+                setMediaItems(mediaItems.filter((media) => media.id !== item.id))
+                setLockedMediaItems([...lockedMediaItems, { ...item, locked: true, lockedReason: reason }])
                 showPopup(`Media "${item.name}" locked. It's now protected from deletion.`)
             } else {
                 showPopup("Failed to lock media")
@@ -284,11 +298,8 @@ export default function MediaManager() {
             const success = await unlockMedia(item)
             if (success) {
                 // Update the state
-                setMediaItems(
-                    mediaItems.map((media) =>
-                        media.id === item.id ? { ...media, locked: false, lockedReason: undefined } : media,
-                    ),
-                )
+                setLockedMediaItems(lockedMediaItems.filter((media) => media.id !== item.id))
+                setMediaItems([...mediaItems, { ...item, locked: false, lockedReason: undefined }])
                 showPopup(`Media "${item.name}" unlocked. It can now be deleted.`)
             } else {
                 showPopup("Failed to unlock media")
@@ -693,29 +704,6 @@ export default function MediaManager() {
         setSizeFilter("all")
     }
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                <span className="ml-2">Loading media files...</span>
-            </div>
-        )
-    }
-
-    if (error) {
-        return (
-            <Alert variant="destructive" className="my-8">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-            </Alert>
-        )
-    }
-
-    // Count items by type
-    const imageCount = mediaItems.filter((item) => item.type === "image").length
-    const videoCount = mediaItems.filter((item) => item.type === "video").length
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -739,7 +727,7 @@ export default function MediaManager() {
 
             {/* Processing Indicator */}
             {isBulkProcessing && (
-                <Alert className="bg-blue-50 border-blue-200">
+                <Alert className="mb-6" variant="default">
                     <Loader2 className="h-4 w-4 animate-spin text-blue-500 mr-2" />
                     <AlertTitle>Processing</AlertTitle>
                     <AlertDescription>Processing bulk operation. Please wait...</AlertDescription>
@@ -807,7 +795,7 @@ export default function MediaManager() {
                     </TabsTrigger>
                     <TabsTrigger value="locked" className="flex items-center">
                         <LockIcon className="h-4 w-4 mr-1" />
-                        Locked
+                        Locked ({lockedMediaItems.length})
                     </TabsTrigger>
                     <TabsTrigger value="trash" className="flex items-center">
                         Trash ({deletedMediaItems.length})
