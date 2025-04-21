@@ -129,8 +129,11 @@ export async function updateCat(id: string, cat: Partial<Omit<CatProfile, "id" |
             }
             await setDoc(docRef, payload, { merge: true })
 
-            // Log the activity with cleaned details
-            await logActivity("update", currentCat.name || "Unknown cat", id, cleanCat)
+            // Log the activity with cleaned details and field changes
+            await logActivity("update", currentCat.name || "Unknown cat", id, {
+                ...cleanCat,
+                changedFields: Object.keys(cleanCat),
+            })
         }
     } catch (error: any) {
         console.error(`Error updating cat with ID ${id}:`, error)
@@ -173,7 +176,13 @@ export async function deleteCat(id: string, permanent = false): Promise<void> {
             await deleteDoc(docRef)
 
             // Log the activity with minimal details to avoid undefined values
-            await logActivity("delete", cat.name, id, { deleted: true, permanent: true })
+            await logActivity("delete", cat.name, id, {
+                deleted: true,
+                permanent: true,
+                breed: cat.breed,
+                gender: cat.gender,
+                age: cat.yearOfBirth,
+            })
 
             console.log(`Cat with ID ${id} and all associated media permanently deleted`)
         } else {
@@ -185,8 +194,14 @@ export async function deleteCat(id: string, permanent = false): Promise<void> {
                 deletedBy: auth.currentUser?.uid || null,
             })
 
-            // Log the activity
-            await logActivity("delete", cat.name, id, { deleted: true, permanent: false })
+            // Log the activity with more cat details
+            await logActivity("delete", cat.name, id, {
+                deleted: true,
+                permanent: false,
+                breed: cat.breed,
+                gender: cat.gender,
+                age: cat.yearOfBirth,
+            })
 
             console.log(`Cat with ID ${id} moved to trash`)
         }
@@ -216,7 +231,12 @@ export async function restoreCat(id: string): Promise<void> {
         })
 
         // Log the activity
-        await logActivity("update", cat.name, id, { restored: true })
+        await logActivity("restore", cat.name, id, {
+            restored: true,
+            breed: cat.breed,
+            gender: cat.gender,
+            age: cat.yearOfBirth,
+        })
 
         console.log(`Cat with ID ${id} restored from trash`)
     } catch (error: any) {
@@ -249,7 +269,12 @@ export async function archiveCat(id: string): Promise<void> {
         const cat = await getCatById(id)
         if (cat) {
             await updateCat(id, { isDeleted: true })
-            await logActivity("archive", cat.name, id, { archived: true })
+            await logActivity("archive", cat.name, id, {
+                archived: true,
+                breed: cat.breed,
+                gender: cat.gender,
+                age: cat.yearOfBirth,
+            })
         }
     } catch (error: any) {
         console.error(`Error archiving cat with ID ${id}:`, error)
@@ -266,8 +291,22 @@ export async function archiveCat(id: string): Promise<void> {
  */
 export async function uploadCatImage(file: File, catId: string, type = "image"): Promise<string> {
     try {
+        // First get the cat name for logging
+        const cat = await getCatById(catId)
+        const catName = cat?.name || "Unknown cat"
+
         // Use the existing upload function with the cats folder
-        return await uploadFileAndGetURL(file, `cats/${catId}/images`)
+        const imageUrl = await uploadFileAndGetURL(file, `cats/${catId}/images`)
+
+        // Log the image upload
+        await logActivity("upload", catName, catId, {
+            fileType: "image",
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: type,
+        })
+
+        return imageUrl
     } catch (error) {
         console.error("Error uploading cat image:", error)
         throw error
@@ -283,8 +322,22 @@ export async function uploadCatImage(file: File, catId: string, type = "image"):
  */
 export async function uploadCatVideo(file: File, catId: string, type = "video"): Promise<string> {
     try {
+        // First get the cat name for logging
+        const cat = await getCatById(catId)
+        const catName = cat?.name || "Unknown cat"
+
         // Use the existing upload function with the cats folder
-        return await uploadFileAndGetURL(file, `cats/${catId}/videos`)
+        const videoUrl = await uploadFileAndGetURL(file, `cats/${catId}/videos`)
+
+        // Log the video upload
+        await logActivity("upload", catName, catId, {
+            fileType: "video",
+            fileName: file.name,
+            fileSize: file.size,
+            uploadType: type,
+        })
+
+        return videoUrl
     } catch (error) {
         console.error("Error uploading cat video:", error)
         throw error

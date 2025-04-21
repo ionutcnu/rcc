@@ -46,13 +46,21 @@ export interface MediaItem {
     lockedBy?: string
 }
 
+// Progress callback type for upload tracking
+export type UploadProgressCallback = (progress: number, bytesTransferred: number, totalBytes: number) => void
+
 /**
  * Uploads a file to Firebase Storage and returns the download URL
  * @param file The file to upload
  * @param folder The folder path in storage
+ * @param onProgress Optional callback for progress updates
  * @returns Promise with the download URL
  */
-export async function uploadFileAndGetURL(file: File, folder: string): Promise<string> {
+export async function uploadFileAndGetURL(
+    file: File,
+    folder: string,
+    onProgress?: UploadProgressCallback,
+): Promise<string> {
     return new Promise(async (resolve, reject) => {
         try {
             // Fetch current settings to get image quality setting
@@ -139,8 +147,13 @@ export async function uploadFileAndGetURL(file: File, folder: string): Promise<s
                 "state_changed",
                 (snapshot) => {
                     // Track upload progress
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                    console.log(`Upload progress for ${file.name}: ${progress.toFixed(2)}%`)
+                    const progress = snapshot.bytesTransferred / snapshot.totalBytes
+                    console.log(`Upload progress for ${file.name}: ${(progress * 100).toFixed(2)}%`)
+
+                    // Call progress callback if provided
+                    if (onProgress) {
+                        onProgress(progress, snapshot.bytesTransferred, snapshot.totalBytes)
+                    }
                 },
                 (error) => {
                     // Handle unsuccessful uploads

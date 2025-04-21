@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bug, ImageIcon, Webhook, UserCog, RefreshCw, Shield } from "lucide-react"
+import { Bug, ImageIcon, Webhook, UserCog, RefreshCw, Shield, Search } from "lucide-react"
 
 export default function DebugDashboardPage() {
     const debugTools = [
@@ -35,6 +35,12 @@ export default function DebugDashboardPage() {
             description: "Force a complete logout and session cleanup",
             href: "/admin/debug/force-logout",
             icon: <RefreshCw className="h-8 w-8 text-red-500" />,
+        },
+        {
+            title: "Validate Media",
+            description: "Check for broken media links",
+            href: "/admin/debug/validate-media",
+            icon: <Search className="h-8 w-8 text-orange-500" />,
         },
     ]
 
