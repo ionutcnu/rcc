@@ -54,3 +54,6 @@ function initAdmin() {
 
 // Export the admin SDK
 export const admin = initAdmin()
+
+// Export adminAuth as a named export
+export const adminAuth = admin.auth

@@ -86,6 +86,9 @@ export default function MediaManager() {
     const [imageCount, setImageCount] = useState(0)
     const [videoCount, setVideoCount] = useState(0)
 
+    // State for download in progress
+    const [isDownloading, setIsDownloading] = useState(false)
+
     // Fetch media on component mount
     const fetchMedia = async () => {
         try {
@@ -638,6 +641,62 @@ export default function MediaManager() {
         })
     }
 
+    // Function to handle direct file download
+    const handleDirectDownload = async (item: MediaItem) => {
+        if (isDownloading) return
+
+        try {
+            setIsDownloading(true)
+            showPopup(`Downloading ${item.name}...`)
+
+            // Fetch the file directly from Firebase
+            const response = await fetch(item.url)
+
+            if (!response.ok) {
+                throw new Error(`Failed to download file: ${response.status} ${response.statusText}`)
+            }
+
+            // Get the file as a blob
+            const blob = await response.blob()
+
+            // Create a URL for the blob
+            const blobUrl = URL.createObjectURL(blob)
+
+            // Create a temporary anchor element
+            const a = document.createElement("a")
+            a.href = blobUrl
+            a.download = item.name // Set the filename
+            a.style.display = "none"
+
+            // Add to document, click it, and remove it
+            document.body.appendChild(a)
+            a.click()
+
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a)
+                URL.revokeObjectURL(blobUrl)
+                showPopup(`Downloaded ${item.name}`)
+            }, 100)
+        } catch (error) {
+            console.error("Download error:", error)
+            showPopup(`Error downloading ${item.name}`)
+
+            // Fallback to direct URL if fetch fails
+            try {
+                const a = document.createElement("a")
+                a.href = item.url
+                a.download = item.name
+                a.target = "_blank"
+                a.click()
+            } catch (fallbackError) {
+                console.error("Fallback download error:", fallbackError)
+            }
+        } finally {
+            setIsDownloading(false)
+        }
+    }
+
     const handleManualValidation = async () => {
         try {
             setLoading(true)
@@ -842,15 +901,7 @@ export default function MediaManager() {
                         setSizeFilter={setSizeFilter}
                         resetFilters={resetFilters}
                         handleDeleteClick={handleDeleteClick}
-                        handleDownload={(item) => {
-                            const link = document.createElement("a")
-                            link.href = item.url
-                            link.download = item.name
-                            document.body.appendChild(link)
-                            link.click()
-                            document.body.removeChild(link)
-                            showPopup(`Downloading ${item.name}`)
-                        }}
+                        handleDownload={handleDirectDownload}
                         handleUpload={handleUpload}
                         isUploading={isUploading}
                         imageCount={imageCount}
