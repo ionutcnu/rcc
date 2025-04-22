@@ -6,18 +6,26 @@ export function useMediaQuery(query: string): boolean {
     const [matches, setMatches] = useState(false)
 
     useEffect(() => {
-        const media = window.matchMedia(query)
-        if (media.matches !== matches) {
-            setMatches(media.matches)
+        const mediaQuery = window.matchMedia(query)
+
+        const handleChange = (event: MediaQueryListEvent) => {
+            setMatches(event.matches)
         }
-        const listener = () => setMatches(media.matches)
-        media.addEventListener("change", listener)
-        return () => media.removeEventListener("change", listener)
-    }, [matches, query])
+
+        setMatches(mediaQuery.matches)
+
+        mediaQuery.addEventListener("change", handleChange)
+
+        return () => {
+            mediaQuery.removeEventListener("change", handleChange)
+        }
+    }, [query])
 
     return matches
 }
 
-export default function useMobile(): boolean {
+const useMobile = (): boolean => {
     return useMediaQuery("(max-width: 768px)")
 }
+
+export default useMobile

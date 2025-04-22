@@ -10,6 +10,7 @@ export interface CatProfile {
     color: string
     gender: string
     yearOfBirth: number
+    age?: number // Add this line
     isVaccinated: boolean
     isMicrochipped: boolean
     isCastrated: boolean

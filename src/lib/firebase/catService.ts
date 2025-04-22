@@ -12,6 +12,7 @@ import {
     updateDoc,
     query,
     where,
+    limit,
 } from "firebase/firestore"
 import { deleteFileFromStorage, uploadFileAndGetURL } from "./storageService"
 import { logActivity } from "./activityService"
@@ -20,6 +21,7 @@ import { auth } from "./firebaseConfig"
 // Reference the correct root-level cats collection
 const catsRef = collection(db, "cats")
 
+// Update the getAllCats function to calculate and include age
 export async function getAllCats(includeDeleted = false): Promise<CatProfile[]> {
     try {
         let q
@@ -32,11 +34,24 @@ export async function getAllCats(includeDeleted = false): Promise<CatProfile[]> 
         }
 
         const snapshot = await getDocs(q)
+        const currentYear = new Date().getFullYear()
+
         return snapshot.docs.map((docSnap) => {
             const data = docSnap.data() as CatProfile
             // Avoid duplicate id property by destructuring data first
             const { id: _, ...restData } = data
-            return { id: docSnap.id, ...restData }
+
+            // Calculate age based on yearOfBirth if available
+            let age: number | undefined = undefined
+            if (restData.yearOfBirth) {
+                age = currentYear - restData.yearOfBirth
+            }
+
+            return {
+                id: docSnap.id,
+                ...restData,
+                age, // Add calculated age
+            }
         })
     } catch (error: any) {
         console.error("Error getting all cats:", error)
@@ -340,6 +355,28 @@ export async function uploadCatVideo(file: File, catId: string, type = "video"):
         return videoUrl
     } catch (error) {
         console.error("Error uploading cat video:", error)
+        throw error
+    }
+}
+
+// Add this function to fetch a cat by name
+export async function getCatByName(name: string): Promise<CatProfile | null> {
+    try {
+        const catsRef = collection(db, "cats")
+        const q = query(catsRef, where("name", "==", name), where("isDeleted", "==", false), limit(1))
+        const querySnapshot = await getDocs(q)
+
+        if (querySnapshot.empty) {
+            return null
+        }
+
+        const catDoc = querySnapshot.docs[0]
+        const data = catDoc.data() as CatProfile
+        // Avoid duplicate id property by destructuring data first
+        const { id: _, ...restData } = data
+        return { id: catDoc.id, ...restData }
+    } catch (error: any) {
+        console.error("Error fetching cat by name:", error)
         throw error
     }
 }

@@ -338,8 +338,6 @@ export default function ActiveCatsTab() {
 
     return (
         <div className="space-y-6">
-
-
             {/* Search and View Toggle */}
             <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-grow">
@@ -544,6 +542,7 @@ export default function ActiveCatsTab() {
                                         </p>
                                         <p className="text-gray-700 mt-2">{cat.description}</p>
                                         <div className="flex flex-wrap gap-2 mt-3">
+                                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200">{cat.availability}</Badge>
                                             {cat.isVaccinated && (
                                                 <Badge variant="secondary" className="bg-green-100 text-green-800">
                                                     Vaccinated
@@ -559,7 +558,6 @@ export default function ActiveCatsTab() {
                                                     Castrated
                                                 </Badge>
                                             )}
-                                            <Badge className="bg-orange-500 text-white">{cat.availability}</Badge>
                                         </div>
                                     </div>
                                     <div className="flex space-x-2">
@@ -591,9 +589,6 @@ export default function ActiveCatsTab() {
                                     className="object-cover"
                                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                                 />
-                                <div className="absolute top-2 right-2">
-                                    <Badge className="bg-orange-500 hover:bg-orange-600">{cat.availability}</Badge>
-                                </div>
                             </div>
                             <CardContent className="p-2">
                                 <div className="flex justify-between items-start mb-1">
@@ -606,6 +601,9 @@ export default function ActiveCatsTab() {
                                 </div>
 
                                 <div className="flex flex-wrap gap-1 mb-3">
+                                    <Badge className="text-xs px-1 py-0 h-5 bg-orange-100 text-orange-800 hover:bg-orange-200 hover:text-orange-800">
+                                        {cat.availability}
+                                    </Badge>
                                     {cat.isVaccinated && (
                                         <Badge
                                             variant="secondary"

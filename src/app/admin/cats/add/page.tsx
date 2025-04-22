@@ -37,7 +37,7 @@ const formSchema = z.object({
     isVaccinated: z.boolean(),
     isMicrochipped: z.boolean(),
     isCastrated: z.boolean(),
-    breed: z.string().min(1, "Breed is required"),
+    breed: z.string(),
     category: z.string().min(1, "Category is required"),
     motherId: z.string().nullable(), // ✅ string or null
     fatherId: z.string().nullable(), // ✅ string or null
@@ -49,6 +49,7 @@ type FormValues = z.infer<typeof formSchema>
 export default function CatEntryForm() {
     const [images, setImages] = useState<string[]>([])
     const [videos, setVideos] = useState<string[]>([])
+    const [videoFiles, setVideoFiles] = useState<File[]>([]) // New state for video files
     const [mainImage, setMainImage] = useState<string>("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [popupVisible, setPopupVisible] = useState(false)
@@ -68,11 +69,11 @@ export default function CatEntryForm() {
             isVaccinated: false,
             isMicrochipped: false,
             isCastrated: false,
-            breed: "",
+            breed: "British Shorthair",
             category: "Domestic",
             motherId: null,
             fatherId: null,
-            availability: "Available",
+            availability: "",
         },
     })
 
@@ -156,6 +157,10 @@ export default function CatEntryForm() {
         if (e.target.files && e.target.files.length > 0) {
             const files = Array.from(e.target.files)
 
+            // Store the actual File objects
+            setVideoFiles((prev) => [...prev, ...files])
+
+            // Create preview URLs for display
             files.forEach((file) => {
                 const reader = new FileReader()
                 reader.onload = () => {
@@ -181,6 +186,11 @@ export default function CatEntryForm() {
         const newVideos = [...videos]
         newVideos.splice(index, 1)
         setVideos(newVideos)
+
+        // Also remove from videoFiles array
+        const newVideoFiles = [...videoFiles]
+        newVideoFiles.splice(index, 1)
+        setVideoFiles(newVideoFiles)
     }
 
     // Helper function to convert base64 to file and upload
@@ -215,24 +225,6 @@ export default function CatEntryForm() {
             return await uploadFileAndGetURL(file, folder)
         } catch (error) {
             console.error("Error uploading image:", error)
-            throw error
-        }
-    }
-
-    // Helper function for videos
-    async function uploadBase64Video(base64String: string, folder: string): Promise<string> {
-        try {
-            // Extract file type and create a proper filename
-            const mimeType = base64String.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)![1]
-            const fileExt = mimeType.split("/")[1]
-
-            const fetchResponse = await fetch(base64String)
-            const blob = await fetchResponse.blob()
-            const file = new File([blob], `video-${Date.now()}.${fileExt}`, { type: mimeType })
-
-            return await uploadFileAndGetURL(file, folder)
-        } catch (error) {
-            console.error("Error uploading video:", error)
             throw error
         }
     }
@@ -276,13 +268,19 @@ export default function CatEntryForm() {
                 }
             }
 
-            // Upload videos to Firebase Storage
-            console.log(`Uploading ${videos.length} videos...`)
+            // Upload videos to Firebase Storage using the stored File objects
+            console.log(`Uploading ${videoFiles.length} videos...`)
             const uploadedVideoUrls: string[] = []
-            for (const videoBase64 of videos) {
-                const videoUrl = await uploadBase64Video(videoBase64, "cats/videos")
-                uploadedVideoUrls.push(videoUrl)
-                console.log("Video uploaded:", videoUrl)
+            for (const videoFile of videoFiles) {
+                try {
+                    console.log("Uploading video file:", videoFile.name)
+                    const videoUrl = await uploadFileAndGetURL(videoFile, "cats/videos")
+                    uploadedVideoUrls.push(videoUrl)
+                    console.log("Video uploaded:", videoUrl)
+                } catch (error) {
+                    console.error("Error uploading video file:", error)
+                    // Continue with other videos even if one fails
+                }
             }
 
             console.log("All files uploaded successfully")
@@ -323,6 +321,7 @@ export default function CatEntryForm() {
             form.reset()
             setImages([])
             setVideos([])
+            setVideoFiles([]) // Clear video files
             setMainImage("")
         } catch (error) {
             console.error("Error submitting form:", error)
@@ -384,7 +383,7 @@ export default function CatEntryForm() {
                                                     <FormItem className="mb-5">
                                                         <FormLabel className="text-base">Name</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="e.g. Gura Mare" {...field} className="h-11" />
+                                                            <Input  {...field} className="h-11" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -633,7 +632,6 @@ export default function CatEntryForm() {
                                                             </FormControl>
                                                             <SelectContent>
                                                                 <SelectItem value="Domestic">Domestic</SelectItem>
-                                                                <SelectItem value="Exotic">Exotic</SelectItem>
                                                                 <SelectItem value="Wild">Wild</SelectItem>
                                                             </SelectContent>
                                                         </Select>
@@ -783,9 +781,8 @@ export default function CatEntryForm() {
                                                             </FormControl>
                                                             <SelectContent>
                                                                 <SelectItem value="Available">Available</SelectItem>
-                                                                <SelectItem value="Pending">Pending</SelectItem>
-                                                                <SelectItem value="Adopted">Adopted</SelectItem>
-                                                                <SelectItem value="Not Available">Not Available</SelectItem>
+                                                                <SelectItem value="Reserved">Reserved</SelectItem>
+                                                                <SelectItem value="Stays in cattery">Stays in cattery</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                         <FormMessage />
@@ -804,6 +801,7 @@ export default function CatEntryForm() {
                                             form.reset()
                                             setImages([])
                                             setVideos([])
+                                            setVideoFiles([])
                                             setMainImage("")
                                         }}
                                         className="px-6 border-gray-300 hover:bg-white"

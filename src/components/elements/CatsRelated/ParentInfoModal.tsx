@@ -1,78 +1,69 @@
-'use client';
-import Image from 'next/image';
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaTree } from 'react-icons/fa';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { cats } from '@/app/data/catsData';
+"use client"
+import Image from "next/image"
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { FaTree } from "react-icons/fa"
+import { ChevronDown, ChevronUp } from "lucide-react"
+import { getCatById } from "@/lib/firebase/catService"
+import type { CatProfile } from "@/lib/types/cat"
 
 // === TYPES ===
 interface Cat {
-    id: number;
-    name: string;
-    alias: string;
-    mainImage: string;
-    motherId?: number;
-    fatherId?: number;
-    children?: Cat[];
+    id: string | number
+    name: string
+    mainImage: string
+    motherId?: string | number | null
+    fatherId?: string | number | null
+    children?: Cat[]
 }
 
-// === UTILS ===
-function buildFamilyTree(cats: Cat[], rootCatId: number): Cat | undefined {
-    const map = new Map<number, Cat>();
-    cats.forEach(cat => map.set(cat.id, { ...cat, children: [] }));
-    cats.forEach(cat => {
-        const currentCat = map.get(cat.id)!;
-        if (cat.motherId && map.has(cat.motherId)) {
-            map.get(cat.motherId)!.children!.push(currentCat);
-        }
-        if (cat.fatherId && map.has(cat.fatherId)) {
-            map.get(cat.fatherId)!.children!.push(currentCat);
-        }
-    });
-    return map.get(rootCatId);
+interface ParentInfoPopupProps {
+    currentCatId: string | number | null
+    catData?: CatProfile // Optional prop to pass cat data directly
 }
 
 // === COMPONENT: Cat Node ===
 const CatNode = ({ cat }: { cat: Cat }) => {
     return (
         <div
-            onClick={() => window.location.href = `/cat-profile/${cat.alias}`}
+            onClick={() => (window.location.href = `/cat-profile/${encodeURIComponent(cat.name)}`)}
             className="flex flex-col items-center cursor-pointer group min-w-[7rem] max-w-[8rem]"
         >
             <Image
-                src={cat.mainImage}
+                src={cat.mainImage || "/tabby-sunbeam.png"}
                 alt={cat.name}
                 width={112}
                 height={112}
                 className="rounded-full shadow-md"
-                style={{ objectFit: 'cover' }}
+                style={{ objectFit: "cover" }}
             />
             <span className="mt-3 text-center text-black text-xl font-bold tracking-tight group-hover:underline break-words leading-tight">
-    {cat.name}
-  </span>
+        {cat.name}
+      </span>
         </div>
-    );
-};
+    )
+}
 
 // === COMPONENT: Recursive Tree ===
 const FamilyTree = ({ data, isRoot = true }: { data: Cat; isRoot?: boolean }) => {
-    const [isExpanded, setIsExpanded] = useState(isRoot);
-    const toggleExpand = () => setIsExpanded(!isExpanded);
-    const childrenRef = useRef<HTMLDivElement | null>(null);
+    const [isExpanded, setIsExpanded] = useState(isRoot)
+    const toggleExpand = () => setIsExpanded(!isExpanded)
+    const childrenRef = useRef<HTMLDivElement | null>(null)
 
     useEffect(() => {
         if (isExpanded && childrenRef.current) {
             const timeout = setTimeout(() => {
-                childrenRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300); // match the animation duration
+                childrenRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }, 300) // match the animation duration
 
-            return () => clearTimeout(timeout);
+            return () => clearTimeout(timeout)
         }
-    }, [isExpanded]);
+    }, [isExpanded])
 
     return (
-        <div className={`flex flex-col items-center ${isRoot ? '' : 'mt-8'}`}>
+        <div className={`flex flex-col items-center ${isRoot ? "" : "mt-8"}`}>
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -88,27 +79,30 @@ const FamilyTree = ({ data, isRoot = true }: { data: Cat; isRoot?: boolean }) =>
                     >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
-
                 )}
             </motion.div>
 
             <AnimatePresence>
-                {isExpanded && data.children && (
+                {isExpanded && data.children && data.children.length > 0 && (
                     <motion.div
                         ref={childrenRef}
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
+                        animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.3 }}
                         className="flex gap-12 mt-6 pt-6 border-t border-gray-300"
                     >
                         {data.children.map((child, index) => {
-                            const relation = child.motherId === data.id ? 'Mother' : child.fatherId === data.id ? 'Father' : '';
+                            const relation = child.motherId === data.id ? "Mother" : child.fatherId === data.id ? "Father" : ""
                             return (
                                 <div key={index} className="flex flex-col items-center px-3">
                                     <div
                                         className={`mb-2 text-sm font-bold tracking-wide uppercase ${
-                                            relation === 'Mother' ? 'text-pink-500' : relation === 'Father' ? 'text-blue-500' : 'text-gray-500'
+                                            relation === "Mother"
+                                                ? "text-pink-500"
+                                                : relation === "Father"
+                                                    ? "text-blue-500"
+                                                    : "text-gray-500"
                                         }`}
                                     >
                                         {relation}
@@ -116,46 +110,133 @@ const FamilyTree = ({ data, isRoot = true }: { data: Cat; isRoot?: boolean }) =>
                                     <div className="h-6 w-px bg-gray-300 mb-2" />
                                     <FamilyTree data={child} isRoot={false} />
                                 </div>
-                            );
+                            )
                         })}
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
-    );
-};
+    )
+}
 
 // === COMPONENT: Popup Wrapper ===
-const ParentInfoPopup: React.FC<{ currentCatId: number }> = ({ currentCatId }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const currentCat = cats.find((c) => c.id === currentCatId);
+const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({ currentCatId, catData }) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [familyData, setFamilyData] = useState<Cat | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
-    const familyData = currentCat
-        ? (function buildFamilyTree(cats: Cat[], rootId: number): Cat | undefined {
-            const map = new Map<number, Cat & { children: Cat[] }>();
+    // Function to build family tree from Firebase data
+    const buildFamilyTreeFromFirebase = async (rootCat: CatProfile) => {
+        try {
+            setLoading(true)
 
-            cats.forEach((cat) => {
-                map.set(cat.id, { ...cat, children: [] });
-            });
+            // Create a map to store cats by ID
+            const catsMap = new Map<string | number, Cat>()
 
-            cats.forEach((cat) => {
-                const current = map.get(cat.id)!;
-                if (cat.motherId && map.has(cat.motherId)) {
-                    map.get(cat.motherId)!.children.push(current);
+            // Add the root cat to the map
+            const rootCatFormatted: Cat = {
+                id: rootCat.id || "0",
+                name: rootCat.name,
+                mainImage: rootCat.mainImage || "/tabby-sunbeam.png",
+                motherId: rootCat.motherId || null,
+                fatherId: rootCat.fatherId || null,
+                children: [],
+            }
+            catsMap.set(rootCatFormatted.id, rootCatFormatted)
+
+            // Fetch mother if exists
+            if (rootCat.motherId) {
+                try {
+                    const motherData = await getCatById(rootCat.motherId.toString())
+                    if (motherData) {
+                        const mother: Cat = {
+                            id: motherData.id || "0",
+                            name: motherData.name,
+                            mainImage: motherData.mainImage || "/tabby-sunbeam.png",
+                            children: [rootCatFormatted],
+                        }
+                        catsMap.set(mother.id, mother)
+                    }
+                } catch (err) {
+                    console.error("Error fetching mother:", err)
                 }
-                if (cat.fatherId && map.has(cat.fatherId)) {
-                    map.get(cat.fatherId)!.children.push(current);
-                }
-            });
+            }
 
-            return map.get(rootId);
-        })(cats, currentCatId)
-        : null;
+            // Fetch father if exists
+            if (rootCat.fatherId) {
+                try {
+                    const fatherData = await getCatById(rootCat.fatherId.toString())
+                    if (fatherData) {
+                        const father: Cat = {
+                            id: fatherData.id || "0",
+                            name: fatherData.name,
+                            mainImage: fatherData.mainImage || "/tabby-sunbeam.png",
+                            children: [rootCatFormatted],
+                        }
+                        catsMap.set(father.id, father)
+                    }
+                } catch (err) {
+                    console.error("Error fetching father:", err)
+                }
+            }
+
+            // Return the root cat with its family tree
+            return rootCatFormatted
+        } catch (err) {
+            console.error("Error building family tree:", err)
+            setError("Failed to load family tree")
+            return null
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Fetch family data when the modal is opened
+    const fetchFamilyData = async () => {
+        if (!catData && !currentCatId) {
+            setError("No cat data available")
+            return
+        }
+
+        try {
+            setLoading(true)
+            setError(null)
+
+            // If we already have cat data, use it directly
+            if (catData) {
+                const familyTree = await buildFamilyTreeFromFirebase(catData)
+                setFamilyData(familyTree)
+                return
+            }
+
+            // Otherwise fetch the cat by ID
+            if (currentCatId) {
+                const catData = await getCatById(currentCatId.toString())
+                if (catData) {
+                    const familyTree = await buildFamilyTreeFromFirebase(catData as CatProfile)
+                    setFamilyData(familyTree)
+                } else {
+                    setError("Cat not found")
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching family data:", err)
+            setError("Failed to load family data")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleOpenModal = () => {
+        setIsOpen(true)
+        fetchFamilyData()
+    }
 
     return (
         <>
             <button
-                onClick={() => setIsOpen(true)}
+                onClick={handleOpenModal}
                 className="flex items-center gap-3 px-5 py-3 bg-blue-100 text-blue-800 hover:bg-blue-200 rounded-xl font-semibold text-base shadow-sm transition"
             >
                 <FaTree className="w-5 h-5" />
@@ -194,15 +275,21 @@ const ParentInfoPopup: React.FC<{ currentCatId: number }> = ({ currentCatId }) =
                             {/* Modal Scrollable Content */}
                             <div className="p-8">
                                 <h2 className="text-2xl font-semibold text-center w-full text-gray-800 mb-6">
-                                    {currentCat?.name}&#39;s Genealogy
+                                    {catData?.name || "Cat"}'s Genealogy
                                 </h2>
 
                                 <div className="overflow-x-auto w-full">
                                     <div className="min-w-fit flex justify-center">
-                                        {familyData ? (
+                                        {loading ? (
+                                            <div className="flex items-center justify-center p-8">
+                                                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                                            </div>
+                                        ) : error ? (
+                                            <p className="text-center text-red-500 p-8">{error}</p>
+                                        ) : familyData ? (
                                             <FamilyTree data={familyData} />
                                         ) : (
-                                            <p className="text-center text-gray-500">No family tree available.</p>
+                                            <p className="text-center text-gray-500 p-8">No family tree available.</p>
                                         )}
                                     </div>
                                 </div>
@@ -221,7 +308,7 @@ const ParentInfoPopup: React.FC<{ currentCatId: number }> = ({ currentCatId }) =
                 )}
             </AnimatePresence>
         </>
-    );
-};
+    )
+}
 
-export default ParentInfoPopup;
+export default ParentInfoPopup

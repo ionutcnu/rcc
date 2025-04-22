@@ -37,7 +37,7 @@ const formSchema = z.object({
     isVaccinated: z.boolean(),
     isMicrochipped: z.boolean(),
     isCastrated: z.boolean(),
-    breed: z.string().min(1, "Breed is required"),
+    breed: z.string(),
     category: z.string().min(1, "Category is required"),
     motherId: z.string().optional(),
     fatherId: z.string().optional(),
@@ -512,10 +512,9 @@ export default function EditCatPage() {
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="available">Available</SelectItem>
-                                                        <SelectItem value="reserved">Reserved</SelectItem>
-                                                        <SelectItem value="adopted">Adopted</SelectItem>
-                                                        <SelectItem value="not-available">Not Available</SelectItem>
+                                                        <SelectItem value="Available">Available</SelectItem>
+                                                        <SelectItem value="Reserved">Reserved</SelectItem>
+                                                        <SelectItem value="Stays in cattery">Stays in cattery</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                                 <FormMessage />
