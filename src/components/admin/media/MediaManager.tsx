@@ -697,6 +697,120 @@ export default function MediaManager() {
         }
     }
 
+    // Function to handle bulk download
+    const handleBulkDownload = async (items: MediaItem[]) => {
+        if (isDownloading || items.length === 0) return
+
+        try {
+            setIsDownloading(true)
+            showPopup(`Starting download of ${items.length} items...`)
+
+            // Log the bulk download operation
+            const { userId } = getCurrentUserInfo()
+            mediaLogger.info(
+                `Bulk download initiated for ${items.length} items`,
+                {
+                    itemIds: items.map((item) => item.id),
+                    itemCount: items.length,
+                },
+                userId,
+            )
+
+            // Create a counter for completed downloads
+            let completedCount = 0
+            let failedCount = 0
+
+            // Function to download a single item
+            const downloadItem = async (item: MediaItem) => {
+                try {
+                    // Fetch the file directly from Firebase
+                    const response = await fetch(item.url)
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`)
+                    }
+
+                    // Get the file as a blob
+                    const blob = await response.blob()
+
+                    // Create a URL for the blob
+                    const blobUrl = URL.createObjectURL(blob)
+
+                    // Create a temporary anchor element
+                    const a = document.createElement("a")
+                    a.href = blobUrl
+                    a.download = item.name // Set the filename
+                    a.style.display = "none"
+
+                    // Add to document, click it, and remove it
+                    document.body.appendChild(a)
+                    a.click()
+
+                    // Clean up
+                    setTimeout(() => {
+                        document.body.removeChild(a)
+                        URL.revokeObjectURL(blobUrl)
+                    }, 100)
+
+                    completedCount++
+
+                    // Update progress every 5 items or when all are complete
+                    if (completedCount % 5 === 0 || completedCount === items.length) {
+                        showPopup(`Downloaded ${completedCount} of ${items.length} items...`)
+                    }
+
+                    return true
+                } catch (error) {
+                    console.error(`Error downloading ${item.name}:`, error)
+                    failedCount++
+                    return false
+                }
+            }
+
+            // Process items in batches of 3 to avoid overwhelming the browser
+            const batchSize = 3
+            for (let i = 0; i < items.length; i += batchSize) {
+                const batch = items.slice(i, i + batchSize)
+                await Promise.all(batch.map((item) => downloadItem(item)))
+
+                // Small delay between batches to give the browser time to process
+                if (i + batchSize < items.length) {
+                    await new Promise((resolve) => setTimeout(resolve, 500))
+                }
+            }
+
+            // Final status message
+            if (failedCount === 0) {
+                showPopup(`Successfully downloaded all ${items.length} items`)
+            } else {
+                showPopup(`Downloaded ${completedCount} items, failed to download ${failedCount} items`)
+            }
+
+            // Log completion
+            mediaLogger.info(
+                `Bulk download completed: ${completedCount} successful, ${failedCount} failed`,
+                {
+                    successCount: completedCount,
+                    failCount: failedCount,
+                    totalCount: items.length,
+                },
+                userId,
+            )
+        } catch (error) {
+            console.error("Bulk download error:", error)
+            showPopup("Error downloading files")
+
+            // Log error
+            mediaLogger.error(
+                "Bulk download operation failed",
+                { error: error instanceof Error ? error.message : "Unknown error" },
+                auth.currentUser?.uid || "unknown",
+            )
+        } finally {
+            setIsDownloading(false)
+        }
+    }
+
     const handleManualValidation = async () => {
         try {
             setLoading(true)
@@ -902,6 +1016,7 @@ export default function MediaManager() {
                         resetFilters={resetFilters}
                         handleDeleteClick={handleDeleteClick}
                         handleDownload={handleDirectDownload}
+                        handleBulkDownload={handleBulkDownload}
                         handleUpload={handleUpload}
                         isUploading={isUploading}
                         imageCount={imageCount}

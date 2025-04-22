@@ -32,6 +32,7 @@ interface ActiveMediaTabProps {
     resetFilters: () => void
     handleDeleteClick: (item: MediaItem, mode: "soft" | "permanent") => void
     handleDownload: (item: MediaItem) => void
+    handleBulkDownload: (items: MediaItem[]) => void // Add this line
     handleUpload: () => void
     isUploading: boolean
     imageCount: number
@@ -60,6 +61,7 @@ export default function ActiveMediaTab({
                                            resetFilters,
                                            handleDeleteClick,
                                            handleDownload,
+                                           handleBulkDownload,
                                            handleUpload,
                                            isUploading,
                                            imageCount,
@@ -309,6 +311,15 @@ export default function ActiveMediaTab({
                                     >
                                         <LockIcon className="h-4 w-4 mr-2" />
                                         Lock {selectedItems.length} Items
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleBulkDownload(selectedItems)}
+                                        className="ml-2 border-blue-500 text-blue-500 hover:bg-blue-50"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Download {selectedItems.length} Items
                                     </Button>
                                 </>
                             )}
