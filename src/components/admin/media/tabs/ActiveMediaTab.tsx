@@ -435,7 +435,7 @@ export default function ActiveMediaTab({
                     </div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {paginatedItems.map((item) => (
                         <Card key={item.id} className="overflow-hidden">
                             <div className="aspect-video relative bg-muted">

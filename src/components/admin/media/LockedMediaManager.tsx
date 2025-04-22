@@ -255,7 +255,7 @@ export default function LockedMediaManager() {
                                     </div>
                                 )}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {filteredMedia.map((item) => (
                                     <Card key={item.id} className="overflow-hidden border-amber-200 border">
                                         <div className="aspect-video relative bg-muted">
@@ -284,25 +284,27 @@ export default function LockedMediaManager() {
                                             </div>
                                         </div>
                                         <CardContent className="p-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="truncate">
-                                                    <p className="font-medium truncate">{item.name}</p>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {item.type}
-                                                        </Badge>
-                                                        <span className="text-xs text-muted-foreground">{item.lockedReason}</span>
-                                                    </div>
+                                            <div className="space-y-3">
+                                                <p className="font-medium truncate">{item.name}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {item.type}
+                                                    </Badge>
                                                 </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleUnlockClick(item)}
-                                                    className="flex items-center gap-1"
-                                                >
-                                                    <UnlockIcon className="h-3 w-3" />
-                                                    Unlock
-                                                </Button>
+                                                {item.lockedReason && (
+                                                    <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2rem]">{item.lockedReason}</p>
+                                                )}
+                                                <div className="flex justify-end pt-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleUnlockClick(item)}
+                                                        className="flex items-center gap-1"
+                                                    >
+                                                        <UnlockIcon className="h-3 w-3" />
+                                                        Unlock
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
