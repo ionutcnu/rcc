@@ -17,6 +17,7 @@ interface Cat {
     motherId?: string | number | null
     fatherId?: string | number | null
     children?: Cat[]
+    parents?: Cat[] // Add this to support the parent tree structure
 }
 
 interface ParentInfoPopupProps {
@@ -62,6 +63,9 @@ const FamilyTree = ({ data, isRoot = true }: { data: Cat; isRoot?: boolean }) =>
         }
     }, [isExpanded])
 
+    // Display parents if they exist
+    const hasParents = data.parents && data.parents.length > 0
+
     return (
         <div className={`flex flex-col items-center ${isRoot ? "" : "mt-8"}`}>
             <motion.div
@@ -72,7 +76,7 @@ const FamilyTree = ({ data, isRoot = true }: { data: Cat; isRoot?: boolean }) =>
             >
                 <CatNode cat={data} />
 
-                {data.children && data.children.length > 0 && (
+                {(hasParents || (data.children && data.children.length > 0)) && (
                     <button
                         onClick={toggleExpand}
                         className="mt-2 h-8 w-8 flex items-center justify-center rounded-full border border-gray-300 text-gray-600 hover:text-black hover:border-black transition"
@@ -83,6 +87,73 @@ const FamilyTree = ({ data, isRoot = true }: { data: Cat; isRoot?: boolean }) =>
             </motion.div>
 
             <AnimatePresence>
+                {isExpanded && hasParents && (
+                    <motion.div
+                        ref={childrenRef}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex flex-col items-center mt-6 pt-6 border-t border-gray-300"
+                    >
+                        <div className="flex gap-12">
+                            {data.parents?.map((parent, index) => {
+                                const relation = parent.id === data.motherId ? "Mother" : parent.id === data.fatherId ? "Father" : ""
+                                return (
+                                    <div key={index} className="flex flex-col items-center px-3">
+                                        <div
+                                            className={`mb-2 text-sm font-bold tracking-wide uppercase ${
+                                                relation === "Mother"
+                                                    ? "text-pink-500"
+                                                    : relation === "Father"
+                                                        ? "text-blue-500"
+                                                        : "text-gray-500"
+                                            }`}
+                                        >
+                                            {relation}
+                                        </div>
+                                        <div className="h-6 w-px bg-gray-300 mb-2" />
+                                        <CatNode cat={parent} />
+
+                                        {/* Recursively show parent's parents if they exist */}
+                                        {parent.parents && parent.parents.length > 0 && (
+                                            <div className="mt-6 pt-6 border-t border-gray-300">
+                                                <div className="flex gap-8">
+                                                    {parent.parents.map((grandparent, idx) => {
+                                                        const grandparentRelation =
+                                                            grandparent.id === parent.motherId
+                                                                ? "Mother"
+                                                                : grandparent.id === parent.fatherId
+                                                                    ? "Father"
+                                                                    : ""
+                                                        return (
+                                                            <div key={idx} className="flex flex-col items-center px-3">
+                                                                <div
+                                                                    className={`mb-2 text-sm font-bold tracking-wide uppercase ${
+                                                                        grandparentRelation === "Mother"
+                                                                            ? "text-pink-500"
+                                                                            : grandparentRelation === "Father"
+                                                                                ? "text-blue-500"
+                                                                                : "text-gray-500"
+                                                                    }`}
+                                                                >
+                                                                    {grandparentRelation}
+                                                                </div>
+                                                                <div className="h-6 w-px bg-gray-300 mb-2" />
+                                                                <CatNode cat={grandparent} />
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </motion.div>
+                )}
+
                 {isExpanded && data.children && data.children.length > 0 && (
                     <motion.div
                         ref={childrenRef}
@@ -131,10 +202,7 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({ currentCatId, catData
         try {
             setLoading(true)
 
-            // Create a map to store cats by ID
-            const catsMap = new Map<string | number, Cat>()
-
-            // Add the root cat to the map
+            // Create the root cat object
             const rootCatFormatted: Cat = {
                 id: rootCat.id || "0",
                 name: rootCat.name,
@@ -143,20 +211,34 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({ currentCatId, catData
                 fatherId: rootCat.fatherId || null,
                 children: [],
             }
-            catsMap.set(rootCatFormatted.id, rootCatFormatted)
+
+            // Fetch parents data
+            let mother = null
+            let father = null
 
             // Fetch mother if exists
             if (rootCat.motherId) {
                 try {
                     const motherData = await getCatById(rootCat.motherId.toString())
                     if (motherData) {
-                        const mother: Cat = {
+                        mother = {
                             id: motherData.id || "0",
                             name: motherData.name,
                             mainImage: motherData.mainImage || "/tabby-sunbeam.png",
+                            motherId: motherData.motherId,
+                            fatherId: motherData.fatherId,
                             children: [rootCatFormatted],
                         }
-                        catsMap.set(mother.id, mother)
+
+                        // Add mother's parents if they exist
+                        if (motherData.motherId || motherData.fatherId) {
+                            mother.children = [] // Clear children temporarily for recursive fetch
+                            const motherWithParents = await buildParentTree(motherData)
+                            mother = {
+                                ...motherWithParents,
+                                children: [rootCatFormatted],
+                            }
+                        }
                     }
                 } catch (err) {
                     console.error("Error fetching mother:", err)
@@ -168,20 +250,40 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({ currentCatId, catData
                 try {
                     const fatherData = await getCatById(rootCat.fatherId.toString())
                     if (fatherData) {
-                        const father: Cat = {
+                        father = {
                             id: fatherData.id || "0",
                             name: fatherData.name,
                             mainImage: fatherData.mainImage || "/tabby-sunbeam.png",
+                            motherId: fatherData.motherId,
+                            fatherId: fatherData.fatherId,
                             children: [rootCatFormatted],
                         }
-                        catsMap.set(father.id, father)
+
+                        // Add father's parents if they exist
+                        if (fatherData.motherId || fatherData.fatherId) {
+                            father.children = [] // Clear children temporarily for recursive fetch
+                            const fatherWithParents = await buildParentTree(fatherData)
+                            father = {
+                                ...fatherWithParents,
+                                children: [rootCatFormatted],
+                            }
+                        }
                     }
                 } catch (err) {
                     console.error("Error fetching father:", err)
                 }
             }
 
-            // Return the root cat with its family tree
+            // If we have both parents, create a family structure
+            if (mother && father) {
+                // Return the root cat with its parents
+                rootCatFormatted.parents = [mother, father]
+            } else if (mother) {
+                rootCatFormatted.parents = [mother]
+            } else if (father) {
+                rootCatFormatted.parents = [father]
+            }
+
             return rootCatFormatted
         } catch (err) {
             console.error("Error building family tree:", err)
@@ -190,6 +292,63 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({ currentCatId, catData
         } finally {
             setLoading(false)
         }
+    }
+
+    // Helper function to recursively build parent tree
+    const buildParentTree = async (cat: CatProfile): Promise<Cat> => {
+        const catNode: Cat = {
+            id: cat.id || "0",
+            name: cat.name,
+            mainImage: cat.mainImage || "/tabby-sunbeam.png",
+            motherId: cat.motherId || null,
+            fatherId: cat.fatherId || null,
+            children: [],
+            parents: [],
+        }
+
+        // Fetch mother if exists
+        if (cat.motherId) {
+            try {
+                const motherData = await getCatById(cat.motherId.toString())
+                if (motherData) {
+                    const mother: Cat = {
+                        id: motherData.id || "0",
+                        name: motherData.name,
+                        mainImage: motherData.mainImage || "/tabby-sunbeam.png",
+                        motherId: motherData.motherId,
+                        fatherId: motherData.fatherId,
+                        children: [],
+                    }
+                    if (!catNode.parents) catNode.parents = []
+                    catNode.parents.push(mother)
+                }
+            } catch (err) {
+                console.error("Error fetching mother:", err)
+            }
+        }
+
+        // Fetch father if exists
+        if (cat.fatherId) {
+            try {
+                const fatherData = await getCatById(cat.fatherId.toString())
+                if (fatherData) {
+                    const father: Cat = {
+                        id: fatherData.id || "0",
+                        name: fatherData.name,
+                        mainImage: fatherData.mainImage || "/tabby-sunbeam.png",
+                        motherId: fatherData.motherId,
+                        fatherId: fatherData.fatherId,
+                        children: [],
+                    }
+                    if (!catNode.parents) catNode.parents = []
+                    catNode.parents.push(father)
+                }
+            } catch (err) {
+                console.error("Error fetching father:", err)
+            }
+        }
+
+        return catNode
     }
 
     // Fetch family data when the modal is opened
