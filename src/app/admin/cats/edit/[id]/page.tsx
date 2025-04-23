@@ -1,29 +1,31 @@
 "use client"
 
+import { uploadFileAndGetURL } from "@/lib/firebase/storageService"
 import type React from "react"
-
+import { serverTimestamp } from "firebase/firestore"
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
+import { motion } from "framer-motion"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { ArrowLeft, Trash2, Upload, X, Loader2 } from "lucide-react"
 import { getCatById, updateCat, getAllCats } from "@/lib/firebase/catService"
-import { uploadCatImage, uploadCatVideo } from "@/lib/firebase/storageService"
-import { useCatPopup } from "@/components/CatPopupProvider"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import CatPopup from "@/components/elements/CatsRelated/CatPopup"
+import type { CatProfile } from "@/lib/types/cat"
+import Link from "next/link"
+
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, Upload, Loader2, X, Plus, Film } from "lucide-react"
-import type { CatProfile } from "@/lib/types/cat"
-import { ComboboxSelect } from "@/components/ui/combobox-select"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
+import { ComboboxSelect } from "@/components/ui/combobox-select"
 
-// Form schema for edit cat
+// Form schema aligned with CatProfile interface
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().min(1, "Description is required"),
@@ -39,135 +41,46 @@ const formSchema = z.object({
     isCastrated: z.boolean(),
     breed: z.string(),
     category: z.string().min(1, "Category is required"),
-    motherId: z.string().optional(),
-    fatherId: z.string().optional(),
+    motherId: z.string().nullable(), // ✅ string or null
+    fatherId: z.string().nullable(), // ✅ string or null
     availability: z.string().min(1, "Availability status is required"),
 })
 
 type FormValues = z.infer<typeof formSchema>
 
-async function uploadBase64Image(base64String: string, folder: string): Promise<string> {
-    try {
-        // Extract file type and create a proper filename
-        const mimeType = base64String.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)![1]
-        const fileExt = mimeType.split("/")[1]
-
-        // Convert base64 to blob directly without using fetch
-        // This avoids the "Failed to fetch" error
-        const base64Data = base64String.split(",")[1]
-        const byteCharacters = atob(base64Data)
-        const byteArrays = []
-
-        for (let i = 0; i < byteCharacters.length; i += 512) {
-            const slice = byteCharacters.slice(i, i + 512)
-            const byteNumbers = new Array(slice.length)
-
-            for (let j = 0; j < slice.length; j++) {
-                byteNumbers[j] = slice.charCodeAt(j)
-            }
-
-            const byteArray = new Uint8Array(byteNumbers)
-            byteArrays.push(byteArray)
-        }
-
-        const blob = new Blob(byteArrays, { type: mimeType })
-        const file = new File([blob], `image-${Date.now()}.${fileExt}`, { type: mimeType })
-
-        // Upload to Firebase Storage
-        // Assuming you have a function to handle file uploads and get the URL
-        // Replace this with your actual upload function
-        // For example:
-        // const uploadResult = await uploadBytes(storageRef, file);
-        // const downloadURL = await getDownloadURL(uploadResult.ref);
-        // return downloadURL;
-        async function uploadFileAndGetURL(file: File, folder: string): Promise<string> {
-            // Placeholder implementation - replace with your actual Firebase Storage upload logic
-            console.log(`Simulating upload of ${file.name} to ${folder}`)
-            return `https://example.com/images/${file.name}` // Replace with actual URL
-        }
-        return await uploadFileAndGetURL(file, folder)
-    } catch (error) {
-        console.error("Error uploading image:", error)
-        throw error
-    }
-}
-
-async function uploadBase64Video(base64String: string, folder: string): Promise<string> {
-    try {
-        // Extract file type and create a proper filename
-        const mimeType = base64String.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)![1]
-        const fileExt = mimeType.split("/")[1]
-
-        // Convert base64 to blob directly without using fetch
-        const base64Data = base64String.split(",")[1]
-        const byteCharacters = atob(base64Data)
-        const byteArrays = []
-
-        for (let i = 0; i < byteCharacters.length; i += 512) {
-            const slice = byteCharacters.slice(i, i + 512)
-            const byteNumbers = new Array(slice.length)
-
-            for (let j = 0; j < slice.length; j++) {
-                byteNumbers[j] = slice.charCodeAt(j)
-            }
-
-            const byteArray = new Uint8Array(byteNumbers)
-            byteArrays.push(byteArray)
-        }
-
-        const blob = new Blob(byteArrays, { type: mimeType })
-        const file = new File([blob], `video-${Date.now()}.${fileExt}`, { type: mimeType })
-
-        async function uploadFileAndGetURL(file: File, folder: string): Promise<string> {
-            // Placeholder implementation - replace with your actual Firebase Storage upload logic
-            console.log(`Simulating upload of ${file.name} to ${folder}`)
-            return `https://example.com/videos/${file.name}` // Replace with actual URL
-        }
-
-        return await uploadFileAndGetURL(file, folder)
-    } catch (error) {
-        console.error("Error uploading video:", error)
-        throw error
-    }
-}
-
 export default function EditCatPage() {
     const router = useRouter()
     const params = useParams()
     const catId = params.id as string
-    const { showPopup } = useCatPopup()
 
+    const [images, setImages] = useState<string[]>([])
+    const [videos, setVideos] = useState<string[]>([])
+    const [videoFiles, setVideoFiles] = useState<File[]>([]) // New state for video files
+    const [mainImage, setMainImage] = useState<string>("")
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [mainImageFile, setMainImageFile] = useState<File | null>(null)
-    const [mainImagePreview, setMainImagePreview] = useState<string | null>(null)
-    const [additionalImageFiles, setAdditionalImageFiles] = useState<File[]>([])
-    const [additionalImagePreviews, setAdditionalImagePreviews] = useState<string[]>([])
-    const [existingImages, setExistingImages] = useState<string[]>([])
+    const [popupVisible, setPopupVisible] = useState(false)
+    const [popupMessage, setPopupMessage] = useState("")
+    const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
     const [allCats, setAllCats] = useState<CatProfile[]>([])
     const [isLoadingCats, setIsLoadingCats] = useState(true)
 
-    // Video states
-    const [videoFiles, setVideoFiles] = useState<File[]>([])
-    const [existingVideos, setExistingVideos] = useState<string[]>([])
-
-    // Form setup with default values
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
             description: "",
             color: "",
-            gender: "male",
+            gender: "Female",
             yearOfBirth: new Date().getFullYear(),
             isVaccinated: false,
             isMicrochipped: false,
             isCastrated: false,
-            breed: "",
-            category: "",
-            motherId: "",
-            fatherId: "",
-            availability: "available",
+            breed: "British Shorthair",
+            category: "Domestic",
+            motherId: null,
+            fatherId: null,
+            availability: "",
         },
     })
 
@@ -182,34 +95,39 @@ export default function EditCatPage() {
                         name: cat.name || "",
                         description: cat.description || "",
                         color: cat.color || "",
-                        gender: cat.gender || "male",
+                        gender: cat.gender || "Female",
                         yearOfBirth: cat.yearOfBirth || new Date().getFullYear(),
                         isVaccinated: cat.isVaccinated || false,
                         isMicrochipped: cat.isMicrochipped || false,
                         isCastrated: cat.isCastrated || false,
                         breed: cat.breed || "",
                         category: cat.category || "",
-                        motherId: cat.motherId || "",
-                        fatherId: cat.fatherId || "",
-                        availability: cat.availability || "available",
+                        motherId: cat.motherId || null,
+                        fatherId: cat.fatherId || null,
+                        availability: cat.availability || "Available",
                     })
 
+                    // Add this console log to debug the gender value
+                    console.log("Cat gender from database:", cat.gender)
+
                     if (cat.mainImage) {
-                        setMainImagePreview(cat.mainImage)
+                        setMainImage(cat.mainImage)
                     }
                     if (cat.images && Array.isArray(cat.images)) {
-                        setExistingImages(cat.images)
+                        setImages(cat.images)
                     }
                     if (cat.videos && Array.isArray(cat.videos)) {
-                        setExistingVideos(cat.videos)
+                        setVideos(cat.videos)
                     }
                 } else {
-                    showPopup("Cat not found")
+                    setPopupMessage("Cat not found")
+                    setPopupVisible(true)
                     router.push("/admin/cats")
                 }
             } catch (error) {
                 console.error("Error fetching cat:", error)
-                showPopup("Error loading cat data")
+                setPopupMessage("Error loading cat data")
+                setPopupVisible(true)
             } finally {
                 setIsLoading(false)
             }
@@ -218,25 +136,26 @@ export default function EditCatPage() {
         if (catId) {
             fetchCat()
         }
-    }, [catId, router, showPopup, form])
+    }, [catId, router, form])
 
     useEffect(() => {
         const fetchAllCats = async () => {
             try {
                 setIsLoadingCats(true)
                 const fetchedCats = await getAllCats()
-                console.log("Fetched cats for edit form:", fetchedCats)
+                console.log("Fetched cats:", fetchedCats)
                 setAllCats(fetchedCats)
             } catch (error) {
                 console.error("Error fetching all cats:", error)
-                showPopup("Error loading cat data for parent selection")
+                setPopupMessage("Error loading cat data for parent selection")
+                setPopupVisible(true)
             } finally {
                 setIsLoadingCats(false)
             }
         }
 
         fetchAllCats()
-    }, [showPopup])
+    }, [])
 
     // Create options for mother and father dropdowns
     const motherOptions = allCats
@@ -265,571 +184,754 @@ export default function EditCatPage() {
     motherOptions.unshift({ value: "", label: "None" })
     fatherOptions.unshift({ value: "", label: "None" })
 
-    const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (file) {
-            setMainImageFile(file)
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setMainImagePreview(reader.result as string)
-            }
-            reader.readAsDataURL(file)
+    console.log("Mother options:", motherOptions)
+    console.log("Father options:", fatherOptions)
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isMain = false) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files)
+
+            files.forEach((file, index) => {
+                const reader = new FileReader()
+
+                reader.onload = () => {
+                    const result = reader.result as string
+
+                    if (isMain && index === 0) {
+                        setMainImage(result)
+                    }
+
+                    setImages((prev) => {
+                        if (!prev.includes(result)) {
+                            return [...prev, result]
+                        }
+                        return prev
+                    })
+                }
+
+                reader.readAsDataURL(file)
+            })
         }
     }
 
-    const handleAdditionalImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files
-        if (files && files.length > 0) {
-            const newFiles = Array.from(files)
-            setAdditionalImageFiles((prev) => [...prev, ...newFiles])
+    const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files)
 
-            // Create previews for the new files
-            newFiles.forEach((file) => {
+            // Store the actual File objects
+            setVideoFiles((prev) => [...prev, ...files])
+
+            // Create preview URLs for display
+            files.forEach((file) => {
                 const reader = new FileReader()
-                reader.onloadend = () => {
-                    setAdditionalImagePreviews((prev) => [...prev, reader.result as string])
+                reader.onload = () => {
+                    const result = reader.result as string
+                    setVideos((prev) => [...prev, result])
                 }
                 reader.readAsDataURL(file)
             })
         }
     }
 
-    const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files
-        if (files && files.length > 0) {
-            const newFiles = Array.from(files)
-            setVideoFiles((prev) => [...prev, ...newFiles])
+    const removeImage = (index: number) => {
+        const newImages = [...images]
+        const removedImage = newImages.splice(index, 1)[0]
+        setImages(newImages)
+
+        if (mainImage === removedImage) {
+            setMainImage(newImages.length > 0 ? newImages[0] : "")
         }
     }
 
-    const removeExistingImage = (index: number) => {
-        setExistingImages(existingImages.filter((_, i) => i !== index))
+    const removeVideo = (index: number) => {
+        const newVideos = [...videos]
+        newVideos.splice(index, 1)
+        setVideos(newVideos)
+
+        // Also remove from videoFiles array if it's a new video
+        if (index < videoFiles.length) {
+            const newVideoFiles = [...videoFiles]
+            newVideoFiles.splice(index, 1)
+            setVideoFiles(newVideoFiles)
+        }
     }
 
-    const removeAdditionalImage = (index: number) => {
-        setAdditionalImageFiles(additionalImageFiles.filter((_, i) => i !== index))
-        setAdditionalImagePreviews(additionalImagePreviews.filter((_, i) => i !== index))
+    // Helper function to convert base64 to file and upload
+    async function uploadBase64Image(base64String: string, folder: string): Promise<string> {
+        try {
+            // Extract file type and create a proper filename
+            const mimeType = base64String.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)![1]
+            const fileExt = mimeType.split("/")[1]
+
+            // Convert base64 to blob directly without using fetch
+            // This avoids the "Failed to fetch" error
+            const base64Data = base64String.split(",")[1]
+            const byteCharacters = atob(base64Data)
+            const byteArrays = []
+
+            for (let i = 0; i < byteCharacters.length; i += 512) {
+                const slice = byteCharacters.slice(i, i + 512)
+                const byteNumbers = new Array(slice.length)
+
+                for (let j = 0; j < slice.length; j++) {
+                    byteNumbers[j] = slice.charCodeAt(j)
+                }
+
+                const byteArray = new Uint8Array(byteNumbers)
+                byteArrays.push(byteArray)
+            }
+
+            const blob = new Blob(byteArrays, { type: mimeType })
+            const file = new File([blob], `image-${Date.now()}.${fileExt}`, { type: mimeType })
+
+            // Upload to Firebase Storage
+            return await uploadFileAndGetURL(file, folder)
+        } catch (error) {
+            console.error("Error uploading image:", error)
+            throw error
+        }
     }
 
-    const removeExistingVideo = (index: number) => {
-        setExistingVideos(existingVideos.filter((_, i) => i !== index))
-    }
-
-    const removeVideoFile = (index: number) => {
-        setVideoFiles(videoFiles.filter((_, i) => i !== index))
+    // Helper function to remove undefined values from an object
+    function removeUndefined<T extends Record<string, any>>(obj: T): T {
+        return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T
     }
 
     const onSubmit = async (data: FormValues) => {
+        if (!mainImage && images.length === 0) {
+            setPopupMessage("Please upload at least one image for the cat.")
+            setPopupVisible(true)
+            return
+        }
+
+        setIsSubmitting(true)
+
         try {
-            setIsSubmitting(true)
+            console.log("Starting file uploads...")
 
-            // Upload main image if changed
-            let mainImageUrl = mainImagePreview
-            if (mainImageFile) {
-                mainImageUrl = await uploadCatImage(mainImageFile, catId, "main")
+            // Upload images to Firebase Storage
+            const uploadedImageUrls: string[] = []
+            let uploadedMainImageUrl = ""
+
+            // Check if mainImage is a URL or base64
+            if (mainImage) {
+                if (mainImage.startsWith("data:")) {
+                    // It's a new image, upload it
+                    console.log("Uploading new main image...")
+                    uploadedMainImageUrl = await uploadBase64Image(mainImage, "cats/images")
+                    console.log("Main image uploaded:", uploadedMainImageUrl)
+                } else {
+                    // It's an existing URL, keep it
+                    uploadedMainImageUrl = mainImage
+                }
             }
 
-            // Upload additional images if any
-            let imageUrls = [...existingImages]
-            if (additionalImageFiles.length > 0) {
-                const newImageUrls = await Promise.all(
-                    additionalImageFiles.map((file, index) => uploadCatImage(file, catId, `additional_${index}`)),
-                )
-                imageUrls = [...imageUrls, ...newImageUrls]
+            // Upload additional images
+            console.log(`Processing ${images.length} images...`)
+            for (const imageData of images) {
+                if (imageData !== mainImage) {
+                    // Avoid uploading main image twice
+                    if (imageData.startsWith("data:")) {
+                        // It's a new image, upload it
+                        const imageUrl = await uploadBase64Image(imageData, "cats/images")
+                        uploadedImageUrls.push(imageUrl)
+                        console.log("Additional image uploaded:", imageUrl)
+                    } else {
+                        // It's an existing URL, keep it
+                        uploadedImageUrls.push(imageData)
+                    }
+                }
             }
 
-            // Upload videos if any
-            let videoUrls = [...existingVideos]
-            if (videoFiles.length > 0) {
-                const newVideoUrls = await Promise.all(
-                    videoFiles.map((file, index) => uploadCatVideo(file, catId, `video_${index}`)),
-                )
-                videoUrls = [...videoUrls, ...newVideoUrls]
+            // Upload videos to Firebase Storage using the stored File objects
+            console.log(`Processing ${videos.length} videos...`)
+            const uploadedVideoUrls: string[] = []
+
+            // First, keep existing video URLs
+            for (const videoData of videos) {
+                if (!videoData.startsWith("data:")) {
+                    // It's an existing URL, keep it
+                    uploadedVideoUrls.push(videoData)
+                }
             }
 
-            // Update the cat in Firestore
-            await updateCat(catId, {
-                ...data,
-                mainImage: mainImageUrl || "",
-                images: imageUrls,
-                videos: videoUrls,
-                motherId: data.motherId === "" ? null : data.motherId,
-                fatherId: data.fatherId === "" ? null : data.fatherId,
-            })
+            // Then upload new video files
+            for (const videoFile of videoFiles) {
+                try {
+                    console.log("Uploading video file:", videoFile.name)
+                    const videoUrl = await uploadFileAndGetURL(videoFile, "cats/videos")
+                    uploadedVideoUrls.push(videoUrl)
+                    console.log("Video uploaded:", videoUrl)
+                } catch (error) {
+                    console.error("Error uploading video file:", error)
+                    // Continue with other videos even if one fails
+                }
+            }
 
-            showPopup("Cat updated successfully")
-            router.push("/admin/cats")
+            console.log("All files uploaded successfully")
+
+            // Update cat entry with uploaded URLs
+            const catEntry = {
+                name: data.name,
+                description: data.description,
+                mainImage: uploadedMainImageUrl || (uploadedImageUrls.length > 0 ? uploadedImageUrls[0] : ""),
+                images: uploadedImageUrls,
+                videos: uploadedVideoUrls,
+                color: data.color,
+                gender: data.gender,
+                yearOfBirth: data.yearOfBirth,
+                isVaccinated: data.isVaccinated,
+                isMicrochipped: data.isMicrochipped,
+                isCastrated: data.isCastrated,
+                breed: data.breed,
+                category: data.category,
+                motherId: data.motherId || null,
+                fatherId: data.fatherId || null,
+                availability: data.availability,
+                updatedAt: serverTimestamp(),
+            }
+
+            // Remove any undefined values before sending to Firestore
+            const cleanCatEntry = removeUndefined(catEntry)
+
+            console.log("Updating cat data in Firestore:", cleanCatEntry)
+            await updateCat(catId, cleanCatEntry)
+            console.log("Cat data updated successfully")
+
+            setPopupMessage(`${data.name} has been updated successfully.`)
+            setPopupVisible(true)
+
+            // Navigate back to cats list after a short delay
+            setTimeout(() => {
+                router.push("/admin/cats")
+            }, 2000)
         } catch (error) {
-            console.error("Error updating cat:", error)
-            showPopup("Error updating cat")
+            console.error("Error submitting form:", error)
+            setPopupMessage("There was a problem updating the cat entry.")
+            setPopupVisible(true)
         } finally {
             setIsSubmitting(false)
         }
     }
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+            },
+        },
+    }
+
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: {
+            y: 0,
+            opacity: 1,
+            transition: {
+                type: "spring",
+                stiffness: 100,
+            },
+        },
+    }
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
                 <span className="ml-2">Loading cat data...</span>
             </div>
         )
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center">
-                <Button variant="ghost" size="sm" asChild className="mr-4">
-                    <Link href="/admin/cats">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Cats
-                    </Link>
-                </Button>
-                <h1 className="text-3xl font-bold">Edit Cat: {form.getValues("name")}</h1>
-            </div>
+        <div className="container mx-auto py-10 px-4 sm:px-6 max-w-5xl">
+            <motion.div initial="hidden" animate="visible" variants={containerVariants}>
+                <motion.div variants={itemVariants} className="mb-6">
+                    <Button variant="ghost" size="sm" asChild className="mb-4">
+                        <Link href="/admin/cats">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Cats
+                        </Link>
+                    </Button>
+                </motion.div>
 
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Cat Information</CardTitle>
+                <motion.div variants={itemVariants}>
+                    <Card className="border border-gray-200 shadow-xl rounded-xl overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-pink-50 to-purple-50 border-b pb-8 pt-6">
+                            <CardTitle className="text-3xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
+                                Edit Cat: {form.getValues("name")}
+                            </CardTitle>
+                            <CardDescription className="text-center text-base mt-2">
+                                Update the details of this cat in the database
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Name *</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Cat name" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
 
-                                    <FormField
-                                        control={form.control}
-                                        name="breed"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Breed *</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g. Persian" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)}>
+                                <CardContent className="space-y-10 pt-8 px-6 sm:px-8">
+                                    <motion.div variants={itemVariants} className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* Basic Information */}
+                                        <div className="space-y-4">
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">Basic Information</h3>
 
-                                    <FormField
-                                        control={form.control}
-                                        name="gender"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Gender</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select gender" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="male">Male</SelectItem>
-                                                        <SelectItem value="female">Female</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                            <FormField
+                                                control={form.control}
+                                                name="name"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Name</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} className="h-11" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
 
-                                    <FormField
-                                        control={form.control}
-                                        name="color"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Color</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g. White" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="yearOfBirth"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Year of Birth</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="category"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Category</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select category" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="kitten">Kitten</SelectItem>
-                                                        <SelectItem value="adult">Adult</SelectItem>
-                                                        <SelectItem value="senior">Senior</SelectItem>
-                                                        <SelectItem value="breeding">Breeding</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="availability"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Availability</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select availability" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="Available">Available</SelectItem>
-                                                        <SelectItem value="Reserved">Reserved</SelectItem>
-                                                        <SelectItem value="Stays in cattery">Stays in cattery</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="motherId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Mother Cat</FormLabel>
-                                                <FormControl>
-                                                    <ComboboxSelect
-                                                        options={motherOptions}
-                                                        value={field.value || ""}
-                                                        onValueChange={(value) => {
-                                                            console.log("Mother selected:", value)
-                                                            field.onChange(value)
-                                                        }}
-                                                        placeholder="Select mother cat"
-                                                        searchPlaceholder="Search cats..."
-                                                        emptyMessage={isLoadingCats ? "Loading cats..." : "No female cats found."}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="fatherId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Father Cat</FormLabel>
-                                                <FormControl>
-                                                    <ComboboxSelect
-                                                        options={fatherOptions}
-                                                        value={field.value || ""}
-                                                        onValueChange={(value) => {
-                                                            console.log("Father selected:", value)
-                                                            field.onChange(value)
-                                                        }}
-                                                        placeholder="Select father cat"
-                                                        searchPlaceholder="Search cats..."
-                                                        emptyMessage={isLoadingCats ? "Loading cats..." : "No male cats found."}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-
-                                <div className="space-y-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="description"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Description</FormLabel>
-                                                <FormControl>
-                                                    <Textarea rows={5} placeholder="Describe the cat..." {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="isVaccinated"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel>Vaccinated</FormLabel>
-                                                    <FormDescription>Has this cat received all necessary vaccinations?</FormDescription>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="isMicrochipped"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel>Microchipped</FormLabel>
-                                                    <FormDescription>Does this cat have an identification microchip?</FormDescription>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="isCastrated"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel>Castrated/Spayed</FormLabel>
-                                                    <FormDescription>Has this cat been castrated or spayed?</FormDescription>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Main Image Section */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium">Main Image</h3>
-                                <div className="flex items-center gap-4">
-                                    <Button type="button" variant="outline" onClick={() => document.getElementById("mainImage")?.click()}>
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        {mainImagePreview ? "Change Image" : "Upload Image"}
-                                    </Button>
-                                    <Input
-                                        id="mainImage"
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={handleMainImageChange}
-                                    />
-
-                                    {mainImagePreview && (
-                                        <div className="relative h-24 w-24 rounded overflow-hidden">
-                                            <Image
-                                                src={mainImagePreview || "/placeholder.svg"}
-                                                alt="Main cat image"
-                                                fill
-                                                className="object-cover"
+                                            <FormField
+                                                control={form.control}
+                                                name="description"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Description</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea placeholder="Describe the cat..." {...field} className="h-28" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
                                             />
                                         </div>
-                                    )}
-                                </div>
-                            </div>
 
-                            {/* Additional Images Section */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium">Additional Images</h3>
+                                        {/* Images & Videos */}
+                                        <div className="space-y-4">
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">Images & Videos</h3>
 
-                                {/* Existing Images */}
-                                {existingImages.length > 0 && (
-                                    <div>
-                                        <h4 className="text-sm font-medium text-gray-500 mb-2">Current Images</h4>
-                                        <div className="flex flex-wrap gap-4">
-                                            {existingImages.map((imageUrl, index) => (
-                                                <div key={`existing-${index}`} className="relative h-24 w-24 rounded overflow-hidden">
-                                                    <Image
-                                                        src={imageUrl || "/placeholder.svg"}
-                                                        alt={`Cat image ${index + 1}`}
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                    <button
+                                            <div className="space-y-3">
+                                                <Label htmlFor="mainImage" className="text-base flex items-center">
+                                                    Main Image <span className="text-red-500 ml-1">*</span>
+                                                </Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
                                                         type="button"
-                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                                                        onClick={() => removeExistingImage(index)}
+                                                        variant="outline"
+                                                        onClick={() => document.getElementById("mainImage")?.click()}
+                                                        className="w-full h-12 border-dashed border-2 hover:bg-pink-50 transition-colors"
                                                     >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* New Images */}
-                                {additionalImagePreviews.length > 0 && (
-                                    <div>
-                                        <h4 className="text-sm font-medium text-gray-500 mb-2">New Images</h4>
-                                        <div className="flex flex-wrap gap-4">
-                                            {additionalImagePreviews.map((preview, index) => (
-                                                <div key={`new-${index}`} className="relative h-24 w-24 rounded overflow-hidden">
-                                                    <Image
-                                                        src={preview || "/placeholder.svg"}
-                                                        alt={`New cat image ${index + 1}`}
-                                                        fill
-                                                        className="object-cover"
+                                                        <Upload className="mr-2 h-5 w-5 text-pink-500" />{" "}
+                                                        {mainImage ? "Change Main Image" : "Upload Main Image"}
+                                                    </Button>
+                                                    <input
+                                                        id="mainImage"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={(e) => handleImageUpload(e, true)}
                                                     />
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                                                        onClick={() => removeAdditionalImage(index)}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
 
-                                <div>
+                                                {mainImage && (
+                                                    <div className="relative mt-3 inline-block">
+                                                        <img
+                                                            src={mainImage || "/placeholder.svg"}
+                                                            alt="Main cat image"
+                                                            className="h-24 w-24 object-cover rounded-lg border-2 border-pink-300 shadow-sm"
+                                                        />
+                                                        <span className="absolute -top-2 -right-2 bg-pink-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md">
+                              ★
+                            </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="additionalImages" className="text-base">
+                                                    Additional Images
+                                                </Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => document.getElementById("additionalImages")?.click()}
+                                                        className="w-full h-12 border-dashed border-2 hover:bg-pink-50 transition-colors"
+                                                    >
+                                                        <Upload className="mr-2 h-5 w-5 text-pink-500" /> Add Multiple Images
+                                                    </Button>
+                                                    <input
+                                                        id="additionalImages"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        multiple
+                                                        className="hidden"
+                                                        onChange={handleImageUpload}
+                                                    />
+                                                </div>
+
+                                                {images.length > 0 && (
+                                                    <div className="flex flex-wrap gap-3 mt-4">
+                                                        {images.map((img, index) => (
+                                                            <div key={index} className="relative group">
+                                                                <img
+                                                                    src={img || "/placeholder.svg"}
+                                                                    alt={`Cat image ${index + 1}`}
+                                                                    className={`h-20 w-20 object-cover rounded-lg transition-all hover:scale-105 cursor-pointer ${
+                                                                        mainImage === img
+                                                                            ? "border-2 border-pink-300 ring-2 ring-pink-200"
+                                                                            : "border border-gray-200"
+                                                                    }`}
+                                                                    onClick={() => setMainImage(img)}
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeImage(index)}
+                                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-90 hover:opacity-100 shadow-sm"
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="videos" className="text-base">
+                                                    Videos
+                                                </Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => document.getElementById("videos")?.click()}
+                                                        className="w-full h-12 border-dashed border-2 hover:bg-pink-50 transition-colors"
+                                                    >
+                                                        <Upload className="mr-2 h-5 w-5 text-pink-500" /> Add Multiple Videos
+                                                    </Button>
+                                                    <input
+                                                        id="videos"
+                                                        type="file"
+                                                        accept="video/*"
+                                                        multiple
+                                                        className="hidden"
+                                                        onChange={handleVideoUpload}
+                                                    />
+                                                </div>
+
+                                                {videos.length > 0 && (
+                                                    <div className="space-y-2 mt-4">
+                                                        {videos.map((video, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors"
+                                                            >
+                                                                <span className="text-sm font-medium truncate max-w-[200px]">Video {index + 1}</span>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => removeVideo(index)}
+                                                                    className="hover:bg-red-50 hover:text-red-500"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-red-400" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    <motion.div variants={itemVariants}>
+                                        <hr className="my-6" />
+                                    </motion.div>
+
+                                    <motion.div variants={itemVariants} className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* Physical Characteristics */}
+                                        <div className="space-y-4">
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">
+                                                Physical Characteristics
+                                            </h3>
+
+                                            <FormField
+                                                control={form.control}
+                                                name="color"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Color</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="e.g. White" {...field} className="h-11" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={form.control}
+                                                name="gender"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Gender</FormLabel>
+                                                        <Select
+                                                            onValueChange={field.onChange}
+                                                            value={
+                                                                field.value ? (field.value.toLowerCase() === "male" ? "Male" : "Female") : "Female"
+                                                            }
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-11">
+                                                                    <SelectValue placeholder="Select gender" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="Female">Female</SelectItem>
+                                                                <SelectItem value="Male">Male</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={form.control}
+                                                name="yearOfBirth"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Year of Birth</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" {...field} className="h-11" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={form.control}
+                                                name="breed"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Breed</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="e.g. Persian" {...field} className="h-11" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={form.control}
+                                                name="category"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Category</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-11">
+                                                                    <SelectValue placeholder="Select category" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="Domestic">Domestic</SelectItem>
+                                                                <SelectItem value="Wild">Wild</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* Additional Information */}
+                                        <div className="space-y-4">
+                                            <h3 className="text-xl font-semibold mb-4 pb-2 border-b border-gray-100">
+                                                Additional Information
+                                            </h3>
+
+                                            <div className="space-y-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="isVaccinated"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm hover:bg-gray-50 transition-colors">
+                                                            <div className="space-y-1">
+                                                                <FormLabel className="text-base">Vaccinated</FormLabel>
+                                                                <FormDescription>Has this cat received all necessary vaccinations?</FormDescription>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Switch
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                    className="data-[state=checked]:bg-pink-500"
+                                                                />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <FormField
+                                                    control={form.control}
+                                                    name="isMicrochipped"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm hover:bg-gray-50 transition-colors">
+                                                            <div className="space-y-1">
+                                                                <FormLabel className="text-base">Microchipped</FormLabel>
+                                                                <FormDescription>Does this cat have an identification microchip?</FormDescription>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Switch
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                    className="data-[state=checked]:bg-pink-500"
+                                                                />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <FormField
+                                                    control={form.control}
+                                                    name="isCastrated"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm hover:bg-gray-50 transition-colors">
+                                                            <div className="space-y-1">
+                                                                <FormLabel className="text-base">Castrated/Spayed</FormLabel>
+                                                                <FormDescription>Has this cat been castrated or spayed?</FormDescription>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Switch
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                    className="data-[state=checked]:bg-pink-500"
+                                                                />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="motherId"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mb-5">
+                                                            <FormLabel className="text-base">Mother Cat</FormLabel>
+                                                            <FormControl>
+                                                                <ComboboxSelect
+                                                                    options={motherOptions}
+                                                                    value={field.value || ""}
+                                                                    onValueChange={(value) => {
+                                                                        console.log("Mother selected:", value)
+                                                                        // Explicitly handle the value change - use empty string instead of null
+                                                                        field.onChange(value)
+                                                                        // Force a form state update - use empty string instead of null
+                                                                        form.setValue("motherId", value)
+                                                                    }}
+                                                                    placeholder="Select mother cat"
+                                                                    searchPlaceholder="Search cats..."
+                                                                    emptyMessage={isLoadingCats ? "Loading cats..." : "No female cats found."}
+                                                                    className="h-11"
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <FormField
+                                                    control={form.control}
+                                                    name="fatherId"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mb-5">
+                                                            <FormLabel className="text-base">Father Cat</FormLabel>
+                                                            <FormControl>
+                                                                <ComboboxSelect
+                                                                    options={fatherOptions}
+                                                                    value={field.value || ""}
+                                                                    onValueChange={(value) => {
+                                                                        console.log("Father selected:", value)
+                                                                        // Explicitly handle the value change - use empty string instead of null
+                                                                        field.onChange(value)
+                                                                        // Force a form state update - use empty string instead of null
+                                                                        form.setValue("fatherId", value)
+                                                                    }}
+                                                                    placeholder="Select father cat"
+                                                                    searchPlaceholder="Search cats..."
+                                                                    emptyMessage={isLoadingCats ? "Loading cats..." : "No male cats found."}
+                                                                    className="h-11"
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <FormField
+                                                control={form.control}
+                                                name="availability"
+                                                render={({ field }) => (
+                                                    <FormItem className="mb-5">
+                                                        <FormLabel className="text-base">Availability</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-11">
+                                                                    <SelectValue placeholder="Select availability" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="Available">Available</SelectItem>
+                                                                <SelectItem value="Reserved">Reserved</SelectItem>
+                                                                <SelectItem value="Stays in cattery">Stays in cattery</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    </motion.div>
+                                </CardContent>
+
+                                <CardFooter className="flex justify-between border-t p-8 bg-gradient-to-r from-pink-50 to-purple-50 rounded-b-xl gap-4">
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={() => document.getElementById("additionalImages")?.click()}
+                                        onClick={() => router.push("/admin/cats")}
+                                        className="px-6 border-gray-300 hover:bg-white"
                                     >
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Add Images
+                                        Cancel
                                     </Button>
-                                    <Input
-                                        id="additionalImages"
-                                        type="file"
-                                        accept="image/*"
-                                        multiple
-                                        className="hidden"
-                                        onChange={handleAdditionalImageChange}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Videos Section */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium">Videos</h3>
-
-                                {/* Existing Videos */}
-                                {existingVideos.length > 0 && (
-                                    <div>
-                                        <h4 className="text-sm font-medium text-gray-500 mb-2">Current Videos</h4>
-                                        <div className="flex flex-wrap gap-4">
-                                            {existingVideos.map((videoUrl, index) => (
-                                                <div key={`existing-video-${index}`} className="relative">
-                                                    <div className="h-24 w-36 bg-gray-100 rounded flex items-center justify-center">
-                                                        <Film className="h-8 w-8 text-gray-400" />
-                                                    </div>
-                                                    <div className="mt-1 text-sm truncate max-w-[144px]">Video {index + 1}</div>
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                                                        onClick={() => removeExistingVideo(index)}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
+                                    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                                        <Button
+                                            type="submit"
+                                            className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-8 h-11 text-base shadow-md hover:shadow-lg transition-shadow"
+                                            disabled={isSubmitting}
+                                        >
+                                            {isSubmitting ? (
+                                                <div className="flex items-center">
+                                                    <div className="animate-spin mr-2 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                                    Saving...
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* New Videos */}
-                                {videoFiles.length > 0 && (
-                                    <div>
-                                        <h4 className="text-sm font-medium text-gray-500 mb-2">New Videos</h4>
-                                        <div className="flex flex-wrap gap-4">
-                                            {videoFiles.map((file, index) => (
-                                                <div key={`new-video-${index}`} className="relative">
-                                                    <div className="h-24 w-36 bg-gray-100 rounded flex items-center justify-center">
-                                                        <Film className="h-8 w-8 text-gray-400" />
-                                                    </div>
-                                                    <div className="mt-1 text-sm truncate max-w-[144px]">{file.name}</div>
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                                                        onClick={() => removeVideoFile(index)}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <Button type="button" variant="outline" onClick={() => document.getElementById("videos")?.click()}>
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Add Videos
-                                    </Button>
-                                    <Input
-                                        id="videos"
-                                        type="file"
-                                        accept="video/*"
-                                        multiple
-                                        className="hidden"
-                                        onChange={handleVideoChange}
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-between">
-                            <Button variant="outline" type="button" asChild>
-                                <Link href="/admin/cats">Cancel</Link>
-                            </Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="mr-2 h-4 w-4" />
-                                        Save Changes
-                                    </>
-                                )}
-                            </Button>
-                        </CardFooter>
+                                            ) : (
+                                                "Update Cat"
+                                            )}
+                                        </Button>
+                                    </motion.div>
+                                </CardFooter>
+                            </form>
+                        </Form>
                     </Card>
-                </form>
-            </Form>
+                </motion.div>
+            </motion.div>
+
+            <CatPopup visible={popupVisible} message={popupMessage} onClose={() => setPopupVisible(false)} />
         </div>
     )
 }
