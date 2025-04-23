@@ -1,26 +1,35 @@
-'use client';
-import { useState, useEffect, useCallback } from 'react';
-import Header from "@/components/layouts/Header";
-import Footer from "@/components/layouts/Footer";
+"use client"
+import { useState, useEffect, useCallback } from "react"
+import Header from "@/components/layouts/Header"
+import Footer from "@/components/layouts/Footer"
 
 function useResponsivePdfUrl() {
-    const [pdfUrl, setPdfUrl] = useState('');
-    const baseParams = 'toolbar=0&navpanes=0&scrollbar=0';
-    const desktopParams = `${baseParams}&zoom=300,0,0&view=FitH`;
-    const mobileParams = `${baseParams}&view=FitV`;
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+    const baseParams = "toolbar=0&navpanes=0&scrollbar=0"
+    const desktopParams = `${baseParams}&zoom=300,0,0&view=FitH`
+    const mobileParams = `${baseParams}&view=FitV`
 
     const updatePdfUrl = useCallback(() => {
-        const isDesktop = window.matchMedia('(min-width: 768px)').matches;
-        setPdfUrl(`/Documents/contract.pdf#${isDesktop ? desktopParams : mobileParams}`);
-    }, [desktopParams, mobileParams]);
+        const isDesktop = window.matchMedia("(min-width: 768px)").matches
+        // Add a timestamp to prevent caching issues
+        const timestamp = new Date().getTime()
+        setPdfUrl(`/Documents/contract.pdf?v=${timestamp}#${isDesktop ? desktopParams : mobileParams}`)
+    }, [desktopParams, mobileParams])
 
     useEffect(() => {
-        updatePdfUrl();
-        window.addEventListener('resize', updatePdfUrl);
-        return () => window.removeEventListener('resize', updatePdfUrl);
-    }, [updatePdfUrl]);
+        // Small delay to ensure the component is fully mounted
+        const timer = setTimeout(() => {
+            updatePdfUrl()
+        }, 100)
 
-    return pdfUrl;
+        window.addEventListener("resize", updatePdfUrl)
+        return () => {
+            window.removeEventListener("resize", updatePdfUrl)
+            clearTimeout(timer)
+        }
+    }, [updatePdfUrl])
+
+    return pdfUrl
 }
 
 const Sidebar = () => (
@@ -51,11 +60,15 @@ const Sidebar = () => (
                 <div className="space-y-1">
                     <p className="flex items-center gap-2">
                         <span>📞</span>
-                        <a href="tel:+40721238803" className="hover:text-red-600">+40 721 238 803</a>
+                        <a href="tel:+40721238803" className="hover:text-red-600">
+                            +40 721 238 803
+                        </a>
                     </p>
                     <p className="flex items-center gap-2">
                         <span>📧</span>
-                        <a href="mailto:poppsy81@yahoo.com" className="hover:text-red-600">poppsy81@yahoo.com</a>
+                        <a href="mailto:poppsy81@yahoo.com" className="hover:text-red-600">
+                            poppsy81@yahoo.com
+                        </a>
                     </p>
                     <p className="flex items-center gap-2">
                         <span>🏠</span>
@@ -65,7 +78,7 @@ const Sidebar = () => (
             </div>
         </div>
     </div>
-);
+)
 
 const MobileInfo = () => (
     <div className="lg:hidden mt-6 space-y-4">
@@ -86,20 +99,70 @@ const MobileInfo = () => (
             </div>
         </div>
     </div>
-);
+)
 
-const PdfViewer = ({ pdfUrl }: { pdfUrl: string }) => (
-    <div className="lg:col-span-2">
-        <div className="border-2 border-red-100 rounded-lg shadow-xl bg-white h-[85vh] min-h-[500px] overflow-hidden">
-            <iframe
-                src={pdfUrl}
-                className="w-full h-full"
-                title="Cat Sale Agreement"
-                loading="eager"
-            />
+const PdfViewer = ({ pdfUrl }: { pdfUrl: string | null }) => {
+    const [isLoading, setIsLoading] = useState(true)
+    const [hasError, setHasError] = useState(false)
+    const [useFallback, setUseFallback] = useState(false)
+
+    const handleIframeError = () => {
+        setUseFallback(true)
+        setIsLoading(true)
+    }
+
+    const handleFallbackError = () => {
+        setHasError(true)
+        setIsLoading(false)
+    }
+
+    return (
+        <div className="lg:col-span-2">
+            <div className="border-2 border-red-100 rounded-lg shadow-xl bg-white h-[85vh] min-h-[500px] overflow-hidden relative">
+                {/* Always show loading indicator when pdfUrl is null */}
+                {(isLoading || pdfUrl === null) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+                            <p className="text-gray-600">Loading contract document...</p>
+                        </div>
+                    </div>
+                )}
+
+                {hasError ? (
+                    <div className="flex flex-col items-center justify-center h-full p-6">
+                        <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                        <h3 className="text-xl font-bold text-red-600 mb-2">Document Not Found</h3>
+                        <p className="text-gray-600 text-center mb-4">
+                            The contract document could not be loaded. Please make sure it exists in the public/Documents folder.
+                        </p>
+                    </div>
+                ) : useFallback && pdfUrl ? (
+                    <object
+                        data={pdfUrl}
+                        type="application/pdf"
+                        className="w-full h-full"
+                        onLoad={() => setIsLoading(false)}
+                        onError={handleFallbackError}
+                    >
+                        <div className="flex flex-col items-center justify-center h-full p-6">
+                            <p className="text-gray-600 text-center mb-4">Your browser cannot display the PDF directly.</p>
+                        </div>
+                    </object>
+                ) : pdfUrl ? (
+                    <iframe
+                        src={pdfUrl}
+                        className="w-full h-full"
+                        title="Cat Sale Agreement"
+                        loading="eager"
+                        onLoad={() => setIsLoading(false)}
+                        onError={handleIframeError}
+                    />
+                ) : null}
+            </div>
         </div>
-    </div>
-);
+    )
+}
 
 const FaqSection = () => (
     <section className="lg:col-span-3 mt-8">
@@ -110,7 +173,8 @@ const FaqSection = () => (
                     <div className="pb-6 border-b border-gray-200">
                         <h4 className="text-lg font-semibold mb-2 text-gray-900">How is the cat transported?</h4>
                         <p className="text-gray-600">
-                            The cat is transported in a climate-controlled vehicle, ensuring comfort and safety throughout the journey.
+                            The cat is transported in a climate-controlled vehicle, ensuring comfort and safety throughout the
+                            journey.
                         </p>
                     </div>
                     <div className="pb-6 border-b border-gray-200">
@@ -124,7 +188,8 @@ const FaqSection = () => (
                     <div className="pb-6 border-b border-gray-200">
                         <h4 className="text-lg font-semibold mb-2 text-gray-900">What safety measures are in place?</h4>
                         <p className="text-gray-600">
-                            Our transport vehicles are equipped with secure cages, padding, and temperature regulation systems to ensure maximum safety.
+                            Our transport vehicles are equipped with secure cages, padding, and temperature regulation systems to
+                            ensure maximum safety.
                         </p>
                     </div>
                     <div className="pb-6 border-b border-gray-200">
@@ -137,10 +202,10 @@ const FaqSection = () => (
             </div>
         </div>
     </section>
-);
+)
 
 export default function ContractPage() {
-    const pdfUrl = useResponsivePdfUrl();
+    const pdfUrl = useResponsivePdfUrl()
 
     return (
         <div className="flex flex-col min-h-screen bg-gray-50">
@@ -155,5 +220,5 @@ export default function ContractPage() {
             </main>
             <Footer />
         </div>
-    );
+    )
 }

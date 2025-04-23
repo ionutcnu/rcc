@@ -11,11 +11,7 @@ const nextConfig = {
     // Disable source maps in production
     productionBrowserSourceMaps: false,
     images: {
-        domains: [
-            "images.unsplash.com",
-            "firebasestorage.googleapis.com", // Add Firebase Storage domain
-            "storage.googleapis.com", // Alternative Firebase Storage domain
-        ],
+        domains: ["images.unsplash.com", "firebasestorage.googleapis.com", "storage.googleapis.com"],
         unoptimized: true,
     },
     // Compress output
@@ -29,15 +25,17 @@ const nextConfig = {
                     {
                         key: "Content-Security-Policy",
                         value:
-                            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; img-src 'self' data: https://firebasestorage.googleapis.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self'",
+                            "default-src 'self'; " +
+                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com https://translate.google.com https://*.googleapis.com; " +
+                            "connect-src 'self' https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.google-analytics.com https://region1.google-analytics.com; " +
+                            "img-src 'self' data: https://firebasestorage.googleapis.com; " +
+                            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                            "font-src 'self' data: https://fonts.gstatic.com; " +
+                            "frame-src 'self'",
                     },
                     {
                         key: "X-Content-Type-Options",
                         value: "nosniff",
-                    },
-                    {
-                        key: "X-Frame-Options",
-                        value: "DENY",
                     },
                     {
                         key: "X-XSS-Protection",
@@ -50,6 +48,20 @@ const nextConfig = {
                     {
                         key: "Permissions-Policy",
                         value: "camera=(), microphone=(), geolocation=()",
+                    },
+                ],
+            },
+            // Special headers for PDF files to allow them to be embedded
+            {
+                source: "/Documents/:path*",
+                headers: [
+                    {
+                        key: "X-Frame-Options",
+                        value: "SAMEORIGIN",
+                    },
+                    {
+                        key: "Content-Disposition",
+                        value: "inline",
                     },
                 ],
             },

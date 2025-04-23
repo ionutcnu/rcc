@@ -3,7 +3,20 @@ import type { NextRequest } from "next/server"
 import { admin } from "@/lib/firebase/admin"
 
 export async function middleware(request: NextRequest) {
-    // Only run this middleware for admin routes
+    // Check if the request is for a PDF file in the Documents directory
+    if (request.nextUrl.pathname.startsWith("/Documents/") && request.nextUrl.pathname.endsWith(".pdf")) {
+        // Clone the response
+        const response = NextResponse.next()
+
+        // Add headers to allow the PDF to be embedded in an iframe
+        response.headers.set("X-Frame-Options", "SAMEORIGIN")
+        response.headers.set("Content-Security-Policy", "default-src 'self'; frame-ancestors 'self'")
+        response.headers.set("Content-Disposition", "inline")
+
+        return response
+    }
+
+    // Only run admin middleware for admin routes
     if (request.nextUrl.pathname.startsWith("/admin")) {
         // Get the session cookie
         const sessionCookie = request.cookies.get("session")?.value
@@ -45,7 +58,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
 }
 
-// Make sure to catch ALL admin routes
+// Make sure to catch both admin routes and PDF files
 export const config = {
-    matcher: ["/admin", "/admin/:path*"],
+    matcher: ["/admin", "/admin/:path*", "/Documents/:path*"],
 }
