@@ -15,8 +15,9 @@ import { safeErrorLog, sanitizeError } from "@/lib/utils/security"
 export type AuthUser = {
     uid: string
     email: string | null
-    photoURL?: string | null // Add this line if it doesn't exist
+    photoURL?: string | null
     isAdmin: boolean
+    token?: string // Add token property here
 }
 
 type AuthContextType = {
@@ -92,11 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     const adminStatus = await checkAdminStatus(firebaseUser)
                     setIsAdmin(adminStatus)
 
+                    // Get token for API calls
+                    const token = await firebaseUser.getIdToken()
+
                     // Create user object
                     setUser({
                         uid: firebaseUser.uid,
                         email: firebaseUser.email,
                         isAdmin: adminStatus,
+                        token: token, // Store token in user object
                     })
                 } catch (err) {
                     safeErrorLog("User setup error", err)
@@ -161,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 uid: userCredential.user.uid,
                 email: userCredential.user.email,
                 isAdmin: adminStatus,
+                token: idToken, // Store token in user object
             })
 
             setLoading(false)

@@ -12,12 +12,12 @@ export function useTranslation() {
     // Initialize language from localStorage on component mount
     useEffect(() => {
         const savedLanguage = localStorage.getItem("preferredLanguage") as Language
-        if (savedLanguage && languages.some((lang) => lang.code === savedLanguage)) {
+        if (savedLanguage && Object.keys(languages).includes(savedLanguage)) {
             setCurrentLanguage(savedLanguage)
         } else {
             // Try to detect browser language
             const browserLang = navigator.language.split("-")[0] as Language
-            if (languages.some((lang) => lang.code === browserLang)) {
+            if (Object.keys(languages).includes(browserLang)) {
                 setCurrentLanguage(browserLang)
             }
         }

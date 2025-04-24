@@ -74,9 +74,7 @@ export default function LanguageSwitcher() {
 
             // If switching to default language, reload the page instead of translating
             if (language === DEFAULT_LANGUAGE) {
-                // Optional: reload the page to get original content
-                // window.location.reload()
-                // Or just set the language without translation
+                // Set the language without translation
                 setCurrentLanguage(language)
                 setIsTranslating(false)
                 return
@@ -95,8 +93,9 @@ export default function LanguageSwitcher() {
                 return
             }
 
-            // Translate the page content
-            await translatePage(language, currentLanguage)
+            // Translate the page content - make sure we're passing the correct source language
+            // Always use DEFAULT_LANGUAGE as source when translating to ensure proper translation
+            await translatePage(language, DEFAULT_LANGUAGE)
 
             // Update state after translation is complete
             setCurrentLanguage(language)
@@ -172,6 +171,7 @@ export default function LanguageSwitcher() {
                                 role="menuitem"
                                 onClick={() => handleLanguageChange(code as Language)}
                                 disabled={isTranslating}
+                                type="button"
                             >
                                 <span className="mr-2">{getLanguageFlag(code as Language)}</span>
                                 <span>{name}</span>

@@ -10,6 +10,7 @@ import SeoHead from "@/components/seo/seo-head"
 import { Suspense } from "react"
 import { Providers } from "./providers"
 
+
 // Configure main fonts
 const inter = Inter({
     subsets: ["latin"],

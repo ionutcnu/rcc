@@ -111,36 +111,13 @@ export default function TranslationsPage() {
         }
     }
 
-    // Reset usage tracking (for testing)
-    const resetUsageTracking = async () => {
-        try {
-            const response = await fetch("/api/translate/reset-usage", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${user?.token || ""}`,
-                    "Content-Type": "application/json",
-                },
-            })
-
-            if (!response.ok) {
-                throw new Error("Failed to reset usage tracking")
-            }
-
-            showPopup("Usage tracking reset successfully")
-            await fetchUsage()
-        } catch (error) {
-            console.error("Error resetting usage:", error)
-            showPopup("Error: Failed to reset usage tracking")
-        }
-    }
-
     // Clear translation cache
     const clearCache = async () => {
         try {
             const response = await fetch("/api/translate/clear-cache", {
                 method: "POST",
                 headers: {
-                    Authorization: `Bearer ${user?.token || ""}`,
+                    Authorization: `Bearer ${(user as any)?.token || ""}`,
                     "Content-Type": "application/json",
                 },
             })
@@ -276,7 +253,7 @@ export default function TranslationsPage() {
                         <Card>
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg">Character Limit</CardTitle>
-                                <CardDescription>DeepL free tier</CardDescription>
+                                <CardDescription>DeepL API plan limit</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="text-3xl font-bold">{usage.characterLimit.toLocaleString()}</div>
@@ -354,9 +331,7 @@ export default function TranslationsPage() {
                             <div className="text-sm text-muted-foreground">
                                 Characters remaining: {(usage.characterLimit - usage.characterCount).toLocaleString()}
                             </div>
-                            <Button variant="outline" size="sm" onClick={resetUsageTracking}>
-                                Reset Usage Tracking
-                            </Button>
+                            <div className="text-sm text-muted-foreground">Next reset: Based on your DeepL API billing cycle</div>
                         </CardFooter>
                     </Card>
 
@@ -408,15 +383,16 @@ export default function TranslationsPage() {
                             <Separator />
 
                             <div className="space-y-2">
-                                <Label htmlFor="custom-limit">Custom Character Limit</Label>
+                                <Label htmlFor="custom-limit">Custom Monitoring Limit</Label>
                                 <p className="text-sm text-muted-foreground">
-                                    Set a custom limit below the DeepL free tier limit (500,000 characters)
+                                    Set a custom monitoring limit below your actual DeepL API limit (
+                                    {usage.characterLimit.toLocaleString()} characters)
                                 </p>
                                 <div className="flex items-center gap-4">
                                     <Slider
                                         id="custom-limit"
                                         min={100000}
-                                        max={500000}
+                                        max={usage.characterLimit}
                                         step={10000}
                                         value={[settings.customLimit]}
                                         onValueChange={(value) => setSettings({ ...settings, customLimit: value[0] })}
@@ -430,7 +406,7 @@ export default function TranslationsPage() {
                                             onChange={(e) => setSettings({ ...settings, customLimit: Number.parseInt(e.target.value) || 0 })}
                                             disabled={!settings.enabled}
                                             min={100000}
-                                            max={500000}
+                                            max={usage.characterLimit}
                                             step={10000}
                                         />
                                     </div>

@@ -1,299 +1,147 @@
-"use client"
-
 import type { Language } from "./types"
-import { updateLocalCharacterCount, shouldCheckUsage, isLimitReached } from "./usageTracker"
+import { updateLocalUsage } from "./usageTracker"
 
-// Default site language
-const DEFAULT_LANGUAGE: Language = "en"
+// Update the translatePage function to better handle text nodes and ensure translations are applied
+export async function translatePage(targetLanguage: Language, sourceLanguage: Language = "en"): Promise<void> {
+    try {
+        // Get all text nodes in the document
+        const textNodes = getTextNodes(document.body)
 
-// Cache structure to store translations and reduce API calls
-interface TranslationCache {
-    [key: string]: {
-        [targetLang: string]: string
+        // Skip translation if no text nodes found
+        if (textNodes.length === 0) return
+
+        // Group text nodes to reduce API calls (max 50 nodes per call)
+        const textGroups = chunkArray(textNodes, 50)
+
+        for (const group of textGroups) {
+            // Extract text content from nodes
+            const texts = group.map((node) => node.textContent || "")
+
+            // Skip empty texts
+            const nonEmptyTexts = texts.filter((text) => text.trim().length > 0)
+            if (nonEmptyTexts.length === 0) continue
+
+            // Call translation API
+            const response = await fetch("/api/translate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    texts: nonEmptyTexts,
+                    targetLanguage,
+                    sourceLanguage,
+                }),
+            })
+
+            if (!response.ok) {
+                console.error(`Translation API error: ${response.status}`)
+                const errorData = await response.json().catch(() => ({}))
+                console.error("Translation API error details:", errorData)
+                throw new Error(`Translation failed: ${response.statusText}`)
+            }
+
+            const result = await response.json()
+
+            // Debug log to check what we're getting back
+            console.log("Translation result:", result)
+
+            // Apply translations back to nodes
+            let translationIndex = 0
+            for (let i = 0; i < group.length; i++) {
+                const text = texts[i].trim()
+                if (text.length > 0) {
+                    // Make sure we have a translation before applying it
+                    if (result.translatedTexts && result.translatedTexts[translationIndex]) {
+                        group[i].textContent = result.translatedTexts[translationIndex++]
+                    } else {
+                        console.warn(`Missing translation for text: ${text}`)
+                    }
+                }
+            }
+        }
+
+        // Add a small delay to ensure DOM updates are complete
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        // Force a re-render by triggering a small DOM change
+        const dummyElement = document.createElement("div")
+        dummyElement.style.display = "none"
+        document.body.appendChild(dummyElement)
+        document.body.removeChild(dummyElement)
+    } catch (error) {
+        console.error("Error translating page:", error)
+        throw error
     }
 }
 
-// In-memory cache for translations
-const translationCache: TranslationCache = {}
+// Improve the text node selection to ensure we're getting all translatable content
+function getTextNodes(element: Node): Text[] {
+    const textNodes: Text[] = []
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+            // Skip script and style elements
+            const parent = node.parentElement
+            if (
+                !parent ||
+                parent.tagName === "SCRIPT" ||
+                parent.tagName === "STYLE" ||
+                parent.tagName === "NOSCRIPT" ||
+                parent.hasAttribute("data-no-translate") ||
+                parent.closest("[data-no-translate]") ||
+                (node.textContent?.trim().length || 0) === 0
+            ) {
+                return NodeFilter.FILTER_REJECT
+            }
 
-// Maximum text length to send in a single request
-const MAX_TEXT_LENGTH = 1000
+            // Skip nodes that are part of SVG elements (often icons)
+            if (parent.closest("svg")) {
+                return NodeFilter.FILTER_REJECT
+            }
 
-// Minimum text length to translate (skip very short texts)
-const MIN_TEXT_LENGTH = 3
+            // Skip nodes with only whitespace or very short content (likely not meaningful text)
+            const text = node.textContent?.trim() || ""
+            if (text.length === 0 || (text.length < 2 && !/[a-zA-Z]/.test(text))) {
+                return NodeFilter.FILTER_REJECT
+            }
 
-/**
- * Generates a cache key for storing translations
- */
-const getCacheKey = (text: string): string => {
-    // Use a simple hash function for the text to keep cache keys manageable
-    let hash = 0
-    for (let i = 0; i < text.length; i++) {
-        const char = text.charCodeAt(i)
-        hash = (hash << 5) - hash + char
-        hash = hash & hash // Convert to 32bit integer
+            return NodeFilter.FILTER_ACCEPT
+        },
+    })
+
+    let node
+    while ((node = walker.nextNode())) {
+        textNodes.push(node as Text)
     }
-    return `${hash}`
+
+    return textNodes
 }
 
-/**
- * Check DeepL usage statistics from the API
- */
-export async function checkDeepLUsage(): Promise<boolean> {
+// Helper function to chunk array into smaller groups
+function chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks = []
+    for (let i = 0; i < array.length; i += size) {
+        chunks.push(array.slice(i, i + size))
+    }
+    return chunks
+}
+
+// Function to check DeepL usage
+export async function checkDeepLUsage(): Promise<void> {
     try {
         const response = await fetch("/api/translate/usage")
         if (!response.ok) {
-            throw new Error(`Failed to fetch usage: ${response.status}`)
+            throw new Error("Failed to fetch usage data")
         }
-
-        const usageData = await response.json()
-
-        // Save to local storage
-        if (typeof window !== "undefined") {
-            localStorage.setItem("deepl-usage-stats", JSON.stringify(usageData))
-        }
-
-        // Return true if limit is reached
-        return usageData.limitReached
+        const data = await response.json()
+        updateLocalUsage(data)
     } catch (error) {
         console.error("Error checking DeepL usage:", error)
-        return false
+        throw error
     }
 }
 
-/**
- * Translates text using the selected translation API
- */
-export async function translateText(
-    text: string,
-    targetLanguage: Language,
-    sourceLanguage: Language = DEFAULT_LANGUAGE,
-): Promise<string> {
-    // Skip very short texts
-    if (text.length < MIN_TEXT_LENGTH) {
-        return text
-    }
-
-    // Don't translate if the target language is the same as source
-    if (targetLanguage === sourceLanguage) {
-        return text
-    }
-
-    // Don't translate if target is the default language - return original text
-    if (targetLanguage === DEFAULT_LANGUAGE) {
-        return text
-    }
-
-    // Check if usage limit has been reached
-    if (isLimitReached()) {
-        console.warn("Translation limit reached, returning original text")
-        return text
-    }
-
-    // Check if we need to update usage stats
-    if (shouldCheckUsage()) {
-        const limitReached = await checkDeepLUsage()
-        if (limitReached) {
-            return text
-        }
-    }
-
-    // Check if we have this translation in cache
-    const cacheKey = getCacheKey(text)
-    if (translationCache[cacheKey]?.[targetLanguage]) {
-        return translationCache[cacheKey][targetLanguage]
-    }
-
-    try {
-        // Make API call to translation service
-        const response = await fetch("/api/translate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                text,
-                targetLanguage,
-                sourceLanguage,
-            }),
-        })
-
-        if (!response.ok) {
-            throw new Error(`Translation API error: ${response.status}`)
-        }
-
-        const data = await response.json()
-
-        // Check if limit was reached during translation
-        if (data.limitReached) {
-            console.warn("Translation limit reached during request")
-            return text
-        }
-
-        const translatedText = data.translatedText
-
-        // Update local character count if not from cache
-        if (!data.fromCache) {
-            updateLocalCharacterCount(text.length)
-        }
-
-        // Cache the result
-        if (!translationCache[cacheKey]) {
-            translationCache[cacheKey] = {}
-        }
-        translationCache[cacheKey][targetLanguage] = translatedText
-
-        return translatedText
-    } catch (error) {
-        console.error("Translation error:", error)
-        return text // Return original text on error
-    }
-}
-
-/**
- * Optimizes text for translation by removing unnecessary whitespace
- */
-function optimizeText(text: string): string {
-    return text.trim().replace(/\s+/g, " ")
-}
-
-/**
- * Translates an entire HTML element and its children
- */
-export async function translateElement(
-    element: HTMLElement,
-    targetLanguage: Language,
-    sourceLanguage: Language = DEFAULT_LANGUAGE,
-): Promise<void> {
-    // Skip translation if target is the default language
-    if (targetLanguage === DEFAULT_LANGUAGE) {
-        return
-    }
-
-    // Check if usage limit has been reached
-    if (isLimitReached()) {
-        console.warn("Translation limit reached, skipping translation")
-        return
-    }
-
-    // Skip translation for certain elements
-    const skipNodeNames = [
-        "SCRIPT",
-        "STYLE",
-        "NOSCRIPT",
-        "IFRAME",
-        "OBJECT",
-        "EMBED",
-        "BUTTON",
-        "SELECT",
-        "OPTION",
-        "CODE",
-        "PRE",
-    ]
-    if (skipNodeNames.includes(element.nodeName)) {
-        return
-    }
-
-    // Skip elements with data-no-translate attribute
-    if (element.getAttribute("data-no-translate") === "true") {
-        return
-    }
-
-    // Skip elements with certain classes
-    const skipClasses = ["no-translate", "notranslate"]
-    if (element.classList && skipClasses.some((cls) => element.classList.contains(cls))) {
-        return
-    }
-
-    // Collect text nodes for batch translation
-    const textNodes: { node: Node; text: string }[] = []
-    let totalChars = 0
-
-    // Process text nodes directly under this element
-    for (const node of Array.from(element.childNodes)) {
-        if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
-            const originalText = node.textContent.trim()
-            if (originalText.length >= MIN_TEXT_LENGTH) {
-                const optimizedText = optimizeText(originalText)
-                textNodes.push({ node, text: optimizedText })
-                totalChars += optimizedText.length
-
-                // If we've collected enough text, translate this batch
-                if (totalChars >= MAX_TEXT_LENGTH) {
-                    await translateTextNodes(textNodes, targetLanguage, sourceLanguage)
-                    textNodes.length = 0
-                    totalChars = 0
-                }
-            }
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-            // Recursively translate child elements
-            await translateElement(node as HTMLElement, targetLanguage, sourceLanguage)
-        }
-    }
-
-    // Translate any remaining text nodes
-    if (textNodes.length > 0) {
-        await translateTextNodes(textNodes, targetLanguage, sourceLanguage)
-    }
-}
-
-/**
- * Translates a batch of text nodes
- */
-async function translateTextNodes(
-    textNodes: { node: Node; text: string }[],
-    targetLanguage: Language,
-    sourceLanguage: Language,
-): Promise<void> {
-    // Process each text node individually for now
-    // In a future optimization, we could batch these together
-    for (const { node, text } of textNodes) {
-        if (text.length >= MIN_TEXT_LENGTH) {
-            const translatedText = await translateText(text, targetLanguage, sourceLanguage)
-            if (translatedText !== text && node.textContent) {
-                node.textContent = node.textContent.replace(text, translatedText)
-            }
-        }
-    }
-}
-
-/**
- * Translates the entire page content
- */
-export async function translatePage(
-    targetLanguage: Language,
-    sourceLanguage: Language = DEFAULT_LANGUAGE,
-): Promise<void> {
-    // Skip translation if target is the default language
-    if (targetLanguage === DEFAULT_LANGUAGE) {
-        return
-    }
-
-    // Check if usage limit has been reached
-    if (isLimitReached()) {
-        console.warn("Translation limit reached, skipping page translation")
-        return
-    }
-
-    // Select the main content areas to translate
-    const contentElements = document.querySelectorAll("main, article, section, .content, #content, .main-content")
-
-    if (contentElements.length === 0) {
-        // If no specific content areas found, translate the body
-        await translateElement(document.body, targetLanguage, sourceLanguage)
-    } else {
-        // Translate each content element
-        for (const element of Array.from(contentElements)) {
-            await translateElement(element as HTMLElement, targetLanguage, sourceLanguage)
-        }
-    }
-}
-
-/**
- * Clear the translation cache
- */
+// Function to clear translation cache
 export function clearTranslationCache(): void {
-    Object.keys(translationCache).forEach((key) => {
-        delete translationCache[key]
-    })
+    localStorage.removeItem("translationCache")
 }
