@@ -26,7 +26,7 @@ const nextConfig = {
                         key: "Content-Security-Policy",
                         value:
                             "default-src 'self'; " +
-                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com https://translate.google.com https://*.googleapis.com; " +
+                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com; " +
                             "connect-src 'self' https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.google-analytics.com https://region1.google-analytics.com; " +
                             "img-src 'self' data: https://firebasestorage.googleapis.com; " +
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +

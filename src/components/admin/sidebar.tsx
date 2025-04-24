@@ -2,7 +2,20 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Cat, ImageIcon, Settings, ExternalLink, Users, FileText, ChevronRight, LogOut, LayoutDashboard, Bug, ChevronLeft } from 'lucide-react'
+import {
+  Cat,
+  ImageIcon,
+  Settings,
+  ExternalLink,
+  Users,
+  FileText,
+  ChevronRight,
+  LogOut,
+  LayoutDashboard,
+  Bug,
+  ChevronLeft,
+  Globe,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
@@ -52,6 +65,12 @@ export function AdminSidebar() {
       href: "/admin/media",
       icon: ImageIcon,
       description: "Manage images and videos",
+    },
+    {
+      title: "Translations",
+      href: "/admin/translations",
+      icon: Globe,
+      description: "Manage site translations",
     },
     {
       title: "Settings",

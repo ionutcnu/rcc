@@ -4,9 +4,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { GiCat, GiPawPrint, GiHollowCat } from "react-icons/gi"
-import GoogleTranslate from "@/Utils/LanguageSwitcher"
 import ProfileDropdown from "@/components/elements/Header/ProfileDropdown"
 import MobileMenu from "@/components/elements/Header/MobileMenu"
+import LanguageSwitcher from "@/components/elements/Header/LanguageSwitcher"
 import { auth } from "@/lib/firebase/firebaseConfig"
 
 interface NavLink {
@@ -130,9 +130,8 @@ export default function Header() {
                     </nav>
 
                     <div className="flex items-center space-x-4 border-l-2 border-[#d1d5db] pl-4">
-                        <div className="text-[#FF6B6B]">
-                            <GoogleTranslate />
-                        </div>
+                        {/* Language Switcher - Added before authentication controls */}
+                        <LanguageSwitcher />
 
                         {isLoading ? (
                             // Show a subtle loading indicator

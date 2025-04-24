@@ -5,9 +5,9 @@ import { motion } from "framer-motion"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { auth } from "@/lib/firebase/firebaseConfig"
-import GoogleTranslate from "@/Utils/LanguageSwitcher"
 import { GiPawPrint, GiExitDoor } from "react-icons/gi"
 import { MdOutlineDashboard } from "react-icons/md"
+import LanguageSwitcher from "./LanguageSwitcher"
 
 interface NavLink {
     name: string
@@ -161,10 +161,8 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
                             )}
                         </div>
 
-                        <div className="mt-4 border-t border-orange-200 pt-4">
-                            <div className="text-orange-600">
-                                <GoogleTranslate />
-                            </div>
+                        <div className="mt-4 border-t border-orange-200 pt-4 flex justify-center">
+                            <LanguageSwitcher />
                         </div>
                     </nav>
                 </motion.div>
