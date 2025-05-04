@@ -8,9 +8,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, ArrowRight, CheckCircle, Code, Database, Play, RefreshCw, XCircle } from "lucide-react"
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Code,
+  Database,
+  Play,
+  RefreshCw,
+  XCircle,
+} from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 // Define the API endpoint types
 type ApiEndpoint = {
@@ -18,9 +30,32 @@ type ApiEndpoint = {
   label: string
   method: string
   description: string
-  defaultParams?: string
+  paramStructure?: string
+  paramPlaceholder?: string
   defaultBody?: string
   category: string
+}
+
+// Define parameter structure type
+type ParamField = {
+  name: string
+  placeholder: string
+  required: boolean
+}
+
+// Add a new RequestHistoryItem type after the existing type definitions
+type RequestHistoryItem = {
+  id: string
+  endpoint: string
+  method: string
+  queryParams: string
+  requestBody: string
+  timestamp: Date
+  statusCode: number | null
+  responseTime: number | null
+  label: string
+  response: any // Store the response data
+  error: string | null // Store any error message
 }
 
 export default function CatApiTesterPage() {
@@ -28,14 +63,45 @@ export default function CatApiTesterPage() {
   const [method, setMethod] = useState("GET")
   const [requestBody, setRequestBody] = useState("")
   const [queryParams, setQueryParams] = useState("")
+  const [paramFields, setParamFields] = useState<ParamField[]>([])
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusCode, setStatusCode] = useState<number | null>(null)
   const [responseTime, setResponseTime] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [selectedEndpointLabel, setSelectedEndpointLabel] = useState<string>("")
+  // Add this to the state declarations at the top of the component
+  const [requestHistory, setRequestHistory] = useState<RequestHistoryItem[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [expandedHistoryItem, setExpandedHistoryItem] = useState<string | null>(null)
 
-  // Enhanced API endpoints with categories, descriptions and default values
+  // Sample cat data for realistic testing
+  const sampleCatData = {
+    name: "New Test Cat",
+    breed: "British Shorthair",
+    color: "black",
+    gender: "Male",
+    category: "Domestic",
+    description: "A lovely test cat with detailed information",
+    yearOfBirth: 2023,
+    availability: "Available",
+    isVaccinated: true,
+    isCastrated: true,
+    isMicrochipped: true,
+    mainImage:
+      "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fimages%2Fsample-image.jpeg?alt=media&token=sample-token",
+    images: [
+      "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fsample-id%2Fimages%2Fsample-image-1.jpg?alt=media&token=sample-token-1",
+    ],
+    videos: [
+      "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fsample-id%2Fvideos%2Fsample-video-1.mp4?alt=media&token=sample-token-2",
+    ],
+    fatherId: "",
+    motherId: "",
+  }
+
+  // Enhanced API endpoints with categories, descriptions and parameter structures
   const apiEndpoints: ApiEndpoint[] = [
     {
       value: "/api/cats",
@@ -49,7 +115,8 @@ export default function CatApiTesterPage() {
       label: "Get Cat by ID",
       method: "GET",
       description: "Fetches a specific cat by ID",
-      defaultParams: "id=REPLACE_WITH_CAT_ID",
+      paramStructure: "id",
+      paramPlaceholder: "Paste cat ID here",
       category: "cats",
     },
     {
@@ -57,7 +124,8 @@ export default function CatApiTesterPage() {
       label: "Get Cat by Name",
       method: "GET",
       description: "Fetches a cat by its name",
-      defaultParams: "name=REPLACE_WITH_CAT_NAME",
+      paramStructure: "name",
+      paramPlaceholder: "Enter cat name",
       category: "cats",
     },
     {
@@ -65,20 +133,7 @@ export default function CatApiTesterPage() {
       label: "Add Cat",
       method: "POST",
       description: "Creates a new cat profile",
-      defaultBody: JSON.stringify(
-        {
-          name: "New Test Cat",
-          breed: "British Shorthair",
-          age: 2,
-          category: "Domestic",
-          description: "A lovely test cat",
-          gender: "female",
-          color: "gray",
-          available: true,
-        },
-        null,
-        2,
-      ),
+      defaultBody: JSON.stringify(sampleCatData, null, 2),
       category: "cats",
     },
     {
@@ -88,10 +143,28 @@ export default function CatApiTesterPage() {
       description: "Updates an existing cat profile",
       defaultBody: JSON.stringify(
         {
-          id: "REPLACE_WITH_CAT_ID",
+          id: "PASTE_CAT_ID_HERE",
           name: "Updated Cat Name",
-          breed: "Updated Breed",
-          age: 3,
+          breed: "British Shorthair",
+          color: "gray",
+          gender: "Female",
+          category: "Domestic",
+          description: "Updated description for this cat",
+          yearOfBirth: 2022,
+          availability: "Reserved",
+          isVaccinated: true,
+          isCastrated: true,
+          isMicrochipped: true,
+          mainImage:
+            "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fimages%2Fupdated-image.jpeg?alt=media&token=sample-token",
+          images: [
+            "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fsample-id%2Fimages%2Fupdated-image-1.jpg?alt=media&token=sample-token-1",
+          ],
+          videos: [
+            "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fsample-id%2Fvideos%2Fupdated-video-1.mp4?alt=media&token=sample-token-2",
+          ],
+          fatherId: "PASTE_FATHER_ID_HERE",
+          motherId: "PASTE_MOTHER_ID_HERE",
         },
         null,
         2,
@@ -103,7 +176,8 @@ export default function CatApiTesterPage() {
       label: "Delete Cat",
       method: "DELETE",
       description: "Soft or permanently deletes a cat",
-      defaultParams: "id=REPLACE_WITH_CAT_ID&permanent=false",
+      paramStructure: "id,permanent",
+      paramPlaceholder: "Paste cat ID here,true or false",
       category: "cats",
     },
     {
@@ -113,7 +187,7 @@ export default function CatApiTesterPage() {
       description: "Restores a soft-deleted cat",
       defaultBody: JSON.stringify(
         {
-          id: "REPLACE_WITH_CAT_ID",
+          id: "PASTE_CAT_ID_HERE",
         },
         null,
         2,
@@ -134,7 +208,38 @@ export default function CatApiTesterPage() {
       description: "Increments the view count for a cat",
       defaultBody: JSON.stringify(
         {
-          id: "REPLACE_WITH_CAT_ID",
+          id: "PASTE_CAT_ID_HERE",
+        },
+        null,
+        2,
+      ),
+      category: "cats",
+    },
+    {
+      value: "/api/cats/upload/image",
+      label: "Upload Cat Image",
+      method: "POST",
+      description: "Uploads an image for a cat (use form data in actual implementation)",
+      defaultBody: JSON.stringify(
+        {
+          id: "PASTE_CAT_ID_HERE",
+          imageBase64: "BASE64_ENCODED_IMAGE_DATA",
+          isMainImage: true,
+        },
+        null,
+        2,
+      ),
+      category: "cats",
+    },
+    {
+      value: "/api/cats/upload/video",
+      label: "Upload Cat Video",
+      method: "POST",
+      description: "Uploads a video for a cat (use form data in actual implementation)",
+      defaultBody: JSON.stringify(
+        {
+          id: "PASTE_CAT_ID_HERE",
+          videoFile: "VIDEO_FILE_OBJECT",
         },
         null,
         2,
@@ -153,7 +258,8 @@ export default function CatApiTesterPage() {
       label: "Search Users",
       method: "GET",
       description: "Searches for users by email",
-      defaultParams: "email=REPLACE_WITH_EMAIL",
+      paramStructure: "email",
+      paramPlaceholder: "Enter user email",
       category: "users",
     },
     {
@@ -185,20 +291,66 @@ export default function CatApiTesterPage() {
     // Set initial default values
     const defaultEndpoint = apiEndpoints[0]
     if (defaultEndpoint) {
-      handleEndpointChange(defaultEndpoint.value)
+      handleEndpointChange(defaultEndpoint.value, defaultEndpoint.label)
+      setSelectedEndpointLabel(defaultEndpoint.label)
     }
   }, [])
 
-  const handleEndpointChange = (value: string) => {
+  const handleEndpointChange = (value: string, label?: string) => {
     setEndpoint(value)
-    const selectedEndpoint = apiEndpoints.find((e) => e.value === value)
+    if (label) {
+      setSelectedEndpointLabel(label)
+    }
+
+    // Find the selected endpoint by value and label (to handle duplicate values like /api/cats)
+    const selectedEndpoint = apiEndpoints.find((e) => e.value === value && (!label || e.label === label))
+
     if (selectedEndpoint) {
       setMethod(selectedEndpoint.method)
-      setQueryParams(selectedEndpoint.defaultParams || "")
       setRequestBody(selectedEndpoint.defaultBody || "")
+
+      // Handle parameter structure
+      if (selectedEndpoint.paramStructure) {
+        const params = selectedEndpoint.paramStructure.split(",")
+        const placeholders = selectedEndpoint.paramPlaceholder ? selectedEndpoint.paramPlaceholder.split(",") : []
+
+        const fields: ParamField[] = params.map((param, index) => ({
+          name: param,
+          placeholder: placeholders[index] || `Enter ${param} value`,
+          required: true,
+        }))
+
+        setParamFields(fields)
+
+        // Clear the query params
+        setQueryParams("")
+      } else {
+        setParamFields([])
+        setQueryParams("")
+      }
     }
   }
 
+  // Build query string from parameter fields
+  const buildQueryString = () => {
+    if (paramFields.length === 0) return queryParams
+
+    const params = new URLSearchParams()
+    let hasValues = false
+
+    paramFields.forEach((field) => {
+      const inputElement = document.getElementById(`param-${field.name}`) as HTMLInputElement
+      if (inputElement && inputElement.value) {
+        params.append(field.name, inputElement.value)
+        hasValues = true
+      }
+    })
+
+    return hasValues ? params.toString() : ""
+  }
+
+  // Modify the handleSendRequest function to save requests to history
+  // Replace the existing handleSendRequest function with this updated version:
   const handleSendRequest = async () => {
     setLoading(true)
     setError(null)
@@ -211,15 +363,10 @@ export default function CatApiTesterPage() {
 
       // Build the URL with query parameters
       let url = endpoint
-      if (queryParams && !url.includes("?")) {
-        url += `?${queryParams}`
-      } else if (queryParams && url.includes("?")) {
-        // Handle the special case for /api/cats?id=
-        if (url === "/api/cats" && queryParams.startsWith("id=")) {
-          url = `/api/cats?${queryParams}`
-        } else {
-          url += `&${queryParams}`
-        }
+      const queryString = paramFields.length > 0 ? buildQueryString() : queryParams
+
+      if (queryString) {
+        url += `?${queryString}`
       }
 
       // Configure the request options
@@ -237,18 +384,94 @@ export default function CatApiTesterPage() {
 
       const res = await fetch(url, options)
       const endTime = performance.now()
+      const responseTimeValue = Math.round(endTime - startTime)
 
-      setResponseTime(Math.round(endTime - startTime))
+      setResponseTime(responseTimeValue)
       setStatusCode(res.status)
 
       // Parse the response
       const data = await res.json()
       setResponse(data)
+
+      // Add to history with response data
+      const historyItem: RequestHistoryItem = {
+        id: crypto.randomUUID(),
+        endpoint,
+        method,
+        queryParams: queryString,
+        requestBody,
+        timestamp: new Date(),
+        statusCode: res.status,
+        responseTime: responseTimeValue,
+        label: selectedEndpointLabel || endpoint,
+        response: data,
+        error: null,
+      }
+      setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)]) // Keep last 20 items
     } catch (err: any) {
-      setError(err.message || "An error occurred")
+      const errorMessage = err.message || "An error occurred"
+      setError(errorMessage)
+
+      // Add failed request to history
+      const historyItem: RequestHistoryItem = {
+        id: crypto.randomUUID(),
+        endpoint,
+        method,
+        queryParams: paramFields.length > 0 ? buildQueryString() : queryParams,
+        requestBody,
+        timestamp: new Date(),
+        statusCode: null,
+        responseTime: null,
+        label: selectedEndpointLabel || endpoint,
+        response: null,
+        error: errorMessage,
+      }
+      setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)])
     } finally {
       setLoading(false)
     }
+  }
+
+  // Add a function to load a request from history
+  const loadFromHistory = (item: RequestHistoryItem) => {
+    setEndpoint(item.endpoint)
+    setMethod(item.method)
+    setQueryParams(item.queryParams)
+    setRequestBody(item.requestBody)
+    setSelectedEndpointLabel(item.label)
+
+    // Find the matching endpoint to set up param fields correctly
+    const selectedEndpoint = apiEndpoints.find((e) => e.value === item.endpoint && e.label === item.label)
+
+    if (selectedEndpoint?.paramStructure) {
+      const params = selectedEndpoint.paramStructure.split(",")
+      const placeholders = selectedEndpoint.paramPlaceholder ? selectedEndpoint.paramPlaceholder.split(",") : []
+
+      const fields: ParamField[] = params.map((param, index) => ({
+        name: param,
+        placeholder: placeholders[index] || `Enter ${param} value`,
+        required: true,
+      }))
+
+      setParamFields(fields)
+    } else {
+      setParamFields([])
+    }
+  }
+
+  // Toggle expanded state for a history item
+  const toggleHistoryItemExpansion = (id: string) => {
+    setExpandedHistoryItem(expandedHistoryItem === id ? null : id)
+  }
+
+  // Add a function to format the timestamp
+  const formatTimestamp = (date: Date) => {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(date)
   }
 
   const getStatusBadge = () => {
@@ -317,9 +540,13 @@ export default function CatApiTesterPage() {
                   {filteredEndpoints.map((apiEndpoint) => (
                     <Button
                       key={`${apiEndpoint.value}-${apiEndpoint.label}`}
-                      variant={endpoint === apiEndpoint.value ? "secondary" : "ghost"}
+                      variant={
+                        endpoint === apiEndpoint.value && selectedEndpointLabel === apiEndpoint.label
+                          ? "secondary"
+                          : "ghost"
+                      }
                       className="w-full justify-start text-left"
-                      onClick={() => handleEndpointChange(apiEndpoint.value)}
+                      onClick={() => handleEndpointChange(apiEndpoint.value, apiEndpoint.label)}
                     >
                       <div className="flex items-center">
                         <Badge
@@ -380,23 +607,40 @@ export default function CatApiTesterPage() {
                   Description
                 </label>
                 <div className="text-sm text-gray-500">
-                  {apiEndpoints.find((e) => e.value === endpoint)?.description || "No description available"}
+                  {apiEndpoints.find((e) => e.value === endpoint && e.label === selectedEndpointLabel)?.description ||
+                    "No description available"}
                 </div>
               </div>
 
               <Separator />
 
-              <div className="flex flex-col space-y-1.5">
-                <label htmlFor="queryParams" className="text-sm font-medium">
-                  Query Parameters
-                </label>
-                <Input
-                  id="queryParams"
-                  placeholder="e.g. id=123&includeDeleted=true"
-                  value={queryParams}
-                  onChange={(e) => setQueryParams(e.target.value)}
-                />
-              </div>
+              {paramFields.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="text-sm font-medium">Query Parameters</div>
+                  {paramFields.map((field) => (
+                    <div key={field.name} className="flex flex-col space-y-1.5">
+                      <label htmlFor={`param-${field.name}`} className="text-xs text-gray-500 flex items-center">
+                        {field.name}
+                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      <Input id={`param-${field.name}`} placeholder={field.placeholder} className="font-mono" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-1.5">
+                  <label htmlFor="queryParams" className="text-sm font-medium">
+                    Query Parameters
+                  </label>
+                  <Input
+                    id="queryParams"
+                    placeholder="e.g. id=123&includeDeleted=true"
+                    value={queryParams}
+                    onChange={(e) => setQueryParams(e.target.value)}
+                    className="font-mono"
+                  />
+                </div>
+              )}
 
               <Tabs defaultValue={method !== "GET" ? "body" : "none"} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -413,7 +657,7 @@ export default function CatApiTesterPage() {
                 <TabsContent value="body">
                   <Textarea
                     placeholder="Enter JSON request body"
-                    className="font-mono h-60"
+                    className="font-mono h-80"
                     value={requestBody}
                     onChange={(e) => setRequestBody(e.target.value)}
                   />
@@ -496,6 +740,145 @@ export default function CatApiTesterPage() {
           </Card>
         </div>
       </div>
+
+      {/* Request History Panel */}
+      <div className="mt-6">
+        <div className="flex items-center justify-between mb-2">
+          <Button variant="outline" onClick={() => setShowHistory(!showHistory)} className="flex items-center gap-2">
+            {showHistory ? "Hide History" : "Show History"}
+            <span className="bg-gray-200 dark:bg-gray-700 text-xs rounded-full px-2 py-0.5">
+              {requestHistory.length}
+            </span>
+          </Button>
+          {showHistory && requestHistory.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setRequestHistory([])}>
+              Clear All
+            </Button>
+          )}
+        </div>
+
+        {showHistory && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle>Request History</CardTitle>
+              <CardDescription>Previously sent API requests</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {requestHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No request history yet</p>
+                  <p className="text-sm mt-1">Send requests to see them here</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {requestHistory.map((item) => (
+                      <Collapsible
+                        key={item.id}
+                        open={expandedHistoryItem === item.id}
+                        onOpenChange={() => toggleHistoryItemExpansion(item.id)}
+                        className="border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        <div className="p-3 cursor-pointer" onClick={() => loadFromHistory(item)}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                className={`${
+                                  item.method === "GET"
+                                    ? "bg-blue-500"
+                                    : item.method === "POST"
+                                      ? "bg-green-500"
+                                      : item.method === "PUT"
+                                        ? "bg-amber-500"
+                                        : "bg-red-500"
+                                }`}
+                              >
+                                {item.method}
+                              </Badge>
+                              <span className="font-medium">{item.label}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {item.statusCode && (
+                                <Badge
+                                  className={
+                                    item.statusCode >= 200 && item.statusCode < 300
+                                      ? "bg-green-500"
+                                      : item.statusCode >= 400 && item.statusCode < 500
+                                        ? "bg-amber-500"
+                                        : "bg-red-500"
+                                  }
+                                >
+                                  {item.statusCode}
+                                </Badge>
+                              )}
+                              <span className="text-xs text-gray-500">{formatTimestamp(item.timestamp)}</span>
+                              <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
+                                  {expandedHistoryItem === item.id ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                          </div>
+                          <div className="text-sm font-mono truncate text-gray-500">
+                            {item.endpoint}
+                            {item.queryParams ? `?${item.queryParams}` : ""}
+                          </div>
+                          {item.responseTime && (
+                            <div className="text-xs text-gray-500 mt-1">Response time: {item.responseTime}ms</div>
+                          )}
+                        </div>
+                        <CollapsibleContent>
+                          <div className="px-3 pb-3 pt-1 border-t">
+                            <Tabs defaultValue="response">
+                              <TabsList className="w-full">
+                                <TabsTrigger value="response">Response</TabsTrigger>
+                                <TabsTrigger value="request">Request Body</TabsTrigger>
+                              </TabsList>
+                              <TabsContent value="response">
+                                {item.error ? (
+                                  <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md border border-red-200 dark:border-red-800 mt-2">
+                                    <div className="flex items-start">
+                                      <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2 mt-0.5" />
+                                      <div>
+                                        <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
+                                        <p className="text-sm text-red-700 dark:text-red-400 mt-1">{item.error}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : item.response ? (
+                                  <ScrollArea className="h-[200px] w-full rounded-md border p-3 font-mono text-sm mt-2">
+                                    <pre>{formatJson(item.response)}</pre>
+                                  </ScrollArea>
+                                ) : (
+                                  <div className="text-center py-4 text-gray-500">No response data available</div>
+                                )}
+                              </TabsContent>
+                              <TabsContent value="request">
+                                {item.requestBody ? (
+                                  <ScrollArea className="h-[200px] w-full rounded-md border p-3 font-mono text-sm mt-2">
+                                    <pre>{item.requestBody}</pre>
+                                  </ScrollArea>
+                                ) : (
+                                  <div className="text-center py-4 text-gray-500">No request body</div>
+                                )}
+                              </TabsContent>
+                            </Tabs>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       <div className="mt-8">
         <Card>
           <CardHeader>
@@ -514,8 +897,8 @@ export default function CatApiTesterPage() {
                   <h3 className="text-lg font-medium">How to use this API tester</h3>
                   <ol className="list-decimal list-inside space-y-2">
                     <li>Select an endpoint from the sidebar on the left</li>
-                    <li>Review the automatically populated query parameters and request body</li>
-                    <li>Modify the parameters as needed for your test case</li>
+                    <li>For endpoints requiring parameters, fill in the labeled input fields</li>
+                    <li>For endpoints requiring a request body, edit the pre-populated JSON</li>
                     <li>Click "Send Request" to execute the API call</li>
                     <li>View the response in the right panel</li>
                   </ol>
@@ -541,17 +924,17 @@ export default function CatApiTesterPage() {
                       <tr className="border-b">
                         <td className="py-2 px-4 font-mono">id</td>
                         <td className="py-2 px-4">The unique identifier for a cat</td>
-                        <td className="py-2 px-4 font-mono">id=abc123</td>
+                        <td className="py-2 px-4 font-mono">0iDb1ATRpxAx439eEgfm</td>
                       </tr>
                       <tr className="border-b">
                         <td className="py-2 px-4 font-mono">name</td>
                         <td className="py-2 px-4">The name of a cat</td>
-                        <td className="py-2 px-4 font-mono">name=Fluffy</td>
+                        <td className="py-2 px-4 font-mono">Fluffy</td>
                       </tr>
                       <tr className="border-b">
                         <td className="py-2 px-4 font-mono">permanent</td>
                         <td className="py-2 px-4">Whether to permanently delete a cat</td>
-                        <td className="py-2 px-4 font-mono">permanent=true</td>
+                        <td className="py-2 px-4 font-mono">true</td>
                       </tr>
                       </tbody>
                     </table>
@@ -618,13 +1001,23 @@ export default function CatApiTesterPage() {
                           {JSON.stringify(
                             {
                               name: "Whiskers",
-                              breed: "Maine Coon",
-                              age: 3,
+                              breed: "British Shorthair",
+                              color: "black",
+                              gender: "Male",
                               category: "Domestic",
                               description: "A friendly and playful cat",
-                              gender: "male",
-                              color: "brown tabby",
-                              available: true,
+                              yearOfBirth: 2023,
+                              isVaccinated: true,
+                              isCastrated: true,
+                              isMicrochipped: true,
+                              mainImage:
+                                "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fimages%2Fsample-image.jpeg?alt=media&token=sample-token",
+                              images: [
+                                "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fsample-id%2Fimages%2Fsample-image-1.jpg?alt=media&token=sample-token-1",
+                              ],
+                              videos: [
+                                "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2Fsample-id%2Fvideos%2Fsample-video-1.mp4?alt=media&token=sample-token-2",
+                              ],
                             },
                             null,
                             2,
@@ -642,7 +1035,7 @@ export default function CatApiTesterPage() {
                             {
                               success: true,
                               message: "Cat added successfully",
-                              id: "new-cat-id-123",
+                              id: "0iDb1ATRpxAx439eEgfm",
                             },
                             null,
                             2,
@@ -662,9 +1055,15 @@ export default function CatApiTesterPage() {
                         <pre>
                           {JSON.stringify(
                             {
-                              id: "existing-cat-id",
+                              id: "0iDb1ATRpxAx439eEgfm",
                               name: "Whiskers Jr.",
-                              age: 4,
+                              breed: "British Shorthair",
+                              color: "gray",
+                              gender: "Female",
+                              yearOfBirth: 2022,
+                              isVaccinated: true,
+                              isCastrated: true,
+                              isMicrochipped: true,
                               description: "Updated description",
                             },
                             null,
