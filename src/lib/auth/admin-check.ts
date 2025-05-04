@@ -1,4 +1,5 @@
 import { admin } from "@/lib/firebase/admin"
+import type { NextRequest } from "next/server"
 
 // List of admin email addresses - for initial setup
 const ADMIN_EMAILS = [
@@ -62,5 +63,35 @@ export async function setUserAdminStatus(uid: string, isAdmin: boolean): Promise
             console.error("Permission update error")
         }
         throw error
+    }
+}
+
+/**
+ * Checks if the user making the request is an admin
+ * @param request NextRequest object
+ * @returns Promise<boolean> True if the user is an admin
+ */
+export async function adminCheck(request: NextRequest): Promise<boolean> {
+    try {
+        // Extract the session token from the request cookies
+        const sessionCookie = request.cookies.get("session")?.value
+
+        if (!sessionCookie) {
+            return false
+        }
+
+        // Verify the session cookie and get the user ID
+        const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
+        const uid = decodedClaims.uid
+
+        if (!uid) {
+            return false
+        }
+
+        // Check if the user is an admin
+        return await isUserAdmin(uid)
+    } catch (error) {
+        console.error("Error in adminCheck:", error)
+        return false
     }
 }

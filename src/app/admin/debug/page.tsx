@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bug, ImageIcon, Webhook, UserCog, RefreshCw, Shield, Search } from "lucide-react"
+import { Bug, ImageIcon, Webhook, UserCog, RefreshCw, Shield, Search, Send } from "lucide-react"
 
 export default function DebugDashboardPage() {
     const debugTools = [
@@ -42,36 +42,42 @@ export default function DebugDashboardPage() {
             href: "/admin/debug/validate-media",
             icon: <Search className="h-8 w-8 text-orange-500" />,
         },
+        {
+            title: "API Tester",
+            description: "Test API endpoints with a Postman-like interface",
+            href: "/admin/debug/api-tester",
+            icon: <Send className="h-8 w-8 text-pink-500" />,
+        }
     ]
 
     return (
-        <div className="container mx-auto py-6">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold">Debug Tools</h1>
-                    <p className="text-gray-500">Admin-only debugging utilities</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Bug className="h-5 w-5 text-orange-500" />
-                    <span className="text-sm font-medium">Development Use Only</span>
-                </div>
-            </div>
+      <div className="container mx-auto py-6">
+          <div className="flex items-center justify-between mb-6">
+              <div>
+                  <h1 className="text-3xl font-bold">Debug Tools</h1>
+                  <p className="text-gray-500">Admin-only debugging utilities</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                  <Bug className="h-5 w-5 text-orange-500" />
+                  <span className="text-sm font-medium">Development Use Only</span>
+              </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {debugTools.map((tool) => (
-                    <Link key={tool.href} href={tool.href}>
-                        <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-lg font-medium">{tool.title}</CardTitle>
-                                {tool.icon}
-                            </CardHeader>
-                            <CardContent>
-                                <CardDescription>{tool.description}</CardDescription>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
-            </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {debugTools.map((tool) => (
+                <Link key={tool.href} href={tool.href}>
+                    <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-lg font-medium">{tool.title}</CardTitle>
+                            {tool.icon}
+                        </CardHeader>
+                        <CardContent>
+                            <CardDescription>{tool.description}</CardDescription>
+                        </CardContent>
+                    </Card>
+                </Link>
+              ))}
+          </div>
+      </div>
     )
 }
