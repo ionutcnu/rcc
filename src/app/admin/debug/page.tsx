@@ -45,7 +45,7 @@ export default function DebugDashboardPage() {
         {
             title: "API Tester",
             description: "Test API endpoints with a Postman-like interface",
-            href: "/admin/debug/api-tester",
+            href: "/admin/debug/test-api",
             icon: <Send className="h-8 w-8 text-pink-500" />,
         }
     ]

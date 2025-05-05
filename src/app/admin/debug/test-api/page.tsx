@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertCircle,
   ArrowRight,
@@ -19,6 +23,10 @@ import {
   Play,
   RefreshCw,
   XCircle,
+  Upload,
+  ImageIcon,
+  Video,
+  FileUp,
 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -59,6 +67,7 @@ type RequestHistoryItem = {
 }
 
 export default function CatApiTesterPage() {
+  // Main API tester state
   const [endpoint, setEndpoint] = useState("/api/cats")
   const [method, setMethod] = useState("GET")
   const [requestBody, setRequestBody] = useState("")
@@ -71,10 +80,18 @@ export default function CatApiTesterPage() {
   const [responseTime, setResponseTime] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedEndpointLabel, setSelectedEndpointLabel] = useState<string>("")
-  // Add this to the state declarations at the top of the component
   const [requestHistory, setRequestHistory] = useState<RequestHistoryItem[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [expandedHistoryItem, setExpandedHistoryItem] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<"request" | "mediaUpload">("request")
+
+  // Media upload state
+  const [catId, setCatId] = useState("")
+  const [isMainImage, setIsMainImage] = useState(false)
+  const [uploadType, setUploadType] = useState<"image" | "video">("image")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreviewInfo, setFilePreviewInfo] = useState<{ name: string; type: string; size: number } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Sample cat data for realistic testing
   const sampleCatData = {
@@ -103,6 +120,7 @@ export default function CatApiTesterPage() {
 
   // Enhanced API endpoints with categories, descriptions and parameter structures
   const apiEndpoints: ApiEndpoint[] = [
+    // API endpoints remain the same
     {
       value: "/api/cats",
       label: "Get All Cats",
@@ -349,8 +367,7 @@ export default function CatApiTesterPage() {
     return hasValues ? params.toString() : ""
   }
 
-  // Modify the handleSendRequest function to save requests to history
-  // Replace the existing handleSendRequest function with this updated version:
+  // Modified handleSendRequest function to include credentials
   const handleSendRequest = async () => {
     setLoading(true)
     setError(null)
@@ -369,12 +386,13 @@ export default function CatApiTesterPage() {
         url += `?${queryString}`
       }
 
-      // Configure the request options
+      // Configure the request options - IMPORTANT: include credentials
       const options: RequestInit = {
         method,
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // This ensures cookies are sent with the request
       }
 
       // Add request body for non-GET requests
@@ -432,7 +450,131 @@ export default function CatApiTesterPage() {
     }
   }
 
-  // Add a function to load a request from history
+  // Media upload handlers
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Clear any previous errors
+    setError(null)
+
+    const file = e.target.files?.[0]
+    if (!file) {
+      setSelectedFile(null)
+      setFilePreviewInfo(null)
+      return
+    }
+
+    setSelectedFile(file)
+
+    // Validate file type
+    if (uploadType === "image" && !file.type.startsWith("image/")) {
+      setError("Please select a valid image file")
+      return
+    }
+
+    if (uploadType === "video" && !file.type.startsWith("video/")) {
+      setError("Please select a valid video file")
+      return
+    }
+
+    // Instead of creating blob URLs (which can be blocked by CSP),
+    // just store file information for display
+    setFilePreviewInfo({
+      name: file.name,
+      type: file.type,
+      size: Math.round(file.size / 1024),
+    })
+
+    console.log(`Selected file: ${file.name}, type: ${file.type}, size: ${Math.round(file.size / 1024)} KB`)
+  }
+
+  const handleUpload = async () => {
+    if (!catId) {
+      setError("Cat ID is required")
+      return
+    }
+
+    const file = fileInputRef.current?.files?.[0]
+    if (!file) {
+      setError("Please select a file to upload")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setResponse(null)
+    setStatusCode(null)
+    setResponseTime(null)
+
+    try {
+      const startTime = performance.now()
+
+      // Create form data
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("catId", catId)
+
+      if (uploadType === "image") {
+        formData.append("isMainImage", isMainImage.toString())
+      }
+
+      // Send the request
+      const endpoint = uploadType === "image" ? "/api/cats/upload/image" : "/api/cats/upload/video"
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+        credentials: "include", // Include cookies for authentication
+      })
+
+      const endTime = performance.now()
+      const responseTimeValue = Math.round(endTime - startTime)
+
+      setResponseTime(responseTimeValue)
+      setStatusCode(res.status)
+
+      // Parse the response
+      const data = await res.json()
+      setResponse(data)
+
+      // Add to history with response data
+      const historyItem: RequestHistoryItem = {
+        id: crypto.randomUUID(),
+        endpoint,
+        method: "POST",
+        queryParams: "",
+        requestBody: "FormData (File Upload)",
+        timestamp: new Date(),
+        statusCode: res.status,
+        responseTime: responseTimeValue,
+        label: uploadType === "image" ? "Upload Cat Image" : "Upload Cat Video",
+        response: data,
+        error: null,
+      }
+      setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)]) // Keep last 20 items
+    } catch (err: any) {
+      const errorMessage = err.message || "An error occurred"
+      setError(errorMessage)
+
+      // Add failed request to history
+      const historyItem: RequestHistoryItem = {
+        id: crypto.randomUUID(),
+        endpoint: uploadType === "image" ? "/api/cats/upload/image" : "/api/cats/upload/video",
+        method: "POST",
+        queryParams: "",
+        requestBody: "FormData (File Upload)",
+        timestamp: new Date(),
+        statusCode: null,
+        responseTime: null,
+        label: uploadType === "image" ? "Upload Cat Image" : "Upload Cat Video",
+        response: null,
+        error: errorMessage,
+      }
+      setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Other functions remain the same
   const loadFromHistory = (item: RequestHistoryItem) => {
     setEndpoint(item.endpoint)
     setMethod(item.method)
@@ -457,14 +599,20 @@ export default function CatApiTesterPage() {
     } else {
       setParamFields([])
     }
+
+    // Switch to the appropriate tab
+    if (item.endpoint.includes("/upload/")) {
+      setActiveTab("mediaUpload")
+      setUploadType(item.endpoint.includes("/upload/image") ? "image" : "video")
+    } else {
+      setActiveTab("request")
+    }
   }
 
-  // Toggle expanded state for a history item
   const toggleHistoryItemExpansion = (id: string) => {
     setExpandedHistoryItem(expandedHistoryItem === id ? null : id)
   }
 
-  // Add a function to format the timestamp
   const formatTimestamp = (date: Date) => {
     return new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
@@ -490,7 +638,24 @@ export default function CatApiTesterPage() {
 
   const formatJson = (json: any) => {
     try {
-      return JSON.stringify(json, null, 2)
+      // Special handling for long URLs
+      const jsonString = JSON.stringify(
+        json,
+        (key, value) => {
+          // If the value is a string that looks like a URL and is longer than 60 characters
+          if (
+            typeof value === "string" &&
+            (value.startsWith("http://") || value.startsWith("https://")) &&
+            value.length > 60
+          ) {
+            // Add invisible zero-width spaces after slashes and dots to allow breaking
+            return value.replace(/([/.])/g, "$1\u200B")
+          }
+          return value
+        },
+        2,
+      )
+      return jsonString
     } catch (e) {
       return "Invalid JSON"
     }
@@ -498,6 +663,15 @@ export default function CatApiTesterPage() {
 
   // Determine if request was successful based on status code, not response content
   const isRequestSuccessful = statusCode !== null && statusCode >= 200 && statusCode < 300
+
+  // Reset file selection when switching upload types
+  useEffect(() => {
+    setSelectedFile(null)
+    setFilePreviewInfo(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }, [uploadType])
 
   return (
     <div className="px-4 py-6 w-full max-w-[1600px] mx-auto">
@@ -546,7 +720,16 @@ export default function CatApiTesterPage() {
                           : "ghost"
                       }
                       className="w-full justify-start text-left"
-                      onClick={() => handleEndpointChange(apiEndpoint.value, apiEndpoint.label)}
+                      onClick={() => {
+                        handleEndpointChange(apiEndpoint.value, apiEndpoint.label)
+                        // If this is an upload endpoint, switch to media upload tab
+                        if (apiEndpoint.value.includes("/upload/")) {
+                          setActiveTab("mediaUpload")
+                          setUploadType(apiEndpoint.value.includes("/upload/image") ? "image" : "video")
+                        } else {
+                          setActiveTab("request")
+                        }
+                      }}
                     >
                       <div className="flex items-center">
                         <Badge
@@ -569,6 +752,17 @@ export default function CatApiTesterPage() {
                 </div>
               </ScrollArea>
             </CardContent>
+            <CardFooter className="p-4">
+              <Button
+                onClick={() => setActiveTab("mediaUpload")}
+                variant="outline"
+                className="w-full flex items-center"
+                size="sm"
+              >
+                <FileUp className="h-4 w-4 mr-2" />
+                Switch to Media Upload
+              </Button>
+            </CardFooter>
           </Card>
         </div>
 
@@ -576,105 +770,236 @@ export default function CatApiTesterPage() {
         <div className="lg:col-span-9 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="h-full">
             <CardHeader>
-              <CardTitle>Request</CardTitle>
-              <CardDescription>Configure your API request</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Request</CardTitle>
+                  <CardDescription>Configure your API request</CardDescription>
+                </div>
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "request" | "mediaUpload")}>
+                  <TabsList>
+                    <TabsTrigger value="request" className="flex items-center gap-1">
+                      <Code className="h-4 w-4" />
+                      API Request
+                    </TabsTrigger>
+                    <TabsTrigger value="mediaUpload" className="flex items-center gap-1">
+                      <FileUp className="h-4 w-4" />
+                      Media Upload
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col space-y-1.5">
-                <label htmlFor="endpoint" className="text-sm font-medium">
-                  Endpoint
-                </label>
-                <div className="flex items-center space-x-2">
-                  <Badge
-                    className={`${
-                      method === "GET"
-                        ? "bg-blue-500"
-                        : method === "POST"
-                          ? "bg-green-500"
-                          : method === "PUT"
-                            ? "bg-amber-500"
-                            : "bg-red-500"
-                    } hover:bg-opacity-90`}
-                  >
-                    {method}
-                  </Badge>
-                  <span className="font-mono text-sm">{endpoint}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col space-y-1.5">
-                <label htmlFor="description" className="text-sm font-medium">
-                  Description
-                </label>
-                <div className="text-sm text-gray-500">
-                  {apiEndpoints.find((e) => e.value === endpoint && e.label === selectedEndpointLabel)?.description ||
-                    "No description available"}
-                </div>
-              </div>
-
-              <Separator />
-
-              {paramFields.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="text-sm font-medium">Query Parameters</div>
-                  {paramFields.map((field) => (
-                    <div key={field.name} className="flex flex-col space-y-1.5">
-                      <label htmlFor={`param-${field.name}`} className="text-xs text-gray-500 flex items-center">
-                        {field.name}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </label>
-                      <Input id={`param-${field.name}`} placeholder={field.placeholder} className="font-mono" />
+              {activeTab === "request" ? (
+                <>
+                  <div className="flex flex-col space-y-1.5">
+                    <label htmlFor="endpoint" className="text-sm font-medium">
+                      Endpoint
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <Badge
+                        className={`${
+                          method === "GET"
+                            ? "bg-blue-500"
+                            : method === "POST"
+                              ? "bg-green-500"
+                              : method === "PUT"
+                                ? "bg-amber-500"
+                                : "bg-red-500"
+                        } hover:bg-opacity-90`}
+                      >
+                        {method}
+                      </Badge>
+                      <span className="font-mono text-sm">{endpoint}</span>
                     </div>
-                  ))}
-                </div>
+                  </div>
+
+                  <div className="flex flex-col space-y-1.5">
+                    <label htmlFor="description" className="text-sm font-medium">
+                      Description
+                    </label>
+                    <div className="text-sm text-gray-500">
+                      {apiEndpoints.find((e) => e.value === endpoint && e.label === selectedEndpointLabel)
+                        ?.description || "No description available"}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {paramFields.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="text-sm font-medium">Query Parameters</div>
+                      {paramFields.map((field) => (
+                        <div key={field.name} className="flex flex-col space-y-1.5">
+                          <label htmlFor={`param-${field.name}`} className="text-xs text-gray-500 flex items-center">
+                            {field.name}
+                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </label>
+                          <Input id={`param-${field.name}`} placeholder={field.placeholder} className="font-mono" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col space-y-1.5">
+                      <label htmlFor="queryParams" className="text-sm font-medium">
+                        Query Parameters
+                      </label>
+                      <Input
+                        id="queryParams"
+                        placeholder="e.g. id=123&includeDeleted=true"
+                        value={queryParams}
+                        onChange={(e) => setQueryParams(e.target.value)}
+                        className="font-mono"
+                      />
+                    </div>
+                  )}
+
+                  <Tabs defaultValue={method !== "GET" ? "body" : "none"} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="none" disabled={method !== "GET"}>
+                        No Body
+                      </TabsTrigger>
+                      <TabsTrigger value="body">Request Body</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="none">
+                      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md text-center text-sm text-gray-500">
+                        GET requests typically don't have a request body
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="body">
+                      <Textarea
+                        placeholder="Enter JSON request body"
+                        className="font-mono h-80"
+                        value={requestBody}
+                        onChange={(e) => setRequestBody(e.target.value)}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                </>
               ) : (
-                <div className="flex flex-col space-y-1.5">
-                  <label htmlFor="queryParams" className="text-sm font-medium">
-                    Query Parameters
-                  </label>
-                  <Input
-                    id="queryParams"
-                    placeholder="e.g. id=123&includeDeleted=true"
-                    value={queryParams}
-                    onChange={(e) => setQueryParams(e.target.value)}
-                    className="font-mono"
-                  />
+                // Media Upload Tab
+                <div className="space-y-6">
+                  <Tabs
+                    defaultValue="image"
+                    onValueChange={(value) => setUploadType(value as "image" | "video")}
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="image" className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Image
+                      </TabsTrigger>
+                      <TabsTrigger value="video" className="flex items-center gap-2">
+                        <Video className="h-4 w-4" />
+                        Video
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="catId">Cat ID</Label>
+                      <Input
+                        id="catId"
+                        placeholder="Enter the cat ID"
+                        value={catId}
+                        onChange={(e) => setCatId(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="file">Select {uploadType}</Label>
+                      <Input
+                        id="file"
+                        type="file"
+                        ref={fileInputRef}
+                        accept={uploadType === "image" ? "image/*" : "video/*"}
+                        onChange={handleFileChange}
+                      />
+                    </div>
+
+                    {uploadType === "image" && (
+                      <div className="flex items-center space-x-2 pt-2">
+                        <Checkbox
+                          id="isMainImage"
+                          checked={isMainImage}
+                          onCheckedChange={(checked) => setIsMainImage(checked === true)}
+                        />
+                        <Label htmlFor="isMainImage" className="cursor-pointer">
+                          Set as main image
+                        </Label>
+                      </div>
+                    )}
+
+                    {selectedFile && (
+                      <div className="mt-4">
+                        <Label>File Information</Label>
+                        <div className="mt-2 border rounded-md p-4 bg-gray-100">
+                          <div className="space-y-2">
+                            <div className="flex items-center">
+                              <span className="font-medium mr-2">Name:</span>
+                              <span>{filePreviewInfo?.name}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="font-medium mr-2">Type:</span>
+                              <span>{filePreviewInfo?.type}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="font-medium mr-2">Size:</span>
+                              <span>{filePreviewInfo?.size} KB</span>
+                            </div>
+                          </div>
+
+                          {uploadType === "video" && (
+                            <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                              <div className="flex items-start">
+                                <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
+                                <div>
+                                  <p className="text-sm text-yellow-700">
+                                    Video preview is disabled due to Content Security Policy restrictions. The file will
+                                    be uploaded correctly when you click the Upload button.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {error && (
+                          <div className="mt-2 text-sm text-red-500 flex items-center">
+                            <AlertCircle className="h-4 w-4 mr-1" />
+                            {error}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-
-              <Tabs defaultValue={method !== "GET" ? "body" : "none"} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="none" disabled={method !== "GET"}>
-                    No Body
-                  </TabsTrigger>
-                  <TabsTrigger value="body">Request Body</TabsTrigger>
-                </TabsList>
-                <TabsContent value="none">
-                  <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md text-center text-sm text-gray-500">
-                    GET requests typically don't have a request body
-                  </div>
-                </TabsContent>
-                <TabsContent value="body">
-                  <Textarea
-                    placeholder="Enter JSON request body"
-                    className="font-mono h-80"
-                    value={requestBody}
-                    onChange={(e) => setRequestBody(e.target.value)}
-                  />
-                </TabsContent>
-              </Tabs>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSendRequest} className="w-full" disabled={loading}>
+              <Button
+                onClick={activeTab === "request" ? handleSendRequest : handleUpload}
+                className="w-full"
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Sending Request...
+                    {activeTab === "request" ? "Sending Request..." : "Uploading..."}
                   </>
                 ) : (
                   <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Send Request
+                    {activeTab === "request" ? (
+                      <>
+                        <Play className="mr-2 h-4 w-4" />
+                        Send Request
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload {uploadType}
+                      </>
+                    )}
                   </>
                 )}
               </Button>
@@ -715,8 +1040,9 @@ export default function CatApiTesterPage() {
                     <Code className="h-5 w-5 text-gray-500" />
                     <span className="text-sm font-medium">Response Body</span>
                   </div>
+                  {/* Updated ScrollArea with increased height and word-wrap for text */}
                   <ScrollArea className="h-[500px] w-full rounded-md border p-4 font-mono text-sm">
-                    <pre>{formatJson(response)}</pre>
+                    <pre className="whitespace-pre-wrap break-words overflow-x-auto">{formatJson(response)}</pre>
                   </ScrollArea>
                   <div className="flex items-center space-x-2">
                     {isRequestSuccessful ? (
@@ -729,6 +1055,33 @@ export default function CatApiTesterPage() {
                       {response.message && `: ${response.message}`}
                     </span>
                   </div>
+
+                  {/* Display uploaded image if available in response */}
+                  {response.imageUrl && (
+                    <div className="mt-4 p-4 border rounded-md">
+                      <h3 className="text-sm font-medium mb-2">Uploaded Image</h3>
+                      <img
+                        src={response.imageUrl || "/placeholder.svg"}
+                        alt="Uploaded"
+                        className="max-h-64 object-contain mx-auto"
+                      />
+                      <p className="mt-2 text-xs text-gray-500 break-all">{response.imageUrl}</p>
+                    </div>
+                  )}
+
+                  {/* Display uploaded video if available in response */}
+                  {response.videoUrl && (
+                    <div className="mt-4 p-4 border rounded-md">
+                      <h3 className="text-sm font-medium mb-2">Uploaded Video</h3>
+                      <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200 mb-2">
+                        <p className="text-sm text-yellow-700">
+                          Video preview is disabled due to Content Security Policy restrictions. The video was uploaded
+                          successfully and is available at the URL below.
+                        </p>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 break-all">{response.videoUrl}</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-center text-gray-500 space-y-2">
@@ -851,7 +1204,9 @@ export default function CatApiTesterPage() {
                                   </div>
                                 ) : item.response ? (
                                   <ScrollArea className="h-[200px] w-full rounded-md border p-3 font-mono text-sm mt-2">
-                                    <pre>{formatJson(item.response)}</pre>
+                                    <pre className="whitespace-pre-wrap break-words overflow-x-auto">
+                                      {formatJson(item.response)}
+                                    </pre>
                                   </ScrollArea>
                                 ) : (
                                   <div className="text-center py-4 text-gray-500">No response data available</div>
@@ -860,7 +1215,7 @@ export default function CatApiTesterPage() {
                               <TabsContent value="request">
                                 {item.requestBody ? (
                                   <ScrollArea className="h-[200px] w-full rounded-md border p-3 font-mono text-sm mt-2">
-                                    <pre>{item.requestBody}</pre>
+                                    <pre className="whitespace-pre-wrap break-words">{item.requestBody}</pre>
                                   </ScrollArea>
                                 ) : (
                                   <div className="text-center py-4 text-gray-500">No request body</div>
@@ -878,6 +1233,15 @@ export default function CatApiTesterPage() {
           </Card>
         )}
       </div>
+
+      {/* Debug info - only visible in development */}
+      {process.env.NODE_ENV === "development" && selectedFile && (
+        <div className="mt-2 p-2 bg-gray-100 rounded text-xs font-mono">
+          <div>File: {selectedFile.name}</div>
+          <div>Type: {selectedFile.type}</div>
+          <div>Size: {Math.round(selectedFile.size / 1024)} KB</div>
+        </div>
+      )}
 
       <div className="mt-8">
         <Card>
@@ -899,7 +1263,8 @@ export default function CatApiTesterPage() {
                     <li>Select an endpoint from the sidebar on the left</li>
                     <li>For endpoints requiring parameters, fill in the labeled input fields</li>
                     <li>For endpoints requiring a request body, edit the pre-populated JSON</li>
-                    <li>Click "Send Request" to execute the API call</li>
+                    <li>For file uploads, switch to the Media Upload tab</li>
+                    <li>Click "Send Request" or "Upload" to execute the API call</li>
                     <li>View the response in the right panel</li>
                   </ol>
 
@@ -910,35 +1275,13 @@ export default function CatApiTesterPage() {
                     appropriate error responses.
                   </p>
 
-                  <h3 className="text-lg font-medium mt-6">Common Parameters</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-4">Parameter</th>
-                        <th className="text-left py-2 px-4">Description</th>
-                        <th className="text-left py-2 px-4">Example</th>
-                      </tr>
-                      </thead>
-                      <tbody>
-                      <tr className="border-b">
-                        <td className="py-2 px-4 font-mono">id</td>
-                        <td className="py-2 px-4">The unique identifier for a cat</td>
-                        <td className="py-2 px-4 font-mono">0iDb1ATRpxAx439eEgfm</td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="py-2 px-4 font-mono">name</td>
-                        <td className="py-2 px-4">The name of a cat</td>
-                        <td className="py-2 px-4 font-mono">Fluffy</td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="py-2 px-4 font-mono">permanent</td>
-                        <td className="py-2 px-4">Whether to permanently delete a cat</td>
-                        <td className="py-2 px-4 font-mono">true</td>
-                      </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  <h3 className="text-lg font-medium mt-6">Media Uploads</h3>
+                  <p>For uploading images and videos, use the Media Upload tab. You'll need to provide:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>The ID of an existing cat</li>
+                    <li>A file selected from your computer</li>
+                    <li>For images, you can optionally set it as the main image</li>
+                  </ul>
                 </div>
               </TabsContent>
               <TabsContent value="endpoints" className="p-4">
@@ -997,7 +1340,7 @@ export default function CatApiTesterPage() {
                       <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md font-mono text-sm">
                         <p>POST /api/cats/add</p>
                         <p>Content-Type: application/json</p>
-                        <pre>
+                        <pre className="whitespace-pre-wrap break-words overflow-x-auto">
                           {JSON.stringify(
                             {
                               name: "Whiskers",
@@ -1030,7 +1373,7 @@ export default function CatApiTesterPage() {
                       <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md font-mono text-sm">
                         <p>HTTP/1.1 200 OK</p>
                         <p>Content-Type: application/json</p>
-                        <pre>
+                        <pre className="whitespace-pre-wrap break-words overflow-x-auto">
                           {JSON.stringify(
                             {
                               success: true,
@@ -1045,30 +1388,15 @@ export default function CatApiTesterPage() {
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-medium mt-6">Example: Updating a cat</h3>
+                  <h3 className="text-lg font-medium mt-6">Example: Uploading a cat image</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-sm font-medium mb-2">Request</h4>
                       <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md font-mono text-sm">
-                        <p>PUT /api/cats/update</p>
-                        <p>Content-Type: application/json</p>
-                        <pre>
-                          {JSON.stringify(
-                            {
-                              id: "0iDb1ATRpxAx439eEgfm",
-                              name: "Whiskers Jr.",
-                              breed: "British Shorthair",
-                              color: "gray",
-                              gender: "Female",
-                              yearOfBirth: 2022,
-                              isVaccinated: true,
-                              isCastrated: true,
-                              isMicrochipped: true,
-                              description: "Updated description",
-                            },
-                            null,
-                            2,
-                          )}
+                        <p>POST /api/cats/upload/image</p>
+                        <p>Content-Type: multipart/form-data</p>
+                        <pre className="whitespace-pre-wrap break-words">
+                          FormData: - file: [Binary Image Data] - catId: "0iDb1ATRpxAx439eEgfm" - isMainImage: "true"
                         </pre>
                       </div>
                     </div>
@@ -1077,11 +1405,14 @@ export default function CatApiTesterPage() {
                       <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md font-mono text-sm">
                         <p>HTTP/1.1 200 OK</p>
                         <p>Content-Type: application/json</p>
-                        <pre>
+                        <pre className="whitespace-pre-wrap break-words overflow-x-auto">
                           {JSON.stringify(
                             {
                               success: true,
-                              message: "Cat updated successfully",
+                              message: "Image uploaded successfully",
+                              imageUrl:
+                                "https://firebasestorage.googleapis.com/v0/b/redcatcuasar.firebasestorage.app/o/cats%2F0iDb1ATRpxAx439eEgfm%2Fimages%2Fcat-image.jpg?alt=media&token=sample-token",
+                              isMainImage: true,
                             },
                             null,
                             2,

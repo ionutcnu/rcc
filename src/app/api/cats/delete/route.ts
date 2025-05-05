@@ -1,13 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { deleteCat, getCatById } from "@/lib/firebase/catService"
+import { getCatById } from "@/lib/firebase/catService"
 import { adminCheck } from "@/lib/auth/admin-check"
+import { admin } from "@/lib/firebase/admin"
 
 export async function DELETE(request: NextRequest) {
   try {
     // Check if user is admin
     const isAdmin = await adminCheck(request)
     if (!isAdmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          message: "Admin privileges required to delete cats",
+        },
+        { status: 403 },
+      )
     }
 
     // Get ID from query params
@@ -26,8 +33,17 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Cat not found" }, { status: 404 })
     }
 
-    // Delete cat from database
-    await deleteCat(id, permanent)
+    // Delete cat from database using admin SDK directly
+    if (permanent) {
+      // Permanently delete the document
+      await admin.db.collection("cats").doc(id).delete()
+    } else {
+      // Soft delete - mark as deleted
+      await admin.db.collection("cats").doc(id).update({
+        deleted: true,
+        updatedAt: new Date(),
+      })
+    }
 
     return NextResponse.json({
       success: true,

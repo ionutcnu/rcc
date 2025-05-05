@@ -1,13 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { restoreCat, getCatById } from "@/lib/firebase/catService"
 import { adminCheck } from "@/lib/auth/admin-check"
+import { admin } from "@/lib/firebase/admin"
+import { devLog, devError } from "@/lib/utils/debug-logger"
 
 export async function POST(request: NextRequest) {
   try {
+    devLog("Processing restore cat request")
+
     // Check if user is admin
     const isAdmin = await adminCheck(request)
     if (!isAdmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+      devLog("Unauthorized access attempt to restore cat")
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          message: "Admin privileges required to restore cats",
+        },
+        { status: 403 },
+      )
     }
 
     // Parse request body
@@ -16,24 +26,44 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!id) {
+      devLog("Missing cat ID in restore request")
       return NextResponse.json({ error: "Cat ID is required" }, { status: 400 })
     }
 
+    devLog(`Attempting to restore cat with ID: ${id}`)
+
     // Check if cat exists
-    const existingCat = await getCatById(id)
-    if (!existingCat) {
+    const catRef = admin.db.collection("cats").doc(id)
+    const catDoc = await catRef.get()
+
+    if (!catDoc.exists) {
+      devLog(`Cat with ID ${id} not found`)
       return NextResponse.json({ error: "Cat not found" }, { status: 404 })
     }
 
-    // Restore cat from trash
-    await restoreCat(id)
+    // Restore cat from trash by updating isDeleted field
+    await catRef.update({
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
+      updatedAt: new Date(),
+    })
+
+    devLog(`Successfully restored cat with ID: ${id}`)
 
     return NextResponse.json({
       success: true,
       message: "Cat restored successfully",
+      catId: id,
     })
   } catch (error: any) {
-    console.error("Error in cats/restore API:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
+    devError("Error in cats/restore API:", error)
+    return NextResponse.json(
+      {
+        error: error.message || "Internal server error",
+        code: error.code || "unknown_error",
+      },
+      { status: 500 },
+    )
   }
 }
