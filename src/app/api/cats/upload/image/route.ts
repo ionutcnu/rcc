@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
 import { getCatById } from "@/lib/firebase/catService"
-import { devLog, devError } from "@/lib/utils/debug-logger"
 import { admin } from "@/lib/firebase/admin"
 import { FieldValue } from "firebase-admin/firestore"
 
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cat not found", message: `No cat found with ID: ${catId}` }, { status: 404 })
     }
 
-    devLog(`Uploading ${type} for cat ${catId}, isMainImage: ${isMainImage}`)
+    console.log(`Uploading ${type} for cat ${catId}, isMainImage: ${isMainImage}`)
 
     // Convert file to buffer
     const buffer = await file.arrayBuffer()
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       })
 
-      devLog(`Updated cat ${catId} with new main image: ${url}`)
+      console.log(`Updated cat ${catId} with new main image: ${url}`)
     } else {
       // Add to images array if not main image
       // Use FieldValue directly from firebase-admin/firestore
@@ -88,7 +87,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         })
 
-      devLog(`Added image to cat ${catId} images array: ${url}`)
+      console.log(`Added image to cat ${catId} images array: ${url}`)
     }
 
     return NextResponse.json({
@@ -98,7 +97,7 @@ export async function POST(request: NextRequest) {
       isMainImage,
     })
   } catch (error: any) {
-    devError("Error in cats/upload/image API:", error)
+    console.error("Error in cats/upload/image API:", error)
     return NextResponse.json(
       {
         error: error.message || "Internal server error",

@@ -1,16 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
 import { admin } from "@/lib/firebase/admin"
-import { devLog, devError } from "@/lib/utils/debug-logger"
 
 export async function POST(request: NextRequest) {
   try {
-    devLog("Processing restore cat request")
+    console.log("Processing restore cat request")
 
     // Check if user is admin
     const isAdmin = await adminCheck(request)
     if (!isAdmin) {
-      devLog("Unauthorized access attempt to restore cat")
+      console.log("Unauthorized access attempt to restore cat")
       return NextResponse.json(
         {
           error: "Unauthorized",
@@ -26,18 +25,18 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!id) {
-      devLog("Missing cat ID in restore request")
+      console.log("Missing cat ID in restore request")
       return NextResponse.json({ error: "Cat ID is required" }, { status: 400 })
     }
 
-    devLog(`Attempting to restore cat with ID: ${id}`)
+    console.log(`Attempting to restore cat with ID: ${id}`)
 
     // Check if cat exists
     const catRef = admin.db.collection("cats").doc(id)
     const catDoc = await catRef.get()
 
     if (!catDoc.exists) {
-      devLog(`Cat with ID ${id} not found`)
+      console.log(`Cat with ID ${id} not found`)
       return NextResponse.json({ error: "Cat not found" }, { status: 404 })
     }
 
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     })
 
-    devLog(`Successfully restored cat with ID: ${id}`)
+    console.log(`Successfully restored cat with ID: ${id}`)
 
     return NextResponse.json({
       success: true,
@@ -57,7 +56,7 @@ export async function POST(request: NextRequest) {
       catId: id,
     })
   } catch (error: any) {
-    devError("Error in cats/restore API:", error)
+    console.error("Error in cats/restore API:", error)
     return NextResponse.json(
       {
         error: error.message || "Internal server error",

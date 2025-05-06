@@ -1,6 +1,6 @@
 import { admin } from "@/lib/firebase/admin"
 import type { NextRequest } from "next/server"
-import { devError, devLog } from '../utils/debug-logger';
+
 
 // List of admin email addresses - for initial setup
 const ADMIN_EMAILS = [
@@ -21,13 +21,13 @@ export async function isUserAdmin(uid: string): Promise<boolean> {
 
         // Method 1: Check if the user's email is in the admin list
         if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
-            devLog(`isUserAdmin: User ${uid} is admin via email list`)
+            console.log(`isUserAdmin: User ${uid} is admin via email list`)
             return true
         }
 
         // Method 2: Check if the user has a custom claim for admin
         if (user.customClaims?.admin === true) {
-            devLog(`isUserAdmin: User ${uid} is admin via custom claims`)
+            console.log(`isUserAdmin: User ${uid} is admin via custom claims`)
             return true
         }
 
@@ -35,19 +35,19 @@ export async function isUserAdmin(uid: string): Promise<boolean> {
         try {
             const adminDoc = await admin.db.collection("admins").doc(uid).get()
             if (adminDoc.exists) {
-                devLog(`isUserAdmin: User ${uid} is admin via Firestore admins collection`)
+                console.log(`isUserAdmin: User ${uid} is admin via Firestore admins collection`)
                 return true
             }
         } catch (firestoreError) {
-            devError("Error checking Firestore admin status:", firestoreError)
+            console.error("Error checking Firestore admin status:", firestoreError)
             // Continue with the checks even if Firestore fails
         }
 
-        devLog(`isUserAdmin: User ${uid} is NOT an admin`)
+        console.log(`isUserAdmin: User ${uid} is NOT an admin`)
         // If none of the above checks pass, the user is not an admin
         return false
     } catch (error) {
-        devError("Permission verification error:", error)
+        console.error("Permission verification error:", error)
         return false
     }
 }
@@ -60,10 +60,10 @@ export async function isUserAdmin(uid: string): Promise<boolean> {
 export async function setUserAdminStatus(uid: string, isAdmin: boolean): Promise<void> {
     try {
         await admin.auth.setCustomUserClaims(uid, { admin: isAdmin })
-        devLog(`Set admin=${isAdmin} for user ${uid}`)
+        console.log(`Set admin=${isAdmin} for user ${uid}`)
     } catch (error) {
         if (process.env.NODE_ENV !== "production") {
-            devError("Permission update error")
+            console.error("Permission update error")
         }
         throw error
     }
@@ -80,29 +80,29 @@ export async function adminCheck(request: NextRequest): Promise<boolean> {
         const sessionCookie = request.cookies.get("session")?.value
 
         if (!sessionCookie) {
-            devLog("adminCheck: No session cookie found")
+            console.log("adminCheck: No session cookie found")
             return false
         }
 
-        devLog("adminCheck: Session cookie found, verifying...")
+        console.log("adminCheck: Session cookie found, verifying...")
 
         // Verify the session cookie and get the user ID
         const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
         const uid = decodedClaims.uid
 
         if (!uid) {
-            devLog("adminCheck: No UID found in decoded claims")
+            console.log("adminCheck: No UID found in decoded claims")
             return false
         }
 
-        devLog(`adminCheck: UID ${uid} found, checking admin status...`)
+        console.log(`adminCheck: UID ${uid} found, checking admin status...`)
 
         // Check if the user is an admin
         const adminStatus = await isUserAdmin(uid)
-        devLog(`adminCheck: User ${uid} admin status: ${adminStatus}`)
+        console.log(`adminCheck: User ${uid} admin status: ${adminStatus}`)
         return adminStatus
     } catch (error) {
-        devError("Error in adminCheck:", error)
+        console.error("Error in adminCheck:", error)
         return false
     }
 }

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
 import { getCatById } from "@/lib/firebase/catService"
-import { devLog, devError } from "@/lib/utils/debug-logger"
 import { admin } from "@/lib/firebase/admin"
 import { FieldValue } from "firebase-admin/firestore"
 
@@ -36,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cat not found", message: `No cat found with ID: ${catId}` }, { status: 404 })
     }
 
-    devLog(`Uploading video for cat ${catId}`)
+    console.log(`Uploading video for cat ${catId}`)
 
     // Convert file to buffer
     const buffer = await file.arrayBuffer()
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       })
 
-    devLog(`Added video to cat ${catId} videos array: ${url}`)
+    console.log(`Added video to cat ${catId} videos array: ${url}`)
 
     return NextResponse.json({
       success: true,
@@ -84,7 +83,7 @@ export async function POST(request: NextRequest) {
       videoUrl: url,
     })
   } catch (error: any) {
-    devError("Error in cats/upload/video API:", error)
+    console.error("Error in cats/upload/video API:", error)
     return NextResponse.json(
       {
         error: error.message || "Internal server error",
