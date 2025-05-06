@@ -84,13 +84,20 @@ export async function incrementCatViews(id: string): Promise<void> {
 
         if (catSnap.exists()) {
             const currentViews = catSnap.data().views || 0
-            await updateDoc(docRef, {
-                views: currentViews + 1,
-                lastViewed: Timestamp.now(),
-            })
+            try {
+                await updateDoc(docRef, {
+                    views: currentViews + 1,
+                    lastViewed: Timestamp.now(),
+                })
+            } catch (error: any) {
+                console.warn(`Error incrementing views for cat ${id}:`, error)
+                // Re-throw the error to be handled by the API route
+                throw error
+            }
         }
     } catch (error) {
         console.error(`Error incrementing views for cat ${id}:`, error)
+        throw error // Re-throw to allow API route to handle it
     }
 }
 

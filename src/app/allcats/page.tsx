@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Footer from "@/components/layouts/Footer"
 import Header from "@/components/layouts/Header"
-import { getAllCats } from "@/lib/firebase/catService"
+import { fetchAllCats } from "@/lib/api/catClient"
 import type { CatProfile } from "@/lib/types/cat"
 
 type Category = {
@@ -25,11 +25,21 @@ export default function CategoriesPage() {
         const fetchCats = async () => {
             try {
                 setIsLoading(true)
-                const fetchedCats = await getAllCats(false) // false means don't include deleted cats
-                setCats(fetchedCats)
+                console.log("Fetching cats for allcats page...")
+                const fetchedCats = await fetchAllCats(false) // false means don't include deleted cats
+                console.log("Fetched cats for allcats page:", fetchedCats)
+
+                // Check if fetchedCats is valid
+                if (!Array.isArray(fetchedCats)) {
+                    console.error("fetchedCats is not an array:", fetchedCats)
+                    setCats([])
+                } else {
+                    setCats(fetchedCats)
+                }
             } catch (err) {
                 console.error("Error fetching cats:", err)
                 setError("Failed to load cats. Please try again later.")
+                setCats([]) // Ensure cats is an empty array on error
             } finally {
                 setIsLoading(false)
             }
@@ -102,13 +112,13 @@ export default function CategoriesPage() {
 
         // Get the newest cat image for each category, or use default if none available
         const maleImage =
-            sortedMaleCats.length > 0 && sortedMaleCats[0].mainImage ? sortedMaleCats[0].mainImage : "/tabby-sunbeam.png"
+          sortedMaleCats.length > 0 && sortedMaleCats[0].mainImage ? sortedMaleCats[0].mainImage : "/tabby-sunbeam.png"
 
         const femaleImage =
-            sortedFemaleCats.length > 0 && sortedFemaleCats[0].mainImage ? sortedFemaleCats[0].mainImage : "/calico-nap.png"
+          sortedFemaleCats.length > 0 && sortedFemaleCats[0].mainImage ? sortedFemaleCats[0].mainImage : "/calico-nap.png"
 
         const kittenImage =
-            sortedKittens.length > 0 && sortedKittens[0].mainImage ? sortedKittens[0].mainImage : "/playful-tabby.png"
+          sortedKittens.length > 0 && sortedKittens[0].mainImage ? sortedKittens[0].mainImage : "/playful-tabby.png"
 
         return [
             {
@@ -150,123 +160,123 @@ export default function CategoriesPage() {
 
     if (isLoading) {
         return (
-            <div className="bg-gray-50 min-h-screen flex flex-col">
-                <Header />
-                <main className="flex-grow flex items-center justify-center">
-                    <div className="text-center">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
-                        <p className="text-lg text-gray-600">Loading categories...</p>
-                    </div>
-                </main>
-                <Footer />
-            </div>
+          <div className="bg-gray-50 min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-grow flex items-center justify-center">
+                  <div className="text-center">
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
+                      <p className="text-lg text-gray-600">Loading categories...</p>
+                  </div>
+              </main>
+              <Footer />
+          </div>
         )
     }
 
     if (error) {
         return (
-            <div className="bg-gray-50 min-h-screen flex flex-col">
-                <Header />
-                <main className="flex-grow flex items-center justify-center">
-                    <div className="text-center bg-red-50 p-6 rounded-lg shadow-md max-w-md">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-12 w-12 text-red-500 mx-auto mb-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Data</h2>
-                        <p className="text-gray-600 mb-4">{error}</p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg font-medium"
-                        >
-                            Try Again
-                        </button>
-                    </div>
-                </main>
-                <Footer />
-            </div>
+          <div className="bg-gray-50 min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-grow flex items-center justify-center">
+                  <div className="text-center bg-red-50 p-6 rounded-lg shadow-md max-w-md">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-12 w-12 text-red-500 mx-auto mb-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                      </svg>
+                      <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Data</h2>
+                      <p className="text-gray-600 mb-4">{error}</p>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg font-medium"
+                      >
+                          Try Again
+                      </button>
+                  </div>
+              </main>
+              <Footer />
+          </div>
         )
     }
 
     return (
-        <div className="bg-gray-50 min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-grow">
-                <div className="container mx-auto max-w-screen-xl py-12 px-4">
-                    <h1 className="text-4xl font-extrabold text-gray-800 text-center mb-6">Explore Categories</h1>
-                    <p className="text-lg text-gray-600 text-center max-w-2xl mx-auto mb-12">
-                        Find the perfect companion—whether a playful kitten, a charming male cat, or an elegant female cat.
-                    </p>
+      <div className="bg-gray-50 min-h-screen flex flex-col">
+          <Header />
+          <main className="flex-grow">
+              <div className="container mx-auto max-w-screen-xl py-12 px-4">
+                  <h1 className="text-4xl font-extrabold text-gray-800 text-center mb-6">Explore Categories</h1>
+                  <p className="text-lg text-gray-600 text-center max-w-2xl mx-auto mb-12">
+                      Find the perfect companion—whether a playful kitten, a charming male cat, or an elegant female cat.
+                  </p>
 
-                    {cats.length === 0 && !isLoading ? (
-                        <div className="text-center bg-yellow-50 p-6 rounded-lg shadow-md max-w-md mx-auto">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-12 w-12 text-yellow-500 mx-auto mb-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">No Cats Available</h2>
-                            <p className="text-gray-600">There are currently no cats in our database. Please check back later.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {categories.map((category) => (
-                                <div
-                                    key={category.id}
-                                    className="group bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer"
-                                    onClick={() => handleCategoryClick(category.filter)}
-                                >
-                                    <div className="relative h-56">
-                                        <Image
-                                            src={category.image || "/placeholder.svg?height=400&width=600&query=cat"}
-                                            alt={category.title}
-                                            fill
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                                            quality={80}
-                                            priority={category.id === "male"} // Optional: Prioritize above-the-fold images
-                                        />
-                                    </div>
+                  {cats.length === 0 && !isLoading ? (
+                    <div className="text-center bg-yellow-50 p-6 rounded-lg shadow-md max-w-md mx-auto">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-12 w-12 text-yellow-500 mx-auto mb-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">No Cats Available</h2>
+                        <p className="text-gray-600">There are currently no cats in our database. Please check back later.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {categories.map((category) => (
+                          <div
+                            key={category.id}
+                            className="group bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer"
+                            onClick={() => handleCategoryClick(category.filter)}
+                          >
+                              <div className="relative h-56">
+                                  <Image
+                                    src={category.image || "/placeholder.svg?height=400&width=600&query=cat"}
+                                    alt={category.title}
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                    quality={80}
+                                    priority={category.id === "male"} // Optional: Prioritize above-the-fold images
+                                  />
+                              </div>
 
-                                    <div className="p-6">
-                                        <h2 className="text-2xl font-bold text-gray-800 group-hover:text-indigo-600 transition-colors duration-300 mb-3">
-                                            {category.title}
-                                        </h2>
-                                        <p className="text-gray-600 mb-4">{category.description}</p>
+                              <div className="p-6">
+                                  <h2 className="text-2xl font-bold text-gray-800 group-hover:text-indigo-600 transition-colors duration-300 mb-3">
+                                      {category.title}
+                                  </h2>
+                                  <p className="text-gray-600 mb-4">{category.description}</p>
 
-                                        <button
-                                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                            aria-label={`View all ${category.title}`}
-                                        >
-                                            View All
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </main>
-            <Footer />
-        </div>
+                                  <button
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    aria-label={`View all ${category.title}`}
+                                  >
+                                      View All
+                                  </button>
+                              </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+              </div>
+          </main>
+          <Footer />
+      </div>
     )
 }
