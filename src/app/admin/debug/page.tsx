@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bug, ImageIcon, Webhook, UserCog, RefreshCw, Shield, Search, Send } from "lucide-react"
+import { Bug, ImageIcon, Webhook, UserCog, RefreshCw, Shield, Search, Database } from "lucide-react"
 
 export default function DebugDashboardPage() {
     const debugTools = [
@@ -43,11 +43,17 @@ export default function DebugDashboardPage() {
             icon: <Search className="h-8 w-8 text-orange-500" />,
         },
         {
-            title: "API Tester",
-            description: "Test API endpoints with a Postman-like interface",
-            href: "/admin/debug/test-api",
-            icon: <Send className="h-8 w-8 text-pink-500" />,
-        }
+            title: "Cat API Tester",
+            description: "Test and debug the Cat API endpoints",
+            href: "/admin/debug/cat-api-tester",
+            icon: <Database className="h-8 w-8 text-blue-500" />,
+        },
+        {
+            title: "Debug Logger",
+            description: "Test and monitor debugging logs in development",
+            href: "/admin/debug/debug-logger",
+            icon: <Bug className="h-8 w-8 text-green-500" />,
+        },
     ]
 
     return (

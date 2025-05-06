@@ -3,18 +3,16 @@ import { devLog, devError, devWarn, devInfo, alwaysLog } from "@/lib/utils/debug
 
 export async function GET() {
   // Test all logger functions
-  devLog("This is a test log message")
-  devError("This is a test error message")
-  devWarn("This is a test warning message")
-  devInfo("This is a test info message")
-  alwaysLog("This message should always appear regardless of environment")
-
-  // Log the current NODE_ENV
-  console.log("Current NODE_ENV:", process.env.NODE_ENV)
+  devLog("Test log message from API route")
+  devError("Test error message from API route")
+  devWarn("Test warning message from API route")
+  devInfo("Test info message from API route")
+  alwaysLog("Test IMPORTANT message from API route")
 
   return NextResponse.json({
-    message: "Logger test executed",
-    environment: process.env.NODE_ENV || "not set",
-    isDevelopment: process.env.NODE_ENV !== "production",
+    success: true,
+    message: "Logger test executed. Check server console for output.",
+    environment: process.env.NODE_ENV,
+    debug: process.env.DEBUG === "true",
   })
 }
