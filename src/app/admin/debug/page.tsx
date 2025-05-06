@@ -45,7 +45,7 @@ export default function DebugDashboardPage() {
         {
             title: "Cat API Tester",
             description: "Test and debug the Cat API endpoints",
-            href: "/admin/debug/cat-api-tester",
+            href: "/admin/debug/test-api",
             icon: <Database className="h-8 w-8 text-blue-500" />,
         },
         {
