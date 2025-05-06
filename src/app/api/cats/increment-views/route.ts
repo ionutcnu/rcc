@@ -1,51 +1,37 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { incrementCatViews, getCatById } from "@/lib/firebase/catService"
+import { incrementCatViewsServer } from "@/lib/firebase/server-api"
+import { logError } from "@/lib/utils/logger"
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body
-    const data = await request.json()
-    const { id } = data
+    const body = await request.json()
+    const { catId } = body
 
-    // Validate required fields
-    if (!id) {
+    if (!catId) {
       return NextResponse.json({ error: "Cat ID is required" }, { status: 400 })
     }
 
-    // Check if cat exists
-    const existingCat = await getCatById(id)
-    if (!existingCat) {
+    await incrementCatViewsServer(catId)
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error("Error incrementing views:", error)
+
+    // Log the error
+    logError("Error incrementing views", {
+      error: error.message,
+      catId: (await request.json()).catId,
+    })
+
+    // Check for specific error types
+    if (error.message?.includes("not found")) {
       return NextResponse.json({ error: "Cat not found" }, { status: 404 })
     }
 
-    try {
-      // Increment view count
-      await incrementCatViews(id)
-
-      return NextResponse.json({
-        success: true,
-        message: "View count incremented",
-      })
-    } catch (error: any) {
-      console.error(`Error incrementing views for cat ${id}:`, error)
-
-      // Check if it's a permission error
-      if (error.code === "permission-denied" || (error.message && error.message.includes("PERMISSION_DENIED"))) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Could not increment view count due to permission restrictions",
-            error: "permission-denied",
-          },
-          { status: 403 },
-        )
-      }
-
-      // For other errors
-      return NextResponse.json({ error: error.message || "Failed to increment view count" }, { status: 500 })
+    if (error.code === "permission-denied" || error.message?.includes("PERMISSION_DENIED")) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 })
     }
-  } catch (error: any) {
-    console.error("Error in cats/increment-views API:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
+
+    return NextResponse.json({ error: "Failed to increment views" }, { status: 500 })
   }
 }
