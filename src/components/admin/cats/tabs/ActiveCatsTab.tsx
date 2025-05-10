@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { useCatPopup } from "@/components/CatPopupProvider"
-import { getAllCats, deleteCat } from "@/lib/firebase/catService"
+import { getAllCats } from "@/lib/firebase/catService"
 import type { CatProfile } from "@/lib/types/cat"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 
@@ -82,7 +82,8 @@ export default function ActiveCatsTab() {
         const fetchCats = async () => {
             try {
                 setLoading(true)
-                const fetchedCats = await getAllCats()
+                // Explicitly pass false to exclude deleted cats
+                const fetchedCats = await getAllCats(false)
                 setCats(fetchedCats)
                 setFilteredCats(fetchedCats)
             } catch (err) {
@@ -105,8 +106,8 @@ export default function ActiveCatsTab() {
         if (searchQuery) {
             const query = searchQuery.toLowerCase()
             result = result.filter(
-                (cat) =>
-                    cat.name.toLowerCase().includes(query) || (cat.description && cat.description.toLowerCase().includes(query)),
+              (cat) =>
+                cat.name.toLowerCase().includes(query) || (cat.description && cat.description.toLowerCase().includes(query)),
             )
         }
 
@@ -179,23 +180,23 @@ export default function ActiveCatsTab() {
 
     // Get unique values for filter dropdowns
     const uniqueBreeds = Array.from(new Set(cats.map((cat) => cat.breed?.trim())))
-        .filter(Boolean)
-        .sort()
+      .filter(Boolean)
+      .sort()
 
     const uniqueAvailabilities = Array.from(new Set(cats.map((cat) => cat.availability?.trim())))
-        .filter(Boolean)
-        .sort()
+      .filter(Boolean)
+      .sort()
 
     const uniqueGenders = Array.from(new Set(cats.map((cat) => cat.gender?.trim())))
-        .filter(Boolean)
-        .sort()
+      .filter(Boolean)
+      .sort()
 
     // Generate age ranges based on actual cat ages
     const generateAgeRanges = () => {
         const ages = cats
-            .filter((cat) => cat.yearOfBirth)
-            .map((cat) => currentYear - cat.yearOfBirth)
-            .sort((a, b) => a - b)
+          .filter((cat) => cat.yearOfBirth)
+          .map((cat) => currentYear - cat.yearOfBirth)
+          .sort((a, b) => a - b)
 
         if (ages.length === 0) return []
 
@@ -231,7 +232,19 @@ export default function ActiveCatsTab() {
     const handleConfirmDelete = async () => {
         if (catToDelete) {
             try {
-                await deleteCat(catToDelete.id) // Now uses soft delete by default
+                // Call the API route to move the cat to trash
+                const response = await fetch(`/api/cats/delete?id=${catToDelete.id}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                })
+
+                if (!response.ok) {
+                    throw new Error("Failed to delete cat")
+                }
+
+                // Update local state
                 const updatedCats = cats.filter((cat) => cat.id !== catToDelete.id)
                 setCats(updatedCats)
                 setFilteredCats(updatedCats.filter((cat) => filteredCats.some((fc) => fc.id === cat.id)))
@@ -317,419 +330,419 @@ export default function ActiveCatsTab() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                <span className="ml-2">Loading cats...</span>
-            </div>
+          <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+              <span className="ml-2">Loading cats...</span>
+          </div>
         )
     }
 
     if (error) {
         return (
-            <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-                <h2 className="text-lg font-semibold text-red-700">Error</h2>
-                <p className="text-red-600">{error}</p>
-                <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
-                    Try Again
-                </Button>
-            </div>
+          <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+              <h2 className="text-lg font-semibold text-red-700">Error</h2>
+              <p className="text-red-600">{error}</p>
+              <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                  Try Again
+              </Button>
+          </div>
         )
     }
 
     return (
-        <div className="space-y-6">
-            {/* Search and View Toggle */}
-            <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-grow">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                        placeholder="Search cats by name or description..."
-                        className="pl-10 pr-4"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className={showFilters ? "bg-gray-100" : ""}
-                        onClick={() => setShowFilters(!showFilters)}
-                    >
-                        <Filter className="h-4 w-4" />
-                    </Button>
-                    <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")}>
-                        <List className="mr-2 h-4 w-4" />
-                        List
-                    </Button>
-                    <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")}>
-                        <LayoutGrid className="mr-2 h-4 w-4" />
-                        Grid
-                    </Button>
-                </div>
-            </div>
+      <div className="space-y-6">
+          {/* Search and View Toggle */}
+          <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search cats by name or description..."
+                    className="pl-10 pr-4"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+              </div>
+              <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={showFilters ? "bg-gray-100" : ""}
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                      <Filter className="h-4 w-4" />
+                  </Button>
+                  <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")}>
+                      <List className="mr-2 h-4 w-4" />
+                      List
+                  </Button>
+                  <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")}>
+                      <LayoutGrid className="mr-2 h-4 w-4" />
+                      Grid
+                  </Button>
+              </div>
+          </div>
 
-            {/* Filters Panel */}
-            {showFilters && (
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-medium">Filters</h3>
-                            <Button variant="ghost" size="sm" onClick={resetFilters}>
-                                <X className="mr-2 h-4 w-4" />
-                                Reset Filters
-                            </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Breed Filter - Dynamic Options */}
-                            <div>
-                                <Label htmlFor="breed-filter">Breed</Label>
-                                <Select value={breedFilter} onValueChange={setBreedFilter}>
-                                    <SelectTrigger id="breed-filter">
-                                        <SelectValue placeholder="All Breeds" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Breeds</SelectItem>
-                                        {uniqueBreeds.map((breed) => (
-                                            <SelectItem key={breed} value={breed}>
-                                                {breed}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Availability Filter - Dynamic Options */}
-                            <div>
-                                <Label htmlFor="availability-filter">Availability</Label>
-                                <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
-                                    <SelectTrigger id="availability-filter">
-                                        <SelectValue placeholder="All Statuses" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Statuses</SelectItem>
-                                        {uniqueAvailabilities.map((availability) => (
-                                            <SelectItem key={availability} value={availability}>
-                                                {availability}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Gender Filter - Dynamic Options */}
-                            <div>
-                                <Label htmlFor="gender-filter">Gender</Label>
-                                <Select value={genderFilter} onValueChange={setGenderFilter}>
-                                    <SelectTrigger id="gender-filter">
-                                        <SelectValue placeholder="All Genders" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Genders</SelectItem>
-                                        {uniqueGenders.map((gender) => (
-                                            <SelectItem key={gender} value={gender}>
-                                                {gender}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Age Filter - Dynamic Options based on actual age ranges */}
-                            <div>
-                                <Label htmlFor="age-filter">Age</Label>
-                                <Select value={ageFilter} onValueChange={setAgeFilter}>
-                                    <SelectTrigger id="age-filter">
-                                        <SelectValue placeholder="All Ages" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Ages</SelectItem>
-                                        {ageRanges.map((range) => (
-                                            <SelectItem key={range.value} value={range.value}>
-                                                {range.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div>
-                                <Label htmlFor="items-per-page">Items Per Page</Label>
-                                <Select
-                                    value={itemsPerPage.toString()}
-                                    onValueChange={(value) => {
-                                        setItemsPerPage(Number(value))
-                                        setCurrentPage(1) // Reset to first page when changing items per page
-                                    }}
-                                >
-                                    <SelectTrigger id="items-per-page">
-                                        <SelectValue placeholder="8" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="8">8</SelectItem>
-                                        <SelectItem value="12">12</SelectItem>
-                                        <SelectItem value="16">16</SelectItem>
-                                        <SelectItem value="24">24</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <Label className="mb-2 block">Status</Label>
-                                <div className="flex flex-wrap gap-4">
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="vaccinated"
-                                            checked={statusFilters.isVaccinated}
-                                            onCheckedChange={(checked) =>
-                                                setStatusFilters({ ...statusFilters, isVaccinated: checked === true })
-                                            }
-                                        />
-                                        <Label htmlFor="vaccinated" className="text-sm">
-                                            Vaccinated
-                                        </Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="microchipped"
-                                            checked={statusFilters.isMicrochipped}
-                                            onCheckedChange={(checked) =>
-                                                setStatusFilters({ ...statusFilters, isMicrochipped: checked === true })
-                                            }
-                                        />
-                                        <Label htmlFor="microchipped" className="text-sm">
-                                            Microchipped
-                                        </Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="castrated"
-                                            checked={statusFilters.isCastrated}
-                                            onCheckedChange={(checked) =>
-                                                setStatusFilters({ ...statusFilters, isCastrated: checked === true })
-                                            }
-                                        />
-                                        <Label htmlFor="castrated" className="text-sm">
-                                            Castrated
-                                        </Label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Results count */}
-            <div className="text-sm text-gray-500">
-                Showing {paginatedCats.length} of {filteredCats.length} cats
-                {filteredCats.length !== cats.length && ` (filtered from ${cats.length} total)`}
-            </div>
-
-            {viewMode === "list" ? (
-                <div className="space-y-4">
-                    {paginatedCats.map((cat) => (
-                        <Card key={cat.id}>
-                            <CardContent className="p-6">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h2 className="text-xl font-bold">{cat.name}</h2>
-                                            {renderGenderBadge(cat.gender)}
-                                        </div>
-                                        <p className="text-gray-600 text-sm mt-1">
-                                            {cat.breed}, {currentYear - cat.yearOfBirth} years old
-                                        </p>
-                                        <p className="text-gray-700 mt-2">{cat.description}</p>
-                                        <div className="flex flex-wrap gap-2 mt-3">
-                                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200">{cat.availability}</Badge>
-                                            {cat.isVaccinated && (
-                                                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                                                    Vaccinated
-                                                </Badge>
-                                            )}
-                                            {cat.isMicrochipped && (
-                                                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                                                    Microchipped
-                                                </Badge>
-                                            )}
-                                            {cat.isCastrated && (
-                                                <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                                    Castrated
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex space-x-2">
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link href={`/admin/cats/edit/${cat.id}`}>
-                                                <Pencil className="mr-2 h-4 w-4" />
-                                                Edit
-                                            </Link>
-                                        </Button>
-                                        <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(cat.id, cat.name)}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                    {paginatedCats.map((cat) => (
-                        <Card key={cat.id} className="overflow-hidden h-full">
-                            <div className="aspect-[4/3] relative">
-                                <Image
-                                    src={cat.mainImage || cat.images?.[0] || "/placeholder.svg?height=200&width=300"}
-                                    alt={cat.name}
-                                    fill
-                                    className="object-cover"
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                                />
-                            </div>
-                            <CardContent className="p-2">
-                                <div className="flex justify-between items-start mb-1">
-                                    <h2 className="text-sm font-bold truncate">{cat.name}</h2>
-                                    <span className="text-xs text-gray-500">{currentYear - cat.yearOfBirth}y</span>
-                                </div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    {renderGenderBadge(cat.gender)}
-                                    <p className="text-sm text-gray-600 line-clamp-1">{cat.breed}</p>
-                                </div>
-
-                                <div className="flex flex-wrap gap-1 mb-3">
-                                    <Badge className="text-xs px-1 py-0 h-5 bg-orange-100 text-orange-800 hover:bg-orange-200 hover:text-orange-800">
-                                        {cat.availability}
-                                    </Badge>
-                                    {cat.isVaccinated && (
-                                        <Badge
-                                            variant="secondary"
-                                            className="text-xs px-1 py-0 h-5 bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-800"
-                                        >
-                                            Vaccinated
-                                        </Badge>
-                                    )}
-                                    {cat.isMicrochipped && (
-                                        <Badge
-                                            variant="secondary"
-                                            className="text-xs px-1 py-0 h-5 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-800"
-                                        >
-                                            Microchipped
-                                        </Badge>
-                                    )}
-                                    {cat.isCastrated && (
-                                        <Badge
-                                            variant="secondary"
-                                            className="text-xs px-1 py-0 h-5 bg-purple-100 text-purple-800 hover:bg-purple-200 hover:text-purple-800"
-                                        >
-                                            Castrated
-                                        </Badge>
-                                    )}
-                                </div>
-
-                                <div className="flex justify-end gap-1 mt-1">
-                                    <Button variant="outline" size="sm" className="h-6 px-1 text-xs" asChild>
-                                        <Link href={`/admin/cats/edit/${cat.id}`}>
-                                            <Pencil className="h-3 w-3" />
-                                        </Link>
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        className="h-6 px-1 text-xs"
-                                        onClick={() => handleDeleteClick(cat.id, cat.name)}
-                                    >
-                                        <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
-
-            {filteredCats.length === 0 && !loading && (
-                <Card className="py-12">
-                    <CardContent className="flex flex-col items-center justify-center text-center">
-                        <div className="rounded-full bg-muted p-6 mb-4">
-                            <CatIcon className="h-10 w-10 text-muted-foreground" />
-                        </div>
-                        <h3 className="text-lg font-semibold">No cats found</h3>
-                        <p className="text-muted-foreground mb-4">
-                            {cats.length > 0 ? "Try adjusting your filters or search query" : "Add your first cat to get started"}
-                        </p>
-                        {cats.length > 0 ? (
-                            <Button variant="outline" onClick={resetFilters}>
-                                Reset Filters
-                            </Button>
-                        ) : (
-                            <Button asChild>
-                                <Link href="/admin/cats/add">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add New Cat
-                                </Link>
-                            </Button>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Pagination */}
-            {filteredCats.length > 0 && (
-                <div className="flex items-center justify-between border-t pt-4">
-                    <div className="text-sm text-gray-500">
-                        Page {currentPage} of {totalPages}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
-                            <ChevronLeft className="h-4 w-4" />
-                            <span className="sr-only">Previous Page</span>
+          {/* Filters Panel */}
+          {showFilters && (
+            <Card>
+                <CardContent className="p-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-medium">Filters</h3>
+                        <Button variant="ghost" size="sm" onClick={resetFilters}>
+                            <X className="mr-2 h-4 w-4" />
+                            Reset Filters
                         </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Breed Filter - Dynamic Options */}
+                        <div>
+                            <Label htmlFor="breed-filter">Breed</Label>
+                            <Select value={breedFilter} onValueChange={setBreedFilter}>
+                                <SelectTrigger id="breed-filter">
+                                    <SelectValue placeholder="All Breeds" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Breeds</SelectItem>
+                                    {uniqueBreeds.map((breed) => (
+                                      <SelectItem key={breed} value={breed}>
+                                          {breed}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                        <div className="flex items-center">
-                            {getPageNumbers().map((page, index) =>
-                                    typeof page === "number" ? (
-                                        <Button
-                                            key={index}
-                                            variant={currentPage === page ? "default" : "outline"}
-                                            size="sm"
-                                            className="w-8 h-8 p-0 mx-1"
-                                            onClick={() => goToPage(page)}
-                                        >
-                                            {page}
-                                        </Button>
-                                    ) : (
-                                        <span key={index} className="mx-1">
+                        {/* Availability Filter - Dynamic Options */}
+                        <div>
+                            <Label htmlFor="availability-filter">Availability</Label>
+                            <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                                <SelectTrigger id="availability-filter">
+                                    <SelectValue placeholder="All Statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    {uniqueAvailabilities.map((availability) => (
+                                      <SelectItem key={availability} value={availability}>
+                                          {availability}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Gender Filter - Dynamic Options */}
+                        <div>
+                            <Label htmlFor="gender-filter">Gender</Label>
+                            <Select value={genderFilter} onValueChange={setGenderFilter}>
+                                <SelectTrigger id="gender-filter">
+                                    <SelectValue placeholder="All Genders" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Genders</SelectItem>
+                                    {uniqueGenders.map((gender) => (
+                                      <SelectItem key={gender} value={gender}>
+                                          {gender}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Age Filter - Dynamic Options based on actual age ranges */}
+                        <div>
+                            <Label htmlFor="age-filter">Age</Label>
+                            <Select value={ageFilter} onValueChange={setAgeFilter}>
+                                <SelectTrigger id="age-filter">
+                                    <SelectValue placeholder="All Ages" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Ages</SelectItem>
+                                    {ageRanges.map((range) => (
+                                      <SelectItem key={range.value} value={range.value}>
+                                          {range.label}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <Label htmlFor="items-per-page">Items Per Page</Label>
+                            <Select
+                              value={itemsPerPage.toString()}
+                              onValueChange={(value) => {
+                                  setItemsPerPage(Number(value))
+                                  setCurrentPage(1) // Reset to first page when changing items per page
+                              }}
+                            >
+                                <SelectTrigger id="items-per-page">
+                                    <SelectValue placeholder="8" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="8">8</SelectItem>
+                                    <SelectItem value="12">12</SelectItem>
+                                    <SelectItem value="16">16</SelectItem>
+                                    <SelectItem value="24">24</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <Label className="mb-2 block">Status</Label>
+                            <div className="flex flex-wrap gap-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id="vaccinated"
+                                      checked={statusFilters.isVaccinated}
+                                      onCheckedChange={(checked) =>
+                                        setStatusFilters({ ...statusFilters, isVaccinated: checked === true })
+                                      }
+                                    />
+                                    <Label htmlFor="vaccinated" className="text-sm">
+                                        Vaccinated
+                                    </Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id="microchipped"
+                                      checked={statusFilters.isMicrochipped}
+                                      onCheckedChange={(checked) =>
+                                        setStatusFilters({ ...statusFilters, isMicrochipped: checked === true })
+                                      }
+                                    />
+                                    <Label htmlFor="microchipped" className="text-sm">
+                                        Microchipped
+                                    </Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id="castrated"
+                                      checked={statusFilters.isCastrated}
+                                      onCheckedChange={(checked) =>
+                                        setStatusFilters({ ...statusFilters, isCastrated: checked === true })
+                                      }
+                                    />
+                                    <Label htmlFor="castrated" className="text-sm">
+                                        Castrated
+                                    </Label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+          )}
+
+          {/* Results count */}
+          <div className="text-sm text-gray-500">
+              Showing {paginatedCats.length} of {filteredCats.length} cats
+              {filteredCats.length !== cats.length && ` (filtered from ${cats.length} total)`}
+          </div>
+
+          {viewMode === "list" ? (
+            <div className="space-y-4">
+                {paginatedCats.map((cat) => (
+                  <Card key={cat.id}>
+                      <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                              <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                      <h2 className="text-xl font-bold">{cat.name}</h2>
+                                      {renderGenderBadge(cat.gender)}
+                                  </div>
+                                  <p className="text-gray-600 text-sm mt-1">
+                                      {cat.breed}, {currentYear - cat.yearOfBirth} years old
+                                  </p>
+                                  <p className="text-gray-700 mt-2">{cat.description}</p>
+                                  <div className="flex flex-wrap gap-2 mt-3">
+                                      <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200">{cat.availability}</Badge>
+                                      {cat.isVaccinated && (
+                                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                            Vaccinated
+                                        </Badge>
+                                      )}
+                                      {cat.isMicrochipped && (
+                                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                            Microchipped
+                                        </Badge>
+                                      )}
+                                      {cat.isCastrated && (
+                                        <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                            Castrated
+                                        </Badge>
+                                      )}
+                                  </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                  <Button variant="outline" size="sm" asChild>
+                                      <Link href={`/admin/cats/edit/${cat.id}`}>
+                                          <Pencil className="mr-2 h-4 w-4" />
+                                          Edit
+                                      </Link>
+                                  </Button>
+                                  <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(cat.id, cat.name)}>
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                  </Button>
+                              </div>
+                          </div>
+                      </CardContent>
+                  </Card>
+                ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {paginatedCats.map((cat) => (
+                  <Card key={cat.id} className="overflow-hidden h-full">
+                      <div className="aspect-[4/3] relative">
+                          <Image
+                            src={cat.mainImage || cat.images?.[0] || "/placeholder.svg?height=200&width=300"}
+                            alt={cat.name}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                          />
+                      </div>
+                      <CardContent className="p-2">
+                          <div className="flex justify-between items-start mb-1">
+                              <h2 className="text-sm font-bold truncate">{cat.name}</h2>
+                              <span className="text-xs text-gray-500">{currentYear - cat.yearOfBirth}y</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                              {renderGenderBadge(cat.gender)}
+                              <p className="text-sm text-gray-600 line-clamp-1">{cat.breed}</p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1 mb-3">
+                              <Badge className="text-xs px-1 py-0 h-5 bg-orange-100 text-orange-800 hover:bg-orange-200 hover:text-orange-800">
+                                  {cat.availability}
+                              </Badge>
+                              {cat.isVaccinated && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs px-1 py-0 h-5 bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-800"
+                                >
+                                    Vaccinated
+                                </Badge>
+                              )}
+                              {cat.isMicrochipped && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs px-1 py-0 h-5 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-800"
+                                >
+                                    Microchipped
+                                </Badge>
+                              )}
+                              {cat.isCastrated && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs px-1 py-0 h-5 bg-purple-100 text-purple-800 hover:bg-purple-200 hover:text-purple-800"
+                                >
+                                    Castrated
+                                </Badge>
+                              )}
+                          </div>
+
+                          <div className="flex justify-end gap-1 mt-1">
+                              <Button variant="outline" size="sm" className="h-6 px-1 text-xs" asChild>
+                                  <Link href={`/admin/cats/edit/${cat.id}`}>
+                                      <Pencil className="h-3 w-3" />
+                                  </Link>
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-6 px-1 text-xs"
+                                onClick={() => handleDeleteClick(cat.id, cat.name)}
+                              >
+                                  <Trash2 className="h-3 w-3" />
+                              </Button>
+                          </div>
+                      </CardContent>
+                  </Card>
+                ))}
+            </div>
+          )}
+
+          {filteredCats.length === 0 && !loading && (
+            <Card className="py-12">
+                <CardContent className="flex flex-col items-center justify-center text-center">
+                    <div className="rounded-full bg-muted p-6 mb-4">
+                        <CatIcon className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold">No cats found</h3>
+                    <p className="text-muted-foreground mb-4">
+                        {cats.length > 0 ? "Try adjusting your filters or search query" : "Add your first cat to get started"}
+                    </p>
+                    {cats.length > 0 ? (
+                      <Button variant="outline" onClick={resetFilters}>
+                          Reset Filters
+                      </Button>
+                    ) : (
+                      <Button asChild>
+                          <Link href="/admin/cats/add">
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add New Cat
+                          </Link>
+                      </Button>
+                    )}
+                </CardContent>
+            </Card>
+          )}
+
+          {/* Pagination */}
+          {filteredCats.length > 0 && (
+            <div className="flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-gray-500">
+                    Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="sr-only">Previous Page</span>
+                    </Button>
+
+                    <div className="flex items-center">
+                        {getPageNumbers().map((page, index) =>
+                            typeof page === "number" ? (
+                              <Button
+                                key={index}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                className="w-8 h-8 p-0 mx-1"
+                                onClick={() => goToPage(page)}
+                              >
+                                  {page}
+                              </Button>
+                            ) : (
+                              <span key={index} className="mx-1">
                     ...
                   </span>
-                                    ),
-                            )}
-                        </div>
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => goToPage(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                            <span className="sr-only">Next Page</span>
-                        </Button>
+                            ),
+                        )}
                     </div>
-                </div>
-            )}
 
-            {/* Simple Delete Confirmation Dialog */}
-            <SimpleConfirmDialog
-                isOpen={deleteDialogOpen}
-                title="Delete Cat"
-                message={`Are you sure you want to delete ${catToDelete?.name || "this cat"}? This action cannot be undone.`}
-                onConfirm={handleConfirmDelete}
-                onCancel={handleCancelDelete}
-            />
-        </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                        <span className="sr-only">Next Page</span>
+                    </Button>
+                </div>
+            </div>
+          )}
+
+          {/* Simple Delete Confirmation Dialog */}
+          <SimpleConfirmDialog
+            isOpen={deleteDialogOpen}
+            title="Delete Cat"
+            message={`Are you sure you want to delete ${catToDelete?.name || "this cat"}? This action cannot be undone.`}
+            onConfirm={handleConfirmDelete}
+            onCancel={handleCancelDelete}
+          />
+      </div>
     )
 }

@@ -9,11 +9,14 @@ import type { CatProfile } from "@/lib/types/cat"
  */
 export async function fetchAllCats(includeDeleted = false): Promise<CatProfile[]> {
   try {
+    // Explicitly pass the includeDeleted parameter in the query string
     const response = await fetch(`/api/cats?includeDeleted=${includeDeleted}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
+      // Add cache: 'no-store' to prevent caching of results
+      cache: "no-store",
     })
 
     if (!response.ok) {

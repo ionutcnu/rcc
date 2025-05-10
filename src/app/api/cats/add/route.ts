@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       ...catData,
       createdAt: new Date(),
       updatedAt: new Date(),
-      deleted: false,
+      isDeleted: false,
     }
 
     // Add cat directly using admin SDK
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Cat added successfully",
-      id: docRef.id,
+      catId: docRef.id,
     })
   } catch (error: any) {
     console.error("Error in cats/add API:", error)

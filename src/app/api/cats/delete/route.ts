@@ -48,7 +48,8 @@ export async function DELETE(request: NextRequest) {
     } else {
       // Soft delete - mark as deleted
       await admin.db.collection("cats").doc(id).update({
-        deleted: true,
+        isDeleted: true,
+        deletedAt: new Date(),
         updatedAt: new Date(),
       })
       console.log(`Cat with ID ${id} moved to trash`)
