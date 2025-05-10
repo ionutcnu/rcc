@@ -62,38 +62,44 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Get the public URL
-    const [url] = await fileRef.getSignedUrl({
-      action: "read",
-      expires: "01-01-2100", // Far future expiration
-    })
+    // IMPORTANT CHANGE: Generate a download URL instead of a signed URL
+    // This creates a URL in the same format as the client-side Firebase SDK
+    const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || ""
+    const encodedPath = encodeURIComponent(storagePath)
+
+    // Make the file publicly accessible
+    await fileRef.makePublic()
+
+    // Generate a download URL in the same format as the client-side SDK
+    const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`
+
+    console.log("Generated download URL:", downloadUrl)
 
     // Update cat in Firestore if this is the main image
     if (isMainImage) {
       await admin.db.collection("cats").doc(catId).update({
-        mainImage: url,
+        mainImage: downloadUrl,
         updatedAt: new Date(),
       })
 
-      console.log(`Updated cat ${catId} with new main image: ${url}`)
+      console.log(`Updated cat ${catId} with new main image: ${downloadUrl}`)
     } else {
       // Add to images array if not main image
-      // Use FieldValue directly from firebase-admin/firestore
       await admin.db
         .collection("cats")
         .doc(catId)
         .update({
-          images: FieldValue.arrayUnion(url),
+          images: FieldValue.arrayUnion(downloadUrl),
           updatedAt: new Date(),
         })
 
-      console.log(`Added image to cat ${catId} images array: ${url}`)
+      console.log(`Added image to cat ${catId} images array: ${downloadUrl}`)
     }
 
     return NextResponse.json({
       success: true,
       message: "Image uploaded successfully",
-      imageUrl: url,
+      imageUrl: downloadUrl,
       isMainImage,
     })
   } catch (error: any) {

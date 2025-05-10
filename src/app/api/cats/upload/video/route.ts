@@ -60,27 +60,34 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Get the public URL
-    const [url] = await fileRef.getSignedUrl({
-      action: "read",
-      expires: "01-01-2100", // Far future expiration
-    })
+    // IMPORTANT CHANGE: Generate a download URL instead of a signed URL
+    // This creates a URL in the same format as the client-side Firebase SDK
+    const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || ""
+    const encodedPath = encodeURIComponent(storagePath)
 
-    // Add to videos array
+    // Make the file publicly accessible
+    await fileRef.makePublic()
+
+    // Generate a download URL in the same format as the client-side SDK
+    const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`
+
+    console.log("Generated download URL:", downloadUrl)
+
+    // Update cat in Firestore to add the video URL
     await admin.db
       .collection("cats")
       .doc(catId)
       .update({
-        videos: FieldValue.arrayUnion(url),
+        videos: FieldValue.arrayUnion(downloadUrl),
         updatedAt: new Date(),
       })
 
-    console.log(`Added video to cat ${catId} videos array: ${url}`)
+    console.log(`Added video to cat ${catId} videos array: ${downloadUrl}`)
 
     return NextResponse.json({
       success: true,
       message: "Video uploaded successfully",
-      videoUrl: url,
+      videoUrl: downloadUrl,
     })
   } catch (error: any) {
     console.error("Error in cats/upload/video API:", error)

@@ -9,6 +9,7 @@ const nextConfig = {
         ignoreBuildErrors: true,
     },
     // Disable source maps in production
+    devIndicators: false,
     productionBrowserSourceMaps: false,
     images: {
         domains: ["images.unsplash.com", "firebasestorage.googleapis.com", "storage.googleapis.com"],

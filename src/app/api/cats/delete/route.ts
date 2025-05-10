@@ -5,9 +5,12 @@ import { admin } from "@/lib/firebase/admin"
 
 export async function DELETE(request: NextRequest) {
   try {
+    console.log("Processing delete cat request")
+
     // Check if user is admin
     const isAdmin = await adminCheck(request)
     if (!isAdmin) {
+      console.log("Unauthorized access attempt to delete cat")
       return NextResponse.json(
         {
           error: "Unauthorized",
@@ -24,12 +27,16 @@ export async function DELETE(request: NextRequest) {
 
     // Validate required fields
     if (!id) {
+      console.log("Missing cat ID in delete request")
       return NextResponse.json({ error: "Cat ID is required" }, { status: 400 })
     }
+
+    console.log(`Deleting cat with ID: ${id}, permanent: ${permanent}`)
 
     // Check if cat exists
     const existingCat = await getCatById(id)
     if (!existingCat) {
+      console.log(`Cat with ID ${id} not found`)
       return NextResponse.json({ error: "Cat not found" }, { status: 404 })
     }
 
@@ -37,12 +44,14 @@ export async function DELETE(request: NextRequest) {
     if (permanent) {
       // Permanently delete the document
       await admin.db.collection("cats").doc(id).delete()
+      console.log(`Cat with ID ${id} permanently deleted`)
     } else {
       // Soft delete - mark as deleted
       await admin.db.collection("cats").doc(id).update({
         deleted: true,
         updatedAt: new Date(),
       })
+      console.log(`Cat with ID ${id} moved to trash`)
     }
 
     return NextResponse.json({
