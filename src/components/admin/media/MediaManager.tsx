@@ -1,12 +1,14 @@
 "use client"
 
+import React from "react"
+
 import { useState, useEffect } from "react"
 import { Loader2, Upload, LockIcon, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCatPopup } from "@/components/CatPopupProvider"
-import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
+import { SimpleConfirmDialog } from "@/components/ui/simple-confirm-dialog"
 import {
     getAllMedia,
     getDeletedMedia,
@@ -15,7 +17,6 @@ import {
     uploadFileAndGetURL,
     softDeleteMedia,
     restoreMedia,
-    lockMedia,
     unlockMedia,
 } from "@/lib/firebase/storageService"
 import { mediaLogger } from "@/lib/utils/media-logger"
@@ -29,6 +30,7 @@ import TrashTab from "./tabs/TrashTab"
 import IssuesPanel from "./tabs/IssuesPanel"
 // Import the new LockedMediaManager component
 import LockedMediaManager from "./LockedMediaManager"
+import { LockMediaDialog } from "./LockMediaDialog"
 
 // Define a type for upload progress tracking
 interface UploadProgress {
@@ -40,6 +42,13 @@ interface UploadProgress {
     errors: string[]
 }
 
+// Add a memory cache with expiration to avoid constant rechecking of invalid URLs
+const urlValidationCache = new Map<string, { valid: boolean; timestamp: number }>()
+const URL_CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour in milliseconds
+
+// Import the new API client at the top of the file
+import { fetchActiveMedia, lockMediaItem } from "@/lib/api/mediaClient"
+
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
     const [lockedMediaItems, setLockedMediaItems] = useState<MediaItem[]>([])
@@ -49,6 +58,7 @@ export default function MediaManager() {
     const { showPopup } = useCatPopup()
     const [activeTab, setActiveTab] = useState<"active" | "trash" | "locked">("active")
     const [isUploading, setIsUploading] = useState<boolean>(false)
+    const [isLoading, setIsLoading] = useState<boolean>(false)
 
     // New state for upload progress
     const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
@@ -89,6 +99,10 @@ export default function MediaManager() {
     // State for download in progress
     const [isDownloading, setIsDownloading] = useState(false)
 
+    // State for lock dialog
+    const [lockDialogOpen, setLockDialogOpen] = useState(false)
+    const [mediaToLock, setMediaToLock] = useState<MediaItem | null>(null)
+
     // Fetch media on component mount
     const fetchMedia = async () => {
         try {
@@ -112,41 +126,58 @@ export default function MediaManager() {
 
             // Use Promise.allSettled to prevent one failure from stopping the whole process
             const checkPromises = validMedia.map(
-                (item) =>
-                    new Promise<void>(async (resolve) => {
-                        try {
-                            // Skip placeholder images and empty URLs
-                            if (!item.url || item.url.includes("placeholder")) {
-                                resolve()
-                                return
+              (item) =>
+                new Promise<void>(async (resolve) => {
+                    try {
+                        // Check if URL has been recently validated
+                        const now = Date.now()
+                        const cachedResult = urlValidationCache.get(item.url)
+                        if (cachedResult && now - cachedResult.timestamp < URL_CACHE_EXPIRY) {
+                            // Use cached result if not expired
+                            if (!cachedResult.valid) {
+                                potentialIssues.push(item)
                             }
-
-                            // Use a timeout to prevent hanging
-                            const controller = new AbortController()
-                            const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-                            try {
-                                const response = await fetch(item.url, {
-                                    method: "HEAD",
-                                    signal: controller.signal,
-                                })
-
-                                clearTimeout(timeoutId)
-
-                                if (response.status === 404) {
-                                    console.log(`Found 404 for media item: ${item.name} (${item.id}) - manual review required`)
-                                    potentialIssues.push(item)
-                                }
-                            } catch (error) {
-                                clearTimeout(timeoutId)
-                                console.error(`Error checking media URL ${item.url}:`, error)
-                            }
-                        } catch (e) {
-                            console.error("Error in media validation:", e)
-                        } finally {
-                            resolve() // Always resolve to continue with other items
+                            resolve()
+                            return // Skip further validation
                         }
-                    }),
+
+                        // Skip placeholder images and empty URLs
+                        if (!item.url || item.url.includes("placeholder")) {
+                            resolve()
+                            return
+                        }
+
+                        // Use a timeout to prevent hanging
+                        const controller = new AbortController()
+                        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+                        try {
+                            const response = await fetch(item.url, {
+                                method: "HEAD",
+                                signal: controller.signal,
+                            })
+
+                            clearTimeout(timeoutId)
+
+                            // Store result in cache
+                            urlValidationCache.set(item.url, { valid: response.status !== 404, timestamp: now })
+
+                            if (response.status === 404) {
+                                console.log(`Found 404 for media item: ${item.name} (${item.id}) - manual review required`)
+                                potentialIssues.push(item)
+                            }
+                        } catch (error) {
+                            clearTimeout(timeoutId)
+                            console.error(`Error checking media URL ${item.url}:`, error)
+                            // Store failed validation in cache
+                            urlValidationCache.set(item.url, { valid: false, timestamp: now })
+                        }
+                    } catch (e) {
+                        console.error("Error in media validation:", e)
+                    } finally {
+                        resolve() // Always resolve to continue with other items
+                    }
+                }),
             )
 
             // Wait for all checks to complete
@@ -169,9 +200,37 @@ export default function MediaManager() {
         }
     }
 
+    // Fix: Use a ref to track if the component is mounted to prevent duplicate API calls
+    const isMounted = React.useRef(false)
+
+    // Inside your MediaManager component, find the useEffect that loads media
+    // and replace it with this:
     useEffect(() => {
-        fetchMedia()
-    }, [])
+        // Fix: Only load media once when the component mounts
+        if (isMounted.current) return
+        isMounted.current = true
+
+        const loadMedia = async () => {
+            setIsLoading(true)
+            try {
+                // Use the new API client instead of direct Firebase access
+                const result = await fetchActiveMedia()
+
+                setMediaItems(result.media)
+                setImageCount(result.imageCount)
+                setVideoCount(result.videoCount)
+            } catch (error) {
+                console.error("Error loading media:", error)
+                showPopup("Error loading media. Please try again.")
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        loadMedia()
+    }, [showPopup])
+
+    // The rest of the component remains the same
 
     // Add the beforeunload event listener in a useEffect hook after the existing useEffect hooks
 
@@ -182,7 +241,7 @@ export default function MediaManager() {
             if (isUploading) {
                 // Standard way to show a confirmation dialog when leaving the page
                 const message =
-                    "You have an upload in progress. If you leave now, your upload will be canceled. Are you sure you want to leave?"
+                  "You have an upload in progress. If you leave now, your upload will be canceled. Are you sure you want to leave?"
                 e.preventDefault()
                 e.returnValue = message // For older browsers
                 return message // For modern browsers
@@ -231,34 +290,40 @@ export default function MediaManager() {
 
         try {
             setIsBulkProcessing(true)
+            showPopup(`Locking ${items.length} items...`)
 
             // Log the bulk lock operation
             mediaLogger.mediaBulkOperation(
-                "lock",
-                items.length,
-                {
-                    itemIds: items.map((item) => item.id),
-                    itemTypes: items.map((item) => item.type),
-                    reason: reason,
-                },
-                userId,
+              "lock",
+              items.length,
+              {
+                  itemIds: items.map((item) => item.id),
+                  itemTypes: items.map((item) => item.type),
+                  reason: reason,
+              },
+              userId,
             )
 
             let successCount = 0
             let failCount = 0
+            const errors: string[] = []
 
             // Process each item
             for (const item of items) {
                 try {
-                    const success = await lockMedia(item, reason)
-                    if (success) {
+                    // Use the new API client function
+                    const result = await lockMediaItem(item.id, reason)
+
+                    if (result.success) {
                         successCount++
                     } else {
                         failCount++
+                        errors.push(`Failed to lock ${item.name || item.id}: ${result.error}`)
                     }
-                } catch (err) {
+                } catch (err: any) {
                     console.error(`Error locking media item ${item.id}:`, err)
                     failCount++
+                    errors.push(`Error locking ${item.name || item.id}: ${err.message || "Unknown error"}`)
                 }
             }
 
@@ -277,14 +342,15 @@ export default function MediaManager() {
                 showPopup(`Successfully locked ${successCount} items`)
             } else {
                 showPopup(`Locked ${successCount} items, failed to lock ${failCount} items`)
+                console.error("Lock errors:", errors)
             }
 
             // Clear selected items
             setSelectedItems([])
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error performing bulk lock:", error)
             mediaLogger.error("Bulk lock operation failed", error, userId)
-            showPopup("Error performing bulk lock")
+            showPopup(`Error performing bulk lock: ${error.message || "Unknown error"}`)
         } finally {
             setBulkActionDialogOpen(false)
             setBulkAction(null)
@@ -293,24 +359,44 @@ export default function MediaManager() {
     }
 
     // Function to handle locking media
-    const handleLockMedia = async (item: MediaItem) => {
-        try {
-            // Prompt user for a reason
-            const reason = window.prompt("Please enter a reason for locking this media:", "Important system media")
-            if (reason === null) return // User canceled
+    const handleLockMedia = (item: MediaItem) => {
+        // Set the state for our custom dialog
+        setMediaToLock(item)
+        setLockDialogOpen(true)
+    }
 
-            const success = await lockMedia(item, reason)
-            if (success) {
+    // Function to handle lock confirmation
+    const handleLockConfirm = async (reason: string) => {
+        if (!mediaToLock) return
+
+        try {
+            // Show loading state
+            showPopup("Locking media...")
+
+            console.log(`Attempting to lock media: ${mediaToLock.id} with reason: ${reason}`)
+
+            // Use the API client function
+            const result = await lockMediaItem(mediaToLock.id, reason)
+
+            if (result.success && result.media) {
+                console.log("Lock successful, updated media:", result.media)
+
                 // Update the state
-                setMediaItems(mediaItems.filter((media) => media.id !== item.id))
-                setLockedMediaItems([...lockedMediaItems, { ...item, locked: true, lockedReason: reason }])
-                showPopup(`Media "${item.name}" locked. It's now protected from deletion.`)
+                setMediaItems((prev) => prev.filter((media) => media.id !== mediaToLock.id))
+                setLockedMediaItems((prev) => [...prev, { ...mediaToLock, locked: true, lockedReason: reason }])
+
+                showPopup(`Media "${mediaToLock.name}" locked. It's now protected from deletion.`)
             } else {
-                showPopup("Failed to lock media")
+                console.error("Failed to lock media:", result.error)
+                showPopup(`Failed to lock media: ${result.error || "Unknown error"}`)
             }
         } catch (err) {
             console.error("Error locking media:", err)
             showPopup("Error locking media")
+        } finally {
+            // Close the dialog
+            setLockDialogOpen(false)
+            setMediaToLock(null)
         }
     }
 
@@ -319,7 +405,7 @@ export default function MediaManager() {
         try {
             // Confirm before unlocking
             const confirmed = window.confirm(
-                `Are you sure you want to unlock "${item.name}"? This will allow it to be deleted.`,
+              `Are you sure you want to unlock "${item.name}"? This will allow it to be deleted.`,
             )
             if (!confirmed) return
 
@@ -392,13 +478,13 @@ export default function MediaManager() {
 
             // Log the restoration attempt
             mediaLogger.info(
-                `Restoring media: ${mediaToRestore.name}`,
-                {
-                    id: mediaToRestore.id,
-                    path: mediaToRestore.path || mediaToRestore.url,
-                    userEmail,
-                },
-                userId,
+              `Restoring media: ${mediaToRestore.name}`,
+              {
+                  id: mediaToRestore.id,
+                  path: mediaToRestore.path || mediaToRestore.url,
+                  userEmail,
+              },
+              userId,
             )
 
             const success = await restoreMedia(mediaToRestore)
@@ -434,13 +520,13 @@ export default function MediaManager() {
 
             // Log the bulk operation
             mediaLogger.mediaBulkOperation(
-                type,
-                items.length,
-                {
-                    itemIds: items.map((item) => item.id),
-                    itemTypes: items.map((item) => item.type),
-                },
-                userId,
+              type,
+              items.length,
+              {
+                  itemIds: items.map((item) => item.id),
+                  itemTypes: items.map((item) => item.type),
+              },
+              userId,
             )
 
             // Perform the bulk operation
@@ -527,13 +613,13 @@ export default function MediaManager() {
 
                     // Update current file info
                     setUploadProgress((prev) =>
-                        prev
-                            ? {
-                                ...prev,
-                                currentFileName: file.name,
-                                currentFileProgress: 0,
-                            }
-                            : null,
+                      prev
+                        ? {
+                            ...prev,
+                            currentFileName: file.name,
+                            currentFileProgress: 0,
+                        }
+                        : null,
                     )
 
                     // Determine folder based on file type
@@ -607,9 +693,9 @@ export default function MediaManager() {
 
     // Custom upload function that reports progress
     const uploadFileWithProgress = (
-        file: File,
-        folder: string,
-        onProgress: (progress: number) => void,
+      file: File,
+      folder: string,
+      onProgress: (progress: number) => void,
     ): Promise<string> => {
         return new Promise(async (resolve, reject) => {
             try {
@@ -631,8 +717,8 @@ export default function MediaManager() {
 
                         // Call the actual upload function from your service
                         uploadFileAndGetURL(file, folder)
-                            .then((url) => resolve(url))
-                            .catch((err) => reject(err))
+                          .then((url) => resolve(url))
+                          .catch((err) => reject(err))
                     }
                 }, 200)
             } catch (error) {
@@ -708,12 +794,12 @@ export default function MediaManager() {
             // Log the bulk download operation
             const { userId } = getCurrentUserInfo()
             mediaLogger.info(
-                `Bulk download initiated for ${items.length} items`,
-                {
-                    itemIds: items.map((item) => item.id),
-                    itemCount: items.length,
-                },
-                userId,
+              `Bulk download initiated for ${items.length} items`,
+              {
+                  itemIds: items.map((item) => item.id),
+                  itemCount: items.length,
+              },
+              userId,
             )
 
             // Create a counter for completed downloads
@@ -788,13 +874,13 @@ export default function MediaManager() {
 
             // Log completion
             mediaLogger.info(
-                `Bulk download completed: ${completedCount} successful, ${failedCount} failed`,
-                {
-                    successCount: completedCount,
-                    failCount: failedCount,
-                    totalCount: items.length,
-                },
-                userId,
+              `Bulk download completed: ${completedCount} successful, ${failedCount} failed`,
+              {
+                  successCount: completedCount,
+                  failCount: failedCount,
+                  totalCount: items.length,
+              },
+              userId,
             )
         } catch (error) {
             console.error("Bulk download error:", error)
@@ -802,9 +888,9 @@ export default function MediaManager() {
 
             // Log error
             mediaLogger.error(
-                "Bulk download operation failed",
-                { error: error instanceof Error ? error.message : "Unknown error" },
-                auth.currentUser?.uid || "unknown",
+              "Bulk download operation failed",
+              { error: error instanceof Error ? error.message : "Unknown error" },
+              auth.currentUser?.uid || "unknown",
             )
         } finally {
             setIsDownloading(false)
@@ -820,45 +906,45 @@ export default function MediaManager() {
 
             // Use Promise.allSettled to prevent one failure from stopping the whole process
             const checkPromises = mediaItems.map(
-                (item) =>
-                    new Promise<void>(async (resolve) => {
-                        try {
-                            // Skip placeholder images and empty URLs
-                            if (!item.url || item.url.includes("placeholder")) {
-                                resolve()
-                                return
-                            }
-
-                            // Use a timeout to prevent hanging
-                            const controller = new AbortController()
-                            const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-                            try {
-                                const response = await fetch(item.url, {
-                                    method: "HEAD",
-                                    signal: controller.signal,
-                                })
-
-                                clearTimeout(timeoutId)
-
-                                if (response.status === 404) {
-                                    console.log(`Found 404 for media item: ${item.name} (${item.id})`)
-                                    issues.push(item)
-                                }
-                            } catch (error) {
-                                clearTimeout(timeoutId)
-                                console.error(`Error checking media URL ${item.url}:`, error)
-                                // Only add to issues if it's a network error, not a timeout
-                                if (error instanceof TypeError && !error.message.includes("aborted")) {
-                                    issues.push(item)
-                                }
-                            }
-                        } catch (e) {
-                            console.error("Error in media validation:", e)
-                        } finally {
-                            resolve() // Always resolve to continue with other items
+              (item) =>
+                new Promise<void>(async (resolve) => {
+                    try {
+                        // Skip placeholder images and empty URLs
+                        if (!item.url || item.url.includes("placeholder")) {
+                            resolve()
+                            return
                         }
-                    }),
+
+                        // Use a timeout to prevent hanging
+                        const controller = new AbortController()
+                        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+                        try {
+                            const response = await fetch(item.url, {
+                                method: "HEAD",
+                                signal: controller.signal,
+                            })
+
+                            clearTimeout(timeoutId)
+
+                            if (response.status === 404) {
+                                console.log(`Found 404 for media item: ${item.name} (${item.id})`)
+                                issues.push(item)
+                            }
+                        } catch (error) {
+                            clearTimeout(timeoutId)
+                            console.error(`Error checking media URL ${item.url}:`, error)
+                            // Only add to issues if it's a network error, not a timeout
+                            if (error instanceof TypeError && !error.message.includes("aborted")) {
+                                issues.push(item)
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error in media validation:", e)
+                    } finally {
+                        resolve() // Always resolve to continue with other items
+                    }
+                }),
             )
 
             // Wait for all checks to complete
@@ -881,13 +967,19 @@ export default function MediaManager() {
         }
     }
 
+    const handleEmptyTrashError = () => {
+        if (deletedMediaItems.length === 0) {
+            showPopup("Trash is already empty")
+        }
+    }
+
     const handleEmptyTrash = () => {
         if (deletedMediaItems.length === 0) {
             showPopup("Trash is already empty")
             return
         }
 
-        // Set up bulk action for confirmation
+        //t up bulk action for confirmation
         setBulkAction({
             type: "delete",
             items: deletedMediaItems,
@@ -903,230 +995,241 @@ export default function MediaManager() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Media Manager</h1>
-                <div className="flex gap-2">
-                    <Button onClick={handleUpload} disabled={isUploading || isBulkProcessing}>
-                        {isUploading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Uploading...
-                            </>
-                        ) : (
-                            <>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload Media
-                            </>
-                        )}
-                    </Button>
-                </div>
-            </div>
+      <div className="space-y-6">
+          <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-bold">Media Manager</h1>
+              <div className="flex gap-2">
+                  <Button onClick={handleUpload} disabled={isUploading || isBulkProcessing}>
+                      {isUploading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                        </>
+                      ) : (
+                        <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload Media
+                        </>
+                      )}
+                  </Button>
+              </div>
+          </div>
 
-            {/* Processing Indicator */}
-            {isBulkProcessing && (
-                <Alert className="mb-6" variant="default">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500 mr-2" />
-                    <AlertTitle>Processing</AlertTitle>
-                    <AlertDescription>Processing bulk operation. Please wait...</AlertDescription>
-                </Alert>
-            )}
+          {/* Processing Indicator */}
+          {isBulkProcessing && (
+            <Alert className="mb-6" variant="default">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-500 mr-2" />
+                <AlertTitle>Processing</AlertTitle>
+                <AlertDescription>Processing bulk operation. Please wait...</AlertDescription>
+            </Alert>
+          )}
 
-            {/* Upload Progress Overlay */}
-            {showUploadProgress && uploadProgress && (
-                <div className="fixed inset-x-0 bottom-0 p-4 z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-4 max-w-md mx-auto">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-medium">Uploading Files</h3>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowUploadProgress(false)}>
-                                <X className="h-4 w-4" />
-                            </Button>
+          {/* Upload Progress Overlay */}
+          {showUploadProgress && uploadProgress && (
+            <div className="fixed inset-x-0 bottom-0 p-4 z-50">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-4 max-w-md mx-auto">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-medium">Uploading Files</h3>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowUploadProgress(false)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex justify-between text-sm mb-1">
+                                <span>Overall Progress</span>
+                                <span>
+                    {uploadProgress.completedFiles} of {uploadProgress.totalFiles} files (
+                                    {uploadProgress.overallProgress}%)
+                  </span>
+                            </div>
+                            <Progress value={uploadProgress.overallProgress} className="h-2" />
                         </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span>Overall Progress</span>
-                                    <span>
-                    {uploadProgress.completedFiles} of {uploadProgress.totalFiles} files (
-                                        {uploadProgress.overallProgress}%)
-                  </span>
-                                </div>
-                                <Progress value={uploadProgress.overallProgress} className="h-2" />
-                            </div>
-
-                            <div>
-                                <div className="flex justify-between text-sm mb-1">
+                        <div>
+                            <div className="flex justify-between text-sm mb-1">
                   <span className="truncate max-w-[200px]" title={uploadProgress.currentFileName}>
                     {uploadProgress.currentFileName}
                   </span>
-                                    <span>{Math.round(uploadProgress.currentFileProgress * 100)}%</span>
-                                </div>
-                                <Progress value={Math.round(uploadProgress.currentFileProgress * 100)} className="h-2" />
+                                <span>{Math.round(uploadProgress.currentFileProgress * 100)}%</span>
                             </div>
-
-                            {uploadProgress.errors.length > 0 && (
-                                <div className="mt-2 text-sm text-red-500">
-                                    <p className="font-medium">Errors ({uploadProgress.errors.length}):</p>
-                                    <ul className="list-disc pl-5 mt-1 max-h-20 overflow-y-auto">
-                                        {uploadProgress.errors.map((error, index) => (
-                                            <li key={index} className="truncate">
-                                                {error}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
+                            <Progress value={Math.round(uploadProgress.currentFileProgress * 100)} className="h-2" />
                         </div>
+
+                        {uploadProgress.errors.length > 0 && (
+                          <div className="mt-2 text-sm text-red-500">
+                              <p className="font-medium">Errors ({uploadProgress.errors.length}):</p>
+                              <ul className="list-disc pl-5 mt-1 max-h-20 overflow-y-auto">
+                                  {uploadProgress.errors.map((error, index) => (
+                                    <li key={index} className="truncate">
+                                        {error}
+                                    </li>
+                                  ))}
+                              </ul>
+                          </div>
+                        )}
                     </div>
                 </div>
-            )}
+            </div>
+          )}
 
-            <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as "active" | "trash" | "locked")}
-                className="w-full"
-            >
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="active" className="flex items-center">
-                        Active Media ({mediaItems.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="locked" className="flex items-center">
-                        <LockIcon className="h-4 w-4 mr-1" />
-                        Locked ({lockedMediaItems.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="trash" className="flex items-center">
-                        Trash ({deletedMediaItems.length})
-                    </TabsTrigger>
-                </TabsList>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as "active" | "trash" | "locked")}
+            className="w-full"
+          >
+              <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="active" className="flex items-center">
+                      Active Media ({mediaItems.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="locked" className="flex items-center">
+                      <LockIcon className="h-4 w-4 mr-1" />
+                      Locked ({lockedMediaItems.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="trash" className="flex items-center">
+                      Trash ({deletedMediaItems.length})
+                  </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="active">
-                    <ActiveMediaTab
-                        mediaItems={mediaItems}
-                        activeFilter={activeFilter}
-                        setActiveFilter={setActiveFilter}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        showFilters={showFilters}
-                        setShowFilters={setShowFilters}
-                        sortOption={sortOption}
-                        setSortOption={setSortOption}
-                        sizeFilter={sizeFilter}
-                        setSizeFilter={setSizeFilter}
-                        resetFilters={resetFilters}
-                        handleDeleteClick={handleDeleteClick}
-                        handleDownload={handleDirectDownload}
-                        handleBulkDownload={handleBulkDownload}
-                        handleUpload={handleUpload}
-                        isUploading={isUploading}
-                        imageCount={imageCount}
-                        videoCount={videoCount}
-                        handleLockMedia={handleLockMedia}
-                        handleUnlockMedia={handleUnlockMedia}
-                        showPopup={showPopup}
-                        selectedItems={selectedItems}
-                        setSelectedItems={setSelectedItems}
-                        handleBulkAction={handleBulkAction}
-                        handleBulkLock={handleBulkLock}
-                    />
-                </TabsContent>
+              <TabsContent value="active">
+                  <ActiveMediaTab
+                    mediaItems={mediaItems}
+                    activeFilter={activeFilter}
+                    setActiveFilter={setActiveFilter}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    showFilters={showFilters}
+                    setShowFilters={setShowFilters}
+                    sortOption={sortOption}
+                    setSortOption={setSortOption}
+                    sizeFilter={sizeFilter}
+                    setSizeFilter={setSizeFilter}
+                    resetFilters={resetFilters}
+                    handleDeleteClick={handleDeleteClick}
+                    handleDownload={handleDirectDownload}
+                    handleBulkDownload={handleBulkDownload}
+                    handleUpload={handleUpload}
+                    isUploading={isUploading}
+                    imageCount={imageCount}
+                    videoCount={videoCount}
+                    handleLockMedia={handleLockMedia}
+                    handleUnlockMedia={handleUnlockMedia}
+                    showPopup={showPopup}
+                    selectedItems={selectedItems}
+                    setSelectedItems={setSelectedItems}
+                    handleBulkAction={handleBulkAction}
+                    handleBulkLock={handleBulkLock}
+                  />
+              </TabsContent>
 
-                <TabsContent value="locked">
-                    <LockedMediaManager />
-                </TabsContent>
+              <TabsContent value="locked">
+                  <LockedMediaManager />
+              </TabsContent>
 
-                <TabsContent value="trash">
-                    <TrashTab
-                        deletedMediaItems={deletedMediaItems}
-                        handleRestoreClick={handleRestoreClick}
-                        handleDeleteClick={handleDeleteClick}
-                        handleEmptyTrash={handleEmptyTrash}
-                        activeFilter={activeFilter}
-                        searchQuery={searchQuery}
-                        sortOption={sortOption}
-                        sizeFilter={sizeFilter}
-                    />
-                </TabsContent>
-            </Tabs>
+              <TabsContent value="trash">
+                  <TrashTab
+                    deletedMediaItems={deletedMediaItems}
+                    handleRestoreClick={handleRestoreClick}
+                    handleDeleteClick={handleDeleteClick}
+                    handleEmptyTrash={handleEmptyTrash}
+                    activeFilter={activeFilter}
+                    searchQuery={searchQuery}
+                    sortOption={sortOption}
+                    sizeFilter={sizeFilter}
+                  />
+              </TabsContent>
+          </Tabs>
 
-            {/* Issues Panel */}
-            {showIssuesPanel && potentialIssues.length > 0 && (
-                <IssuesPanel
-                    issues={potentialIssues}
-                    onClose={() => {
-                        setShowIssuesPanel(false)
-                        setPotentialIssues([])
-                    }}
-                    onMoveToTrash={(item) => {
-                        setMediaToDelete(item)
-                        setDeleteMode("soft")
-                        setDeleteDialogOpen(true)
-                    }}
-                />
-            )}
-
-            {/* Delete Confirmation Dialog */}
-            <SimpleConfirmDialog
-                isOpen={deleteDialogOpen}
-                title={deleteMode === "soft" ? "Move to Trash" : "Delete Permanently"}
-                message={
-                    deleteMode === "soft"
-                        ? `Are you sure you want to move ${mediaToDelete?.name || "this media"} to trash? You can restore it later.`
-                        : `Are you sure you want to permanently delete ${mediaToDelete?.name || "this media"}? This action cannot be undone.`
-                }
-                onConfirm={handleDeleteConfirm}
-                onCancel={() => {
-                    setDeleteDialogOpen(false)
-                    setMediaToDelete(null)
-                }}
-                confirmText={deleteMode === "soft" ? "Move to Trash" : "Delete Permanently"}
-                confirmVariant={deleteMode === "soft" ? "default" : "destructive"}
+          {/* Issues Panel */}
+          {showIssuesPanel && potentialIssues.length > 0 && (
+            <IssuesPanel
+              issues={potentialIssues}
+              onClose={() => {
+                  setShowIssuesPanel(false)
+                  setPotentialIssues([])
+              }}
+              onMoveToTrash={(item) => {
+                  setMediaToDelete(item)
+                  setDeleteMode("soft")
+                  setDeleteDialogOpen(true)
+              }}
             />
+          )}
 
-            {/* Restore Confirmation Dialog */}
-            <SimpleConfirmDialog
-                isOpen={restoreDialogOpen}
-                title="Restore Media"
-                message={`Are you sure you want to restore ${mediaToRestore?.name || "this media"}?`}
-                onConfirm={handleRestoreConfirm}
-                onCancel={() => {
-                    setRestoreDialogOpen(false)
-                    setMediaToRestore(null)
-                }}
-                confirmText="Restore"
-            />
+          {/* Delete Confirmation Dialog */}
+          <SimpleConfirmDialog
+            isOpen={deleteDialogOpen}
+            title={deleteMode === "soft" ? "Move to Trash" : "Delete Permanently"}
+            message={
+                deleteMode === "soft"
+                  ? `Are you sure you want to move ${mediaToDelete?.name || "this media"} to trash? You can restore it later.`
+                  : `Are you sure you want to permanently delete ${mediaToDelete?.name || "this media"}? This action cannot be undone.`
+            }
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => {
+                setDeleteDialogOpen(false)
+                setMediaToDelete(null)
+            }}
+            confirmText={deleteMode === "soft" ? "Move to Trash" : "Delete Permanently"}
+            confirmVariant={deleteMode === "soft" ? "default" : "destructive"}
+          />
 
-            {/* Bulk Action Confirmation Dialog */}
-            <SimpleConfirmDialog
-                isOpen={bulkActionDialogOpen}
-                title={`Confirm ${
-                    bulkAction?.type === "delete"
-                        ? "Permanent Delete"
-                        : bulkAction?.type === "softDelete"
-                            ? "Move to Trash"
-                            : "Restore"
-                }`}
-                message={
-                    bulkAction?.type === "delete"
-                        ? `Are you sure you want to permanently delete ${bulkAction?.items.length} items? This action cannot be undone.`
-                        : bulkAction?.type === "softDelete"
-                            ? `Are you sure you want to move ${bulkAction?.items.length} items to trash? You can restore them later.`
-                            : `Are you sure you want to restore ${bulkAction?.items.length} items?`
-                }
-                onConfirm={confirmBulkAction}
-                onCancel={() => {
-                    setBulkActionDialogOpen(false)
-                    setBulkAction(null)
-                }}
-                confirmVariant={bulkAction?.type === "delete" ? "destructive" : "default"}
-                confirmText={
-                    bulkAction?.type === "delete"
-                        ? "Delete Permanently"
-                        : bulkAction?.type === "softDelete"
-                            ? "Move to Trash"
-                            : "Restore"
-                }
-            />
-        </div>
+          {/* Restore Confirmation Dialog */}
+          <SimpleConfirmDialog
+            isOpen={restoreDialogOpen}
+            title="Restore Media"
+            message={`Are you sure you want to restore ${mediaToRestore?.name || "this media"}?`}
+            onConfirm={handleRestoreConfirm}
+            onCancel={() => {
+                setRestoreDialogOpen(false)
+                setMediaToRestore(null)
+            }}
+            confirmText="Restore"
+          />
+
+          {/* Lock Media Dialog */}
+          <LockMediaDialog
+            isOpen={lockDialogOpen}
+            onClose={() => {
+                setLockDialogOpen(false)
+                setMediaToLock(null)
+            }}
+            onConfirm={handleLockConfirm}
+            mediaName={mediaToLock?.name || ""}
+          />
+
+          {/* Bulk Action Confirmation Dialog */}
+          <SimpleConfirmDialog
+            isOpen={bulkActionDialogOpen}
+            title={`Confirm ${
+              bulkAction?.type === "delete"
+                ? "Permanent Delete"
+                : bulkAction?.type === "softDelete"
+                  ? "Move to Trash"
+                  : "Restore"
+            }`}
+            message={
+                bulkAction?.type === "delete"
+                  ? `Are you sure you want to permanently delete ${bulkAction?.items.length} items? This action cannot be undone.`
+                  : bulkAction?.type === "softDelete"
+                    ? `Are you sure you want to move ${bulkAction?.items.length} items to trash? You can restore them later.`
+                    : `Are you sure you want to restore ${bulkAction?.items.length} items?`
+            }
+            onConfirm={confirmBulkAction}
+            onCancel={() => {
+                setBulkActionDialogOpen(false)
+                setBulkAction(null)
+            }}
+            confirmVariant={bulkAction?.type === "delete" ? "destructive" : "default"}
+            confirmText={
+                bulkAction?.type === "delete"
+                  ? "Delete Permanently"
+                  : bulkAction?.type === "softDelete"
+                    ? "Move to Trash"
+                    : "Restore"
+            }
+          />
+      </div>
     )
 }

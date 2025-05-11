@@ -57,9 +57,9 @@ export type UploadProgressCallback = (progress: number, bytesTransferred: number
  * @returns Promise with the download URL
  */
 export async function uploadFileAndGetURL(
-    file: File,
-    folder: string,
-    onProgress?: UploadProgressCallback,
+  file: File,
+  folder: string,
+  onProgress?: UploadProgressCallback,
 ): Promise<string> {
     return new Promise(async (resolve, reject) => {
         try {
@@ -75,7 +75,7 @@ export async function uploadFileAndGetURL(
 
             if (fileSizeInMB > maxAllowedSize) {
                 throw new Error(
-                    `File size exceeds the maximum allowed size of ${maxAllowedSize}MB for ${isImage ? "images" : "videos"}`,
+                  `File size exceeds the maximum allowed size of ${maxAllowedSize}MB for ${isImage ? "images" : "videos"}`,
                 )
             }
 
@@ -128,7 +128,7 @@ export async function uploadFileAndGetURL(
                     fileToUpload = new File([blob], file.name, { type: file.type })
 
                     console.log(
-                        `Image compressed: ${file.size} -> ${fileToUpload.size} bytes (${Math.round((fileToUpload.size / file.size) * 100)}% of original)`,
+                      `Image compressed: ${file.size} -> ${fileToUpload.size} bytes (${Math.round((fileToUpload.size / file.size) * 100)}% of original)`,
                     )
                 } catch (err) {
                     console.warn("Image compression failed, uploading original file:", err)
@@ -144,109 +144,109 @@ export async function uploadFileAndGetURL(
             const uploadTask = uploadBytesResumable(storageRef, fileToUpload, metadata)
 
             uploadTask.on(
-                "state_changed",
-                (snapshot) => {
-                    // Track upload progress
-                    const progress = snapshot.bytesTransferred / snapshot.totalBytes
-                    console.log(`Upload progress for ${file.name}: ${(progress * 100).toFixed(2)}%`)
+              "state_changed",
+              (snapshot) => {
+                  // Track upload progress
+                  const progress = snapshot.bytesTransferred / snapshot.totalBytes
+                  console.log(`Upload progress for ${file.name}: ${(progress * 100).toFixed(2)}%`)
 
-                    // Call progress callback if provided
-                    if (onProgress) {
-                        onProgress(progress, snapshot.bytesTransferred, snapshot.totalBytes)
-                    }
-                },
-                (error) => {
-                    // Handle unsuccessful uploads
-                    console.error(`Error uploading ${file.name}:`, error)
-                    console.error("Error code:", error.code)
-                    console.error("Error message:", error.message)
+                  // Call progress callback if provided
+                  if (onProgress) {
+                      onProgress(progress, snapshot.bytesTransferred, snapshot.totalBytes)
+                  }
+              },
+              (error) => {
+                  // Handle unsuccessful uploads
+                  console.error(`Error uploading ${file.name}:`, error)
+                  console.error("Error code:", error.code)
+                  console.error("Error message:", error.message)
 
-                    // Check for specific error types
-                    if (error.code === "storage/unauthorized") {
-                        console.error("PERMISSION ERROR: Make sure your Firebase Storage rules allow write access")
-                        console.error("Go to Firebase Console > Storage > Rules and set: allow read, write;")
-                    }
+                  // Check for specific error types
+                  if (error.code === "storage/unauthorized") {
+                      console.error("PERMISSION ERROR: Make sure your Firebase Storage rules allow write access")
+                      console.error("Go to Firebase Console > Storage > Rules and set: allow read, write;")
+                  }
 
-                    // Log the error
-                    const currentUser = auth.currentUser
-                    mediaLogger.error(
-                        `Upload failed for ${file.name}`,
+                  // Log the error
+                  const currentUser = auth.currentUser
+                  mediaLogger.error(
+                    `Upload failed for ${file.name}`,
+                    {
+                        error,
+                        userEmail: currentUser?.email, // Include email directly in details
+                    },
+                    currentUser?.uid,
+                  )
+
+                  reject(error)
+              },
+              async () => {
+                  // Handle successful uploads
+                  console.log(`Upload completed successfully for ${file.name}!`)
+
+                  try {
+                      // Get the download URL
+                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+                      console.log(`Download URL for ${file.name}:`, downloadURL)
+
+                      // Determine file type
+                      const fileType = file.type.startsWith("image/") ? "image" : "video"
+
+                      // Log the successful upload
+                      const currentUser = auth.currentUser
+                      const userId = currentUser?.uid || undefined
+                      const userEmail = currentUser?.email || undefined
+
+                      mediaLogger.info(
+                        `Uploaded ${fileType}: ${file.name}`,
                         {
-                            error,
+                            path: `${folder}/${uniqueName}`,
+                            size: formatFileSize(file.size),
+                            type: fileType,
                             userEmail: currentUser?.email, // Include email directly in details
                         },
                         currentUser?.uid,
-                    )
+                      )
 
-                    reject(error)
-                },
-                async () => {
-                    // Handle successful uploads
-                    console.log(`Upload completed successfully for ${file.name}!`)
+                      // Add record to media collection
+                      await addDoc(collection(db, "media"), {
+                          name: file.name,
+                          url: downloadURL,
+                          type: fileType,
+                          size: formatFileSize(file.size),
+                          path: `${folder}/${uniqueName}`,
+                          createdAt: Timestamp.now(),
+                          deleted: false, // Initialize as not deleted
+                      })
 
-                    try {
-                        // Get the download URL
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
-                        console.log(`Download URL for ${file.name}:`, downloadURL)
+                      resolve(downloadURL)
+                  } catch (urlError) {
+                      // Log the error
+                      const currentUser = auth.currentUser
+                      mediaLogger.error(
+                        `Failed to get download URL for ${file.name}`,
+                        {
+                            urlError,
+                            userEmail: currentUser?.email, // Include email directly in details
+                        },
+                        currentUser?.uid,
+                      )
 
-                        // Determine file type
-                        const fileType = file.type.startsWith("image/") ? "image" : "video"
-
-                        // Log the successful upload
-                        const currentUser = auth.currentUser
-                        const userId = currentUser?.uid || undefined
-                        const userEmail = currentUser?.email || undefined
-
-                        mediaLogger.info(
-                            `Uploaded ${fileType}: ${file.name}`,
-                            {
-                                path: `${folder}/${uniqueName}`,
-                                size: formatFileSize(file.size),
-                                type: fileType,
-                                userEmail: currentUser?.email, // Include email directly in details
-                            },
-                            currentUser?.uid,
-                        )
-
-                        // Add record to media collection
-                        await addDoc(collection(db, "media"), {
-                            name: file.name,
-                            url: downloadURL,
-                            type: fileType,
-                            size: formatFileSize(file.size),
-                            path: `${folder}/${uniqueName}`,
-                            createdAt: Timestamp.now(),
-                            deleted: false, // Initialize as not deleted
-                        })
-
-                        resolve(downloadURL)
-                    } catch (urlError) {
-                        // Log the error
-                        const currentUser = auth.currentUser
-                        mediaLogger.error(
-                            `Failed to get download URL for ${file.name}`,
-                            {
-                                urlError,
-                                userEmail: currentUser?.email, // Include email directly in details
-                            },
-                            currentUser?.uid,
-                        )
-
-                        console.error(`Error getting download URL for ${file.name}:`, urlError)
-                        reject(urlError)
-                    }
-                },
+                      console.error(`Error getting download URL for ${file.name}:`, urlError)
+                      reject(urlError)
+                  }
+              },
             )
         } catch (error) {
             // Log the error
             const currentUser = auth.currentUser
             mediaLogger.error(
-                `Failed to initialize upload for ${file.name}`,
-                {
-                    error,
-                    userEmail: currentUser?.email, // Include email directly in details
-                },
-                currentUser?.uid,
+              `Failed to initialize upload for ${file.name}`,
+              {
+                  error,
+                  userEmail: currentUser?.email, // Include email directly in details
+              },
+              currentUser?.uid,
             )
 
             console.error("Error initializing upload:", error)
@@ -255,10 +255,18 @@ export async function uploadFileAndGetURL(
     })
 }
 
+// Create a cache for URL validation results
+const urlValidationCache = new Map<string, boolean>()
+
 // Add this function to safely check URLs without triggering cleanup
 export async function validateMediaUrl(url: string): Promise<boolean> {
     if (!url || url.includes("placeholder")) {
         return true // Skip placeholder images
+    }
+
+    // Check if we've already validated this URL
+    if (urlValidationCache.has(url)) {
+        return urlValidationCache.get(url) as boolean
     }
 
     try {
@@ -278,19 +286,24 @@ export async function validateMediaUrl(url: string): Promise<boolean> {
                 try {
                     // Just get metadata instead of full download
                     await getMetadata(fileRef)
+                    urlValidationCache.set(url, true)
                     return true
                 } catch (error: any) {
                     // Only return false for "object-not-found" errors
-                    return error.code !== "storage/object-not-found"
+                    const result = error.code !== "storage/object-not-found"
+                    urlValidationCache.set(url, result)
+                    return result
                 }
             }
         }
 
         // For other URLs, assume they're valid without checking
+        urlValidationCache.set(url, true)
         return true
     } catch (error) {
         console.error(`Error validating URL ${url}:`, error)
         // Assume URL is valid if we can't check it
+        urlValidationCache.set(url, true)
         return true
     }
 }
@@ -359,12 +372,12 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
             const userEmail = currentUser?.email || undefined
 
             mediaLogger.warn(
-                `Attempting to delete file from storage`,
-                {
-                    path: filePath,
-                    userEmail, // Include email directly in details
-                },
-                userId,
+              `Attempting to delete file from storage`,
+              {
+                  path: filePath,
+                  userEmail, // Include email directly in details
+              },
+              userId,
             )
 
             try {
@@ -377,12 +390,12 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
 
                 // Log the successful deletion
                 mediaLogger.info(
-                    `Successfully deleted file from storage`,
-                    {
-                        path: filePath,
-                        userEmail, // Include email directly in details
-                    },
-                    userId,
+                  `Successfully deleted file from storage`,
+                  {
+                      path: filePath,
+                      userEmail, // Include email directly in details
+                  },
+                  userId,
                 )
 
                 return true
@@ -393,12 +406,12 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
 
                     // Log the already deleted state
                     mediaLogger.info(
-                        `File already deleted from storage`,
-                        {
-                            path: filePath,
-                            userEmail, // Include email directly in details
-                        },
-                        userId,
+                      `File already deleted from storage`,
+                      {
+                          path: filePath,
+                          userEmail, // Include email directly in details
+                      },
+                      userId,
                     )
 
                     return true
@@ -406,13 +419,13 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
 
                 // Log the error
                 mediaLogger.error(
-                    `Failed to delete file from storage`,
-                    {
-                        path: filePath,
-                        error: deleteError,
-                        userEmail, // Include email directly in details
-                    },
-                    userId,
+                  `Failed to delete file from storage`,
+                  {
+                      path: filePath,
+                      error: deleteError,
+                      userEmail, // Include email directly in details
+                  },
+                  userId,
                 )
 
                 throw deleteError
@@ -429,13 +442,13 @@ export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
 
         // Log the error
         mediaLogger.error(
-            `Error deleting file from URL`,
-            {
-                url: fileUrl,
-                error,
-                userEmail, // Include email directly in details
-            },
-            userId,
+          `Error deleting file from URL`,
+          {
+              url: fileUrl,
+              error,
+              userEmail, // Include email directly in details
+          },
+          userId,
         )
 
         console.error(`Error deleting file ${fileUrl}:`, error)
@@ -576,14 +589,14 @@ export async function getAllMedia(includeDeleted = false): Promise<MediaItem[]> 
                 catId: data.catId,
                 catName: data.catName,
                 size: data.size || "Unknown",
-                createdAt: data.createdAt?.toDate() || new Date(),
+                createdAt: safeTimestampToDate(data.createdAt) || new Date(),
                 path: data.path || "",
                 deleted: data.deleted || false,
-                deletedAt: data.deletedAt?.toDate(),
+                deletedAt: safeTimestampToDate(data.deletedAt),
                 deletedBy: data.deletedBy,
                 locked: data.locked || false,
                 lockedReason: data.lockedReason || undefined,
-                lockedAt: data.lockedAt?.toDate(),
+                lockedAt: safeTimestampToDate(data.lockedAt),
                 lockedBy: data.lockedBy,
             })
         })
@@ -632,22 +645,22 @@ export async function getDeletedMedia(): Promise<MediaItem[]> {
                 catId: data.catId,
                 catName: data.catName,
                 size: data.size || "Unknown",
-                createdAt: data.createdAt?.toDate() || new Date(),
+                createdAt: safeTimestampToDate(data.createdAt) || new Date(),
                 path: data.path || "",
                 deleted: true,
-                deletedAt: data.deletedAt?.toDate(),
+                deletedAt: safeTimestampToDate(data.deletedAt),
                 deletedBy: data.deletedBy,
                 locked: data.locked || false,
                 lockedReason: data.lockedReason || undefined,
-                lockedAt: data.lockedAt?.toDate(),
+                lockedAt: safeTimestampToDate(data.lockedAt),
                 lockedBy: data.lockedBy,
             })
         })
 
         // Sort by deletion date, newest first
         return mediaItems.sort((a, b) => {
-            const dateA = a.deletedAt ? a.deletedAt.getTime() : 0
-            const dateB = b.deletedAt ? b.deletedAt.getTime() : 0
+            const dateA = a.deletedAt ? a.deletedAt.getTime() || 0 : 0
+            const dateB = b.deletedAt ? b.deletedAt.getTime() || 0 : 0
             return dateB - dateA
         })
     } catch (error) {
@@ -785,13 +798,13 @@ export async function lockMedia(item: MediaItem, reason: string): Promise<boolea
         // Log the action
         const currentUser = auth.currentUser
         mediaLogger.info(
-            `Locked media: ${item.name}`,
-            {
-                id: item.id,
-                reason,
-                userEmail: currentUser?.email,
-            },
-            currentUser?.uid,
+          `Locked media: ${item.name}`,
+          {
+              id: item.id,
+              reason,
+              userEmail: currentUser?.email,
+          },
+          currentUser?.uid,
         )
 
         return true
@@ -820,13 +833,13 @@ export async function unlockMedia(item: MediaItem): Promise<boolean> {
         // Log the action
         const currentUser = auth.currentUser
         mediaLogger.warn(
-            `Unlocked media: ${item.name}`,
-            {
-                id: item.id,
-                path: item.path,
-                userEmail: currentUser?.email,
-            },
-            currentUser?.uid,
+          `Unlocked media: ${item.name}`,
+          {
+              id: item.id,
+              path: item.path,
+              userEmail: currentUser?.email,
+          },
+          currentUser?.uid,
         )
 
         return true
@@ -850,14 +863,14 @@ export async function softDeleteMedia(mediaItem: MediaItem): Promise<boolean> {
             // Log the attempted deletion
             const currentUser = auth.currentUser
             mediaLogger.warn(
-                `Attempted to delete locked media: ${mediaItem.name}`,
-                {
-                    id: mediaItem.id,
-                    path: mediaItem.path,
-                    lockedReason: mediaItem.lockedReason,
-                    userEmail: currentUser?.email,
-                },
-                currentUser?.uid,
+              `Attempted to delete locked media: ${mediaItem.name}`,
+              {
+                  id: mediaItem.id,
+                  path: mediaItem.path,
+                  lockedReason: mediaItem.lockedReason,
+                  userEmail: currentUser?.email,
+              },
+              currentUser?.uid,
             )
 
             return false
@@ -880,13 +893,13 @@ export async function softDeleteMedia(mediaItem: MediaItem): Promise<boolean> {
 
         // Log the soft deletion
         mediaLogger.info(
-            `Soft deleted media: ${mediaItem.name}`,
-            {
-                id: mediaItem.id,
-                path: mediaItem.path,
-                userEmail,
-            },
-            userId,
+          `Soft deleted media: ${mediaItem.name}`,
+          {
+              id: mediaItem.id,
+              path: mediaItem.path,
+              userEmail,
+          },
+          userId,
         )
 
         return true
@@ -896,13 +909,13 @@ export async function softDeleteMedia(mediaItem: MediaItem): Promise<boolean> {
         // Log the error
         const currentUser = auth.currentUser
         mediaLogger.error(
-            `Failed to soft delete media: ${mediaItem.name}`,
-            {
-                error,
-                id: mediaItem.id,
-                userEmail: currentUser?.email,
-            },
-            currentUser?.uid,
+          `Failed to soft delete media: ${mediaItem.name}`,
+          {
+              error,
+              id: mediaItem.id,
+              userEmail: currentUser?.email,
+          },
+          currentUser?.uid,
         )
 
         return false
@@ -940,13 +953,13 @@ export async function restoreMedia(mediaItem: MediaItem): Promise<boolean> {
 
         // Log the restoration
         mediaLogger.info(
-            `Restored media: ${mediaItem.name}`,
-            {
-                id: mediaItem.id,
-                path: mediaItem.path,
-                userEmail,
-            },
-            userId,
+          `Restored media: ${mediaItem.name}`,
+          {
+              id: mediaItem.id,
+              path: mediaItem.path,
+              userEmail,
+          },
+          userId,
         )
 
         return true
@@ -956,13 +969,13 @@ export async function restoreMedia(mediaItem: MediaItem): Promise<boolean> {
         // Log the error
         const currentUser = auth.currentUser
         mediaLogger.error(
-            `Failed to restore media: ${mediaItem.name}`,
-            {
-                error,
-                id: mediaItem.id,
-                userEmail: currentUser?.email,
-            },
-            currentUser?.uid,
+          `Failed to restore media: ${mediaItem.name}`,
+          {
+              error,
+              id: mediaItem.id,
+              userEmail: currentUser?.email,
+          },
+          currentUser?.uid,
         )
 
         return false
@@ -983,14 +996,14 @@ export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
             // Log the attempted deletion
             const currentUser = auth.currentUser
             mediaLogger.warn(
-                `Attempted to permanently delete locked media: ${mediaItem.name}`,
-                {
-                    id: mediaItem.id,
-                    path: mediaItem.path,
-                    lockedReason: mediaItem.lockedReason,
-                    userEmail: currentUser?.email,
-                },
-                currentUser?.uid,
+              `Attempted to permanently delete locked media: ${mediaItem.name}`,
+              {
+                  id: mediaItem.id,
+                  path: mediaItem.path,
+                  lockedReason: mediaItem.lockedReason,
+                  userEmail: currentUser?.email,
+              },
+              currentUser?.uid,
             )
 
             return false
@@ -1008,12 +1021,12 @@ export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
 
                 // Log successful deletion
                 mediaLogger.info(
-                    `Deleted file from storage: ${mediaItem.path}`,
-                    {
-                        id: mediaItem.id,
-                        name: mediaItem.name,
-                    },
-                    userId,
+                  `Deleted file from storage: ${mediaItem.path}`,
+                  {
+                      id: mediaItem.id,
+                      name: mediaItem.name,
+                  },
+                  userId,
                 )
             } catch (storageError: any) {
                 // If the file doesn't exist (already deleted), just log and continue
@@ -1022,12 +1035,12 @@ export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
 
                     // Log already deleted state
                     mediaLogger.info(
-                        `File already deleted from storage`,
-                        {
-                            id: mediaItem.id,
-                            name: mediaItem.name,
-                        },
-                        userId,
+                      `File already deleted from storage`,
+                      {
+                          id: mediaItem.id,
+                          name: mediaItem.name,
+                      },
+                      userId,
                     )
                 } else {
                     console.error(`Error deleting from storage: ${mediaItem.path}`, storageError)
@@ -1054,12 +1067,12 @@ export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
 
             // Log successful Firestore deletion
             mediaLogger.info(
-                `Deleted media record from Firestore: ${mediaItem.id}`,
-                {
-                    name: mediaItem.name,
-                    type: mediaItem.type,
-                },
-                userId,
+              `Deleted media record from Firestore: ${mediaItem.id}`,
+              {
+                  name: mediaItem.name,
+                  type: mediaItem.type,
+              },
+              userId,
             )
 
             return true
@@ -1086,4 +1099,61 @@ function formatFileSize(bytes: number): string {
     if (bytes < 1024) return bytes + " B"
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
     else return (bytes / 1048576).toFixed(1) + " MB"
+}
+
+/**
+ * Helper function to safely convert Firestore timestamp to Date
+ * @param timestamp Firestore timestamp or null/undefined
+ * @returns Date object or undefined
+ */
+function safeTimestampToDate(timestamp: any): Date | undefined {
+    if (!timestamp) return undefined
+    if (typeof timestamp.toDate === "function") {
+        return timestamp.toDate()
+    }
+    return undefined
+}
+
+/**
+ * Gets a media item by ID
+ * @param mediaId The ID of the media to retrieve
+ * @returns The media item or null if not found
+ */
+export async function getMediaById(mediaId: string): Promise<MediaItem | null> {
+    try {
+        // Reference to the media document in Firestore
+        const mediaRef = doc(collection(db, "media"), mediaId)
+
+        // Get the document
+        const mediaDoc = await getDoc(mediaRef)
+
+        // Check if the document exists
+        if (!mediaDoc.exists()) {
+            return null
+        }
+
+        // Return the media item with its ID
+        const data = mediaDoc.data()
+        return {
+            id: mediaDoc.id,
+            name: data.name || "Unnamed file",
+            url: data.url,
+            type: data.type || "image",
+            catId: data.catId,
+            catName: data.catName,
+            size: data.size || "Unknown",
+            createdAt: safeTimestampToDate(data.createdAt) || new Date(),
+            path: data.path || "",
+            deleted: data.deleted || false,
+            deletedAt: safeTimestampToDate(data.deletedAt),
+            deletedBy: data.deletedBy,
+            locked: data.locked || false,
+            lockedReason: data.lockedReason || undefined,
+            lockedAt: safeTimestampToDate(data.lockedAt),
+            lockedBy: data.lockedBy,
+        } as MediaItem
+    } catch (error) {
+        console.error("Error getting media by ID:", error)
+        return null
+    }
 }

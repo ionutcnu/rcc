@@ -1,62 +1,98 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { mediaLogger } from "@/lib/utils/media-logger"
 
 export async function GET(request: NextRequest) {
-    try {
-        // Get the media URL from the query parameter
-        const { searchParams } = new URL(request.url)
-        const mediaUrl = searchParams.get("url")
+    const searchParams = request.nextUrl.searchParams
+    const url = searchParams.get("url")
+    const isPlaceholder = searchParams.get("placeholder") === "true"
+    const width = Number.parseInt(searchParams.get("width") || "200")
+    const height = Number.parseInt(searchParams.get("height") || "200")
 
-        if (!mediaUrl) {
-            return new NextResponse("Missing media URL", { status: 400 })
-        }
-
-        // Determine if this is likely a video based on URL
-        const isVideo = /\.(mp4|webm|mov|avi|wmv|flv|mkv)($|\?)/.test(mediaUrl.toLowerCase())
-
-        // Fetch the media through our server
-        const response = await fetch(mediaUrl, {
+    // If placeholder is requested, generate a simple SVG placeholder
+    if (isPlaceholder) {
+        const svg = generatePlaceholderSVG(width, height)
+        return new NextResponse(svg, {
             headers: {
-                // Accept both image and video content types
-                Accept: isVideo ? "video/*, */*" : "image/*, */*",
+                "Content-Type": "image/svg+xml",
+                "Cache-Control": "public, max-age=31536000, immutable", // Cache for a year
             },
+        })
+    }
+
+    // If no URL provided, return an error or placeholder
+    if (!url) {
+        const svg = generatePlaceholderSVG(width, height)
+        return new NextResponse(svg, {
+            headers: {
+                "Content-Type": "image/svg+xml",
+                "Cache-Control": "public, max-age=31536000, immutable",
+            },
+        })
+    }
+
+    try {
+        // Fetch the image from the provided URL
+        const response = await fetch(url, {
+            next: { revalidate: 3600 }, // Revalidate every hour
         })
 
         if (!response.ok) {
-            console.error(`Failed to fetch media: ${response.status} ${response.statusText}`)
-            return new NextResponse(`Failed to fetch media: ${response.status}`, { status: response.status })
+            // Log the error
+            mediaLogger.warn(`Image proxy failed to load: ${url}`, {
+                status: response.status,
+                statusText: response.statusText,
+            })
+
+            // Return a placeholder for failed images
+            const svg = generatePlaceholderSVG(width, height)
+            return new NextResponse(svg, {
+                headers: {
+                    "Content-Type": "image/svg+xml",
+                    "Cache-Control": "public, max-age=300", // Cache for 5 minutes
+                },
+            })
         }
 
-        // Get the media data
-        const mediaData = await response.arrayBuffer()
+        // Get the original image's content type
+        const contentType = response.headers.get("Content-Type") || "image/jpeg"
 
-        // Get content type from original response or determine a default based on URL
-        let contentType = response.headers.get("content-type")
+        // Get the image data
+        const imageData = await response.arrayBuffer()
 
-        if (!contentType) {
-            // Try to determine content type from URL if not provided in response
-            if (isVideo) {
-                contentType = "video/mp4" // Default video type
-            } else {
-                contentType = "image/jpeg" // Default image type
-            }
-        }
-
-        // Log successful proxy for debugging
-        console.log(`Successfully proxied ${isVideo ? "video" : "image"}: ${mediaUrl.substring(0, 100)}...`)
-
-        // Return the media with appropriate headers
-        return new NextResponse(mediaData, {
+        // Return the image with appropriate headers
+        return new NextResponse(imageData, {
             headers: {
                 "Content-Type": contentType,
-                "Cache-Control": "public, max-age=86400", // Cache for 24 hours
-                "Access-Control-Allow-Origin": "*", // Allow any origin to access this resource
-                "Accept-Ranges": "bytes", // Important for video seeking
+                "Cache-Control": "public, max-age=86400", // Cache for a day
             },
         })
     } catch (error) {
-        console.error("Error proxying media:", error)
-        return new NextResponse(`Error proxying media: ${error instanceof Error ? error.message : "Unknown error"}`, {
-            status: 500,
+        console.error("Image proxy error:", error)
+
+        // Log the error
+        mediaLogger.error(`Image proxy error for URL: ${url}`, {
+            error: error instanceof Error ? error.message : "Unknown error",
+        })
+
+        // Return a placeholder for errors
+        const svg = generatePlaceholderSVG(width, height)
+        return new NextResponse(svg, {
+            headers: {
+                "Content-Type": "image/svg+xml",
+                "Cache-Control": "public, max-age=300", // Cache for 5 minutes
+            },
         })
     }
+}
+
+// Generate a simple SVG placeholder
+function generatePlaceholderSVG(width: number, height: number): string {
+    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${width}" height="${height}" fill="#f1f5f9" />
+    <svg x="${width / 2 - 20}" y="${height / 2 - 20}" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 9C3 7.89543 3.89543 7 5 7H7L8 5H16L17 7H19C20.1046 7 21 7.89543 21 9V18C21 19.1046 20.1046 20 19 20H5C3.89543 20 3 19.1046 3 18V9Z" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="13" r="3" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <text x="50%" y="85%" font-family="Arial, sans-serif" font-size="12" fill="#64748b" text-anchor="middle">Image not available</text>
+  </svg>`
 }

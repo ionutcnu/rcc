@@ -84,3 +84,26 @@ export async function revokeSessionCookie() {
         return { success: true }
     }
 }
+
+// Add a function to get the current user information for API requests
+export async function getCurrentUserForApi() {
+    try {
+        // We can't access localStorage on the server, so we need to use cookies or session
+        const cookieStore = await cookies()
+        const sessionCookie = cookieStore.get("session")?.value
+
+        if (!sessionCookie) {
+            return { userId: null, userEmail: null }
+        }
+
+        const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
+
+        return {
+            userId: decodedClaims.uid || null,
+            userEmail: decodedClaims.email || null,
+        }
+    } catch (error) {
+        console.error("Error getting current user for API:", error)
+        return { userId: null, userEmail: null }
+    }
+}
