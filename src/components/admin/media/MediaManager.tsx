@@ -15,7 +15,6 @@ import {
     type MediaItem,
     deleteMedia,
     uploadFileAndGetURL,
-    softDeleteMedia,
     restoreMedia,
     unlockMedia,
 } from "@/lib/firebase/storageService"
@@ -47,7 +46,7 @@ const urlValidationCache = new Map<string, { valid: boolean; timestamp: number }
 const URL_CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour in milliseconds
 
 // Import the new API client at the top of the file
-import { fetchActiveMedia, lockMediaItem } from "@/lib/api/mediaClient"
+import { fetchActiveMedia, lockMediaItem, moveMediaToTrash } from "@/lib/api/mediaClient"
 
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -433,17 +432,16 @@ export default function MediaManager() {
             const { userId, userEmail } = getCurrentUserInfo()
 
             if (deleteMode === "soft") {
-                // Perform soft delete
-                mediaLogger.mediaDelete(mediaToDelete.id, mediaToDelete.path || mediaToDelete.url, userId, true)
+                // Use the new API client function to move to trash
+                const result = await moveMediaToTrash(mediaToDelete.id)
 
-                const success = await softDeleteMedia(mediaToDelete)
-                if (success) {
+                if (result.success) {
                     // Move the item from active to deleted
                     setMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
                     setDeletedMediaItems((prev) => [{ ...mediaToDelete, deleted: true, deletedAt: new Date() }, ...prev])
                     showPopup("Media moved to trash")
                 } else {
-                    showPopup("Failed to move media to trash")
+                    showPopup(`Failed to move media to trash: ${result.error || "Unknown error"}`)
                 }
             } else {
                 // Perform permanent delete
@@ -508,6 +506,70 @@ export default function MediaManager() {
         }
     }
 
+    // Add a new function to handle bulk move to trash
+    const handleBulkMoveToTrash = async (items: MediaItem[]) => {
+        if (items.length === 0) return
+
+        try {
+            setIsBulkProcessing(true)
+            showPopup(`Moving ${items.length} items to trash...`)
+
+            let successCount = 0
+            let failCount = 0
+            const errors: string[] = []
+
+            // Process each item
+            for (const item of items) {
+                try {
+                    // Use the new API client function
+                    const result = await moveMediaToTrash(item.id)
+
+                    if (result.success) {
+                        successCount++
+                    } else {
+                        failCount++
+                        errors.push(`Failed to move ${item.name || item.id} to trash: ${result.error}`)
+                    }
+                } catch (err: any) {
+                    console.error(`Error moving media item ${item.id} to trash:`, err)
+                    failCount++
+                    errors.push(`Error moving ${item.name || item.id} to trash: ${err.message || "Unknown error"}`)
+                }
+            }
+
+            // Update the UI - remove trashed items from the active view
+            if (successCount > 0) {
+                const trashedItemIds = items.map((item) => item.id)
+                setMediaItems((prevItems) => prevItems.filter((item) => !trashedItemIds.includes(item.id)))
+                setDeletedMediaItems((prevItems) => [
+                    ...prevItems,
+                    ...items.map((item) => ({ ...item, deleted: true, deletedAt: new Date() })),
+                ])
+            }
+
+            // Show result message
+            if (failCount === 0) {
+                showPopup(`Successfully moved ${successCount} items to trash`)
+            } else {
+                showPopup(`Moved ${successCount} items to trash, failed to move ${failCount} items`)
+                console.error("Move to trash errors:", errors)
+            }
+
+            // Clear selected items
+            setSelectedItems([])
+        } catch (error: any) {
+            console.error("Error performing bulk move to trash:", error)
+            showPopup(`Error moving items to trash: ${error.message || "Unknown error"}`)
+        } finally {
+            setBulkActionDialogOpen(false)
+            setBulkAction(null)
+            setIsBulkProcessing(false)
+        }
+    }
+
+    // Now update the confirmBulkAction function to use this new function for soft deletes
+    // Replace the existing confirmBulkAction function with this implementation:
+
     // Function to confirm bulk operations
     const confirmBulkAction = async () => {
         if (!bulkAction) return
@@ -540,18 +602,9 @@ export default function MediaManager() {
                 setMediaItems(mediaItems.filter((item) => !items.includes(item)))
                 showPopup(`Successfully deleted ${items.length} items`)
             } else if (type === "softDelete") {
-                // Soft delete each item
-                for (const item of items) {
-                    await softDeleteMedia(item)
-                }
-
-                // Update the UI
-                setMediaItems(mediaItems.filter((item) => !items.includes(item)))
-                setDeletedMediaItems([
-                    ...items.map((item) => ({ ...item, deleted: true, deletedAt: new Date() })),
-                    ...deletedMediaItems,
-                ])
-                showPopup(`Successfully moved ${items.length} items to trash`)
+                // Use the new bulk move to trash function
+                await handleBulkMoveToTrash(items)
+                return // The function above handles all UI updates and messages
             } else if (type === "restore") {
                 // Restore each item
                 for (const item of items) {

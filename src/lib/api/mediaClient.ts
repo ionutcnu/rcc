@@ -270,6 +270,69 @@ export async function lockMediaItem(
   }
 }
 
+// Add this function after the lockMediaItem function
+
+/**
+ * Moves a media item to trash via the API
+ * @param mediaId The ID of the media to move to trash
+ * @returns The result of the operation
+ */
+export async function moveMediaToTrash(
+  mediaId: string,
+): Promise<{ success: boolean; media?: MediaItem; error?: string }> {
+  try {
+    console.log(`Moving media item with ID: ${mediaId} to trash`)
+
+    if (!mediaId) {
+      console.error("Media ID is missing")
+      return {
+        success: false,
+        error: "Media ID is required",
+      }
+    }
+
+    const response = await fetch("/api/media/trash/move", {
+      method: "POST",
+      credentials: "include", // Important: This ensures cookies are sent with the request
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mediaId,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error("Error response from move to trash API:", data)
+      return {
+        success: false,
+        error: data.error || "Failed to move media to trash",
+      }
+    }
+
+    // Clear any cached data
+    const cacheKeys = ["active-media-false", "active-media-true", "locked-media", "trash-media"]
+    cacheKeys.forEach((key) => {
+      if (apiCache.has(key)) {
+        apiCache.delete(key)
+      }
+    })
+
+    return {
+      success: true,
+      media: data.media as MediaItem,
+    }
+  } catch (error) {
+    console.error("Error in moveMediaToTrash:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    }
+  }
+}
+
 /**
  * Custom hook for fetching media with built-in caching and deduplication
  * @param type The type of media to fetch: 'active', 'locked', or 'trash'
