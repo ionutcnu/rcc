@@ -2,7 +2,6 @@
 
 import React from "react"
 import type { MediaItem } from "@/lib/firebase/storageService"
-import { deduplicateRequest } from "./requestDeduplicator"
 
 // Define the response type
 export interface MediaApiResponse {
@@ -15,6 +14,35 @@ export interface MediaApiResponse {
 // Create a cache for API responses
 const apiCache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_EXPIRY = 60000 // 1 minute cache expiry
+
+// Request deduplication mechanism
+const pendingRequests = new Map<string, Promise<any>>()
+
+/**
+ * Deduplicates requests by key
+ * @param key Unique key for the request
+ * @param requestFn Function that performs the actual request
+ * @returns Promise with the result
+ */
+export function deduplicateRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
+  // If there's already a pending request with this key, return it
+  if (pendingRequests.has(key)) {
+    console.log(`Request '${key}' already in progress, reusing promise`)
+    return pendingRequests.get(key) as Promise<T>
+  }
+
+  // Create a new request
+  console.log(`Creating new request for '${key}'`)
+  const promise = requestFn().finally(() => {
+    // Remove from pending requests when done (success or failure)
+    pendingRequests.delete(key)
+    console.log(`Request '${key}' completed and removed from tracking`)
+  })
+
+  // Store the promise
+  pendingRequests.set(key, promise)
+  return promise
+}
 
 /**
  * Fetches active media from the API
@@ -158,6 +186,60 @@ export async function fetchTrashMedia(): Promise<MediaApiResponse> {
     } catch (error) {
       console.error("Error fetching trash media:", error)
       throw error
+    }
+  })
+}
+
+/**
+ * Moves a media item to trash via the API
+ * @param mediaId The ID of the media to move to trash
+ * @returns Promise with the result
+ */
+export async function moveMediaToTrash(mediaId: string) {
+  return deduplicateRequest(`moveToTrash-${mediaId}`, async () => {
+    try {
+      console.log(`Moving media item with ID: ${mediaId} to trash`)
+      const response = await fetch("/api/media/trash/move", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mediaId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        console.error("Error moving media to trash:", data)
+        return {
+          success: false,
+          error: data.error || `Failed to move media to trash (${response.status})`,
+          code: data.code || "unknown",
+          locked: data.locked || false,
+          lockedReason: data.lockedReason,
+        }
+      }
+
+      // Clear any cached data
+      const cacheKeys = ["active-media-false", "active-media-true", "locked-media", "trash-media"]
+      cacheKeys.forEach((key) => {
+        if (apiCache.has(key)) {
+          apiCache.delete(key)
+        }
+      })
+
+      return {
+        success: true,
+        media: data.media,
+        message: data.message,
+      }
+    } catch (error) {
+      console.error("Error in moveMediaToTrash:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }
     }
   })
 }

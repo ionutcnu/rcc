@@ -45,7 +45,7 @@ const urlValidationCache = new Map<string, { valid: boolean; timestamp: number }
 const URL_CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour in milliseconds
 
 // Import the new API client at the top of the file
-import { fetchActiveMedia, lockMediaItem } from "@/lib/api/mediaClient"
+import { fetchActiveMedia, lockMediaItem, moveMediaToTrash } from "@/lib/api/mediaClient"
 
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -340,17 +340,22 @@ export default function MediaManager() {
             const { userId, userEmail } = getCurrentUserInfo()
 
             if (deleteMode === "soft") {
-                // Perform soft delete
-                mediaLogger.mediaDelete(mediaToDelete.id, mediaToDelete.path || mediaToDelete.url, userId, true)
+                // Use the existing API client function instead of direct Firebase access
+                console.log("Using API to move media to trash:", mediaToDelete.id)
+                const result = await moveMediaToTrash(mediaToDelete.id)
 
-                const success = await softDeleteMedia(mediaToDelete)
-                if (success) {
+                if (result.success) {
                     // Move the item from active to deleted
                     setMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
                     setDeletedMediaItems((prev) => [{ ...mediaToDelete, deleted: true, deletedAt: new Date() }, ...prev])
                     showPopup("Media moved to trash")
                 } else {
-                    showPopup("Failed to move media to trash")
+                    // Check if the media is locked
+                    if (result.locked) {
+                        showPopup(`Cannot move locked media to trash: ${result.lockedReason || "Unknown reason"}`)
+                    } else {
+                        showPopup(`Failed to move media to trash: ${result.error || "Unknown error"}`)
+                    }
                 }
             } else {
                 // Perform permanent delete
