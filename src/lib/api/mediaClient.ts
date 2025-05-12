@@ -296,6 +296,63 @@ export async function restoreMediaFromTrash(
 }
 
 /**
+ * Permanently deletes a media item from trash
+ * @param mediaId The ID of the media to delete permanently
+ * @returns Promise with the result of the operation
+ */
+export async function deleteMediaPermanently(
+  mediaId: string,
+): Promise<{ success: boolean; message?: string; error?: string; locked?: boolean; lockedReason?: string }> {
+  return deduplicateRequest(`deleteMediaPermanently-${mediaId}`, async () => {
+    try {
+      console.log(`Permanently deleting media item with ID: ${mediaId}`)
+
+      const response = await fetch(`/api/media/trash/delete`, {
+        method: "POST",
+        credentials: "include", // Important: This ensures cookies are sent with the request
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mediaId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        console.error("Error response from delete media API:", data)
+        return {
+          success: false,
+          error: data.error || "Failed to delete media",
+          locked: data.locked,
+          lockedReason: data.lockedReason,
+        }
+      }
+
+      // Clear cache for media lists
+      const cacheKeys = ["active-media-false", "active-media-true", "locked-media", "trash-media"]
+      cacheKeys.forEach((key) => {
+        if (apiCache.has(key)) {
+          apiCache.delete(key)
+        }
+      })
+
+      return {
+        success: true,
+        message: data.message || "Media permanently deleted",
+      }
+    } catch (error) {
+      console.error("Error in deleteMediaPermanently:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }
+    }
+  })
+}
+
+/**
  * Downloads a media file through the API
  * @param mediaId The ID of the media to download
  * @param fileName Optional filename for the downloaded file

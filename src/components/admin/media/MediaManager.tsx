@@ -9,14 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import { SimpleConfirmDialog } from "@/components/ui/simple-confirm-dialog"
-import {
-    type MediaItem,
-    deleteMedia,
-    uploadFileAndGetURL,
-    softDeleteMedia,
-    restoreMedia,
-    unlockMedia,
-} from "@/lib/firebase/storageService"
+import { type MediaItem, unlockMedia } from "@/lib/firebase/storageService"
 import { mediaLogger } from "@/lib/utils/media-logger"
 import { auth } from "@/lib/firebase/firebaseConfig"
 import { getCurrentUserInfo } from "@/lib/utils/user-info"
@@ -45,7 +38,13 @@ const urlValidationCache = new Map<string, { valid: boolean; timestamp: number }
 const URL_CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour in milliseconds
 
 // Import the new API client at the top of the file
-import { fetchActiveMedia, lockMediaItem, moveMediaToTrash, restoreMediaFromTrash } from "@/lib/api/mediaClient"
+import {
+    fetchActiveMedia,
+    lockMediaItem,
+    moveMediaToTrash,
+    restoreMediaFromTrash,
+    deleteMediaPermanently,
+} from "@/lib/api/mediaClient"
 
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -336,11 +335,11 @@ export default function MediaManager() {
         if (!mediaToDelete) return
 
         try {
-            // Get user info for logging
-            const { userId, userEmail } = getCurrentUserInfo()
+            // Show loading state
+            showPopup(deleteMode === "soft" ? "Moving media to trash..." : "Permanently deleting media...")
 
             if (deleteMode === "soft") {
-                // Use the existing API client function instead of direct Firebase access
+                // Use the existing API client function
                 console.log("Using API to move media to trash:", mediaToDelete.id)
                 const result = await moveMediaToTrash(mediaToDelete.id)
 
@@ -358,17 +357,22 @@ export default function MediaManager() {
                     }
                 }
             } else {
-                // Perform permanent delete
-                mediaLogger.mediaDelete(mediaToDelete.id, mediaToDelete.path || mediaToDelete.url, userId, false)
+                // Use the new API client function for permanent deletion
+                console.log("Using API to permanently delete media:", mediaToDelete.id)
+                const result = await deleteMediaPermanently(mediaToDelete.id)
 
-                const success = await deleteMedia(mediaToDelete)
-                if (success) {
+                if (result.success) {
                     // Remove the deleted item from both states
                     setMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
                     setDeletedMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
                     showPopup("Media permanently deleted")
                 } else {
-                    showPopup("Failed to delete media")
+                    // Check if the media is locked
+                    if (result.locked) {
+                        showPopup(`Cannot delete locked media: ${result.lockedReason || "Unknown reason"}`)
+                    } else {
+                        showPopup(`Failed to delete media: ${result.error || "Unknown error"}`)
+                    }
                 }
             }
         } catch (err) {
@@ -437,18 +441,42 @@ export default function MediaManager() {
 
             // Perform the bulk operation
             if (type === "delete") {
-                // Delete each item
+                // Delete each item using the API
+                let successCount = 0
+                let failCount = 0
+                const errors: string[] = []
+
                 for (const item of items) {
-                    await deleteMedia(item)
+                    try {
+                        const result = await deleteMediaPermanently(item.id)
+                        if (result.success) {
+                            successCount++
+                        } else {
+                            failCount++
+                            errors.push(`Failed to delete ${item.name || item.id}: ${result.error || "Unknown error"}`)
+                        }
+                    } catch (err) {
+                        failCount++
+                        errors.push(
+                          `Error deleting ${item.name || item.id}: ${err instanceof Error ? err.message : "Unknown error"}`,
+                        )
+                    }
                 }
 
                 // Update the UI
-                setMediaItems(mediaItems.filter((item) => !items.includes(item)))
-                showPopup(`Successfully deleted ${items.length} items`)
+                setDeletedMediaItems((prev) => prev.filter((item) => !items.some((i) => i.id === item.id)))
+
+                // Show result message
+                if (failCount === 0) {
+                    showPopup(`Successfully deleted ${successCount} items`)
+                } else {
+                    showPopup(`Deleted ${successCount} items, failed to delete ${failCount} items`)
+                    console.error("Delete errors:", errors)
+                }
             } else if (type === "softDelete") {
                 // Soft delete each item
                 for (const item of items) {
-                    await softDeleteMedia(item)
+                    await moveMediaToTrash(item.id)
                 }
 
                 // Update the UI
@@ -461,7 +489,7 @@ export default function MediaManager() {
             } else if (type === "restore") {
                 // Restore each item
                 for (const item of items) {
-                    await restoreMedia(item)
+                    await restoreMediaFromTrash(item.id)
                 }
 
                 // Update the UI
@@ -528,26 +556,59 @@ export default function MediaManager() {
                         : null,
                     )
 
-                    // Determine folder based on file type
-                    const folder = file.type.startsWith("image/") ? "images" : "videos"
-
                     try {
-                        // Create a custom upload function that reports progress
-                        await uploadFileWithProgress(file, folder, (progress) => {
-                            setUploadProgress((prev) => {
-                                if (!prev) return null
+                        // Determine folder based on file type
+                        const folder = file.type.startsWith("image/") ? "images" : "videos"
 
-                                const fileWeight = 1 / prev.totalFiles
-                                const currentFileContribution = progress * fileWeight
-                                const completedFilesContribution = prev.completedFiles * fileWeight
+                        // Create form data for the upload
+                        const formData = new FormData()
+                        formData.append("file", file)
+                        formData.append("folder", folder)
 
-                                return {
-                                    ...prev,
-                                    currentFileProgress: progress,
-                                    overallProgress: Math.round((completedFilesContribution + currentFileContribution) * 100),
-                                }
-                            })
+                        // Use XMLHttpRequest instead of fetch to track upload progress
+                        const xhr = new XMLHttpRequest()
+
+                        // Set up progress tracking
+                        xhr.upload.addEventListener("progress", (event) => {
+                            if (event.lengthComputable) {
+                                const progress = event.loaded / event.total
+                                setUploadProgress((prev) => {
+                                    if (!prev) return null
+
+                                    const fileWeight = 1 / prev.totalFiles
+                                    const currentFileContribution = progress * fileWeight
+                                    const completedFilesContribution = prev.completedFiles * fileWeight
+
+                                    return {
+                                        ...prev,
+                                        currentFileProgress: progress,
+                                        overallProgress: Math.round((completedFilesContribution + currentFileContribution) * 100),
+                                    }
+                                })
+                            }
                         })
+
+                        // Create a promise to handle the XHR response
+                        const uploadPromise = new Promise<void>((resolve, reject) => {
+                            xhr.onload = () => {
+                                if (xhr.status >= 200 && xhr.status < 300) {
+                                    resolve()
+                                } else {
+                                    reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`))
+                                }
+                            }
+
+                            xhr.onerror = () => {
+                                reject(new Error("Network error occurred during upload"))
+                            }
+                        })
+
+                        // Open and send the request
+                        xhr.open("POST", "/api/media/upload", true)
+                        xhr.send(formData)
+
+                        // Wait for the upload to complete
+                        await uploadPromise
 
                         // Update completed files count
                         setUploadProgress((prev) => {
@@ -595,42 +656,6 @@ export default function MediaManager() {
 
         // Trigger file selection
         input.click()
-    }
-
-    // Custom upload function that reports progress
-    const uploadFileWithProgress = (
-      file: File,
-      folder: string,
-      onProgress: (progress: number) => void,
-    ): Promise<string> => {
-        return new Promise(async (resolve, reject) => {
-            try {
-                // Create a unique file name using the existing pattern from storageService.ts
-                const uniqueName = `${crypto.randomUUID()}-${file.name}`
-
-                // Get Firebase storage reference and other utilities from the existing code
-                // This is a simplified version - in production you'd use the actual Firebase functions
-
-                // Simulate upload with progress
-                let progress = 0
-                const interval = setInterval(() => {
-                    progress += Math.random() * 10
-                    if (progress > 100) progress = 100
-                    onProgress(progress / 100)
-
-                    if (progress >= 100) {
-                        clearInterval(interval)
-
-                        // Call the actual upload function from your service
-                        uploadFileAndGetURL(file, folder)
-                          .then((url) => resolve(url))
-                          .catch((err) => reject(err))
-                    }
-                }, 200)
-            } catch (error) {
-                reject(error)
-            }
-        })
     }
 
     // Function to handle direct file download
