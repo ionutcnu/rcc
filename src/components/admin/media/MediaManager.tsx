@@ -10,11 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import { SimpleConfirmDialog } from "@/components/ui/simple-confirm-dialog"
 import {
-    getAllMedia,
-    getDeletedMedia,
     type MediaItem,
     deleteMedia,
     uploadFileAndGetURL,
+    softDeleteMedia,
     restoreMedia,
     unlockMedia,
 } from "@/lib/firebase/storageService"
@@ -46,7 +45,7 @@ const urlValidationCache = new Map<string, { valid: boolean; timestamp: number }
 const URL_CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour in milliseconds
 
 // Import the new API client at the top of the file
-import { fetchActiveMedia, lockMediaItem, moveMediaToTrash } from "@/lib/api/mediaClient"
+import { fetchActiveMedia, lockMediaItem } from "@/lib/api/mediaClient"
 
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -102,105 +101,13 @@ export default function MediaManager() {
     const [lockDialogOpen, setLockDialogOpen] = useState(false)
     const [mediaToLock, setMediaToLock] = useState<MediaItem | null>(null)
 
-    // Fetch media on component mount
-    const fetchMedia = async () => {
-        try {
-            setLoading(true)
-
-            // Fetch active media (not deleted and not locked)
-            const activeMedia = await getAllMedia(false)
-            setMediaItems(activeMedia.filter((item) => !item.locked))
-
-            // Fetch locked media
-            const lockedMedia = await getAllMedia(false)
-            setLockedMediaItems(lockedMedia.filter((item) => item.locked))
-
-            // Fetch deleted media separately
-            const deletedMedia = await getDeletedMedia()
-            setDeletedMediaItems(deletedMedia)
-
-            // Check for potential issues
-            const validMedia = activeMedia.filter((item) => item.url && item.url.trim() !== "")
-            const potentialIssues: MediaItem[] = []
-
-            // Use Promise.allSettled to prevent one failure from stopping the whole process
-            const checkPromises = validMedia.map(
-              (item) =>
-                new Promise<void>(async (resolve) => {
-                    try {
-                        // Check if URL has been recently validated
-                        const now = Date.now()
-                        const cachedResult = urlValidationCache.get(item.url)
-                        if (cachedResult && now - cachedResult.timestamp < URL_CACHE_EXPIRY) {
-                            // Use cached result if not expired
-                            if (!cachedResult.valid) {
-                                potentialIssues.push(item)
-                            }
-                            resolve()
-                            return // Skip further validation
-                        }
-
-                        // Skip placeholder images and empty URLs
-                        if (!item.url || item.url.includes("placeholder")) {
-                            resolve()
-                            return
-                        }
-
-                        // Use a timeout to prevent hanging
-                        const controller = new AbortController()
-                        const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-                        try {
-                            const response = await fetch(item.url, {
-                                method: "HEAD",
-                                signal: controller.signal,
-                            })
-
-                            clearTimeout(timeoutId)
-
-                            // Store result in cache
-                            urlValidationCache.set(item.url, { valid: response.status !== 404, timestamp: now })
-
-                            if (response.status === 404) {
-                                console.log(`Found 404 for media item: ${item.name} (${item.id}) - manual review required`)
-                                potentialIssues.push(item)
-                            }
-                        } catch (error) {
-                            clearTimeout(timeoutId)
-                            console.error(`Error checking media URL ${item.url}:`, error)
-                            // Store failed validation in cache
-                            urlValidationCache.set(item.url, { valid: false, timestamp: now })
-                        }
-                    } catch (e) {
-                        console.error("Error in media validation:", e)
-                    } finally {
-                        resolve() // Always resolve to continue with other items
-                    }
-                }),
-            )
-
-            // Wait for all checks to complete
-            await Promise.allSettled(checkPromises)
-
-            // If issues found, show a notification
-            if (potentialIssues.length > 0) {
-                console.log(`Found ${potentialIssues.length} potential issues that need manual review`)
-                showPopup(`Found ${potentialIssues.length} items that may need review. No action taken.`)
-            }
-
-            // Update image and video counts
-            setImageCount(activeMedia.filter((item) => item.type === "image").length)
-            setVideoCount(activeMedia.filter((item) => item.type === "video").length)
-        } catch (err) {
-            console.error("Error fetching media:", err)
-            setError("Failed to load media files. Please try again later.")
-        } finally {
-            setLoading(false)
-        }
-    }
-
     // Fix: Use a ref to track if the component is mounted to prevent duplicate API calls
     const isMounted = React.useRef(false)
+    const hasLoadedMedia = React.useRef({
+        active: false,
+        locked: false,
+        trash: false,
+    })
 
     // Inside your MediaManager component, find the useEffect that loads media
     // and replace it with this:
@@ -218,6 +125,7 @@ export default function MediaManager() {
                 setMediaItems(result.media)
                 setImageCount(result.imageCount)
                 setVideoCount(result.videoCount)
+                hasLoadedMedia.current.active = true
             } catch (error) {
                 console.error("Error loading media:", error)
                 showPopup("Error loading media. Please try again.")
@@ -432,16 +340,17 @@ export default function MediaManager() {
             const { userId, userEmail } = getCurrentUserInfo()
 
             if (deleteMode === "soft") {
-                // Use the new API client function to move to trash
-                const result = await moveMediaToTrash(mediaToDelete.id)
+                // Perform soft delete
+                mediaLogger.mediaDelete(mediaToDelete.id, mediaToDelete.path || mediaToDelete.url, userId, true)
 
-                if (result.success) {
+                const success = await softDeleteMedia(mediaToDelete)
+                if (success) {
                     // Move the item from active to deleted
                     setMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
                     setDeletedMediaItems((prev) => [{ ...mediaToDelete, deleted: true, deletedAt: new Date() }, ...prev])
                     showPopup("Media moved to trash")
                 } else {
-                    showPopup(`Failed to move media to trash: ${result.error || "Unknown error"}`)
+                    showPopup("Failed to move media to trash")
                 }
             } else {
                 // Perform permanent delete
@@ -506,70 +415,6 @@ export default function MediaManager() {
         }
     }
 
-    // Add a new function to handle bulk move to trash
-    const handleBulkMoveToTrash = async (items: MediaItem[]) => {
-        if (items.length === 0) return
-
-        try {
-            setIsBulkProcessing(true)
-            showPopup(`Moving ${items.length} items to trash...`)
-
-            let successCount = 0
-            let failCount = 0
-            const errors: string[] = []
-
-            // Process each item
-            for (const item of items) {
-                try {
-                    // Use the new API client function
-                    const result = await moveMediaToTrash(item.id)
-
-                    if (result.success) {
-                        successCount++
-                    } else {
-                        failCount++
-                        errors.push(`Failed to move ${item.name || item.id} to trash: ${result.error}`)
-                    }
-                } catch (err: any) {
-                    console.error(`Error moving media item ${item.id} to trash:`, err)
-                    failCount++
-                    errors.push(`Error moving ${item.name || item.id} to trash: ${err.message || "Unknown error"}`)
-                }
-            }
-
-            // Update the UI - remove trashed items from the active view
-            if (successCount > 0) {
-                const trashedItemIds = items.map((item) => item.id)
-                setMediaItems((prevItems) => prevItems.filter((item) => !trashedItemIds.includes(item.id)))
-                setDeletedMediaItems((prevItems) => [
-                    ...prevItems,
-                    ...items.map((item) => ({ ...item, deleted: true, deletedAt: new Date() })),
-                ])
-            }
-
-            // Show result message
-            if (failCount === 0) {
-                showPopup(`Successfully moved ${successCount} items to trash`)
-            } else {
-                showPopup(`Moved ${successCount} items to trash, failed to move ${failCount} items`)
-                console.error("Move to trash errors:", errors)
-            }
-
-            // Clear selected items
-            setSelectedItems([])
-        } catch (error: any) {
-            console.error("Error performing bulk move to trash:", error)
-            showPopup(`Error moving items to trash: ${error.message || "Unknown error"}`)
-        } finally {
-            setBulkActionDialogOpen(false)
-            setBulkAction(null)
-            setIsBulkProcessing(false)
-        }
-    }
-
-    // Now update the confirmBulkAction function to use this new function for soft deletes
-    // Replace the existing confirmBulkAction function with this implementation:
-
     // Function to confirm bulk operations
     const confirmBulkAction = async () => {
         if (!bulkAction) return
@@ -602,9 +447,18 @@ export default function MediaManager() {
                 setMediaItems(mediaItems.filter((item) => !items.includes(item)))
                 showPopup(`Successfully deleted ${items.length} items`)
             } else if (type === "softDelete") {
-                // Use the new bulk move to trash function
-                await handleBulkMoveToTrash(items)
-                return // The function above handles all UI updates and messages
+                // Soft delete each item
+                for (const item of items) {
+                    await softDeleteMedia(item)
+                }
+
+                // Update the UI
+                setMediaItems(mediaItems.filter((item) => !items.includes(item)))
+                setDeletedMediaItems([
+                    ...items.map((item) => ({ ...item, deleted: true, deletedAt: new Date() })),
+                    ...deletedMediaItems,
+                ])
+                showPopup(`Successfully moved ${items.length} items to trash`)
             } else if (type === "restore") {
                 // Restore each item
                 for (const item of items) {
@@ -1047,6 +901,22 @@ export default function MediaManager() {
         setSizeFilter("all")
     }
 
+    // Declare fetchMedia function
+    const fetchMedia = async () => {
+        setIsLoading(true)
+        try {
+            const result = await fetchActiveMedia()
+            setMediaItems(result.media)
+            setImageCount(result.imageCount)
+            setVideoCount(result.videoCount)
+        } catch (error) {
+            console.error("Error loading media:", error)
+            showPopup("Error loading media. Please try again.")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     return (
       <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -1177,6 +1047,7 @@ export default function MediaManager() {
               </TabsContent>
 
               <TabsContent value="locked">
+                  {/* Use the useMedia hook in the LockedMediaManager component instead of fetching here */}
                   <LockedMediaManager />
               </TabsContent>
 

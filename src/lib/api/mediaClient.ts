@@ -2,6 +2,7 @@
 
 import React from "react"
 import type { MediaItem } from "@/lib/firebase/storageService"
+import { deduplicateRequest } from "./requestDeduplicator"
 
 // Define the response type
 export interface MediaApiResponse {
@@ -30,39 +31,42 @@ export async function fetchActiveMedia(includeLocked = false): Promise<MediaApiR
     return cachedData.data
   }
 
-  try {
-    const url = `/api/media/active${includeLocked ? "?includeLocked=true" : ""}`
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "include", // Important: This ensures cookies are sent with the request
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+  // Use the deduplicator to prevent duplicate requests
+  return deduplicateRequest(`fetchActiveMedia-${includeLocked}`, async () => {
+    try {
+      const url = `/api/media/active${includeLocked ? "?includeLocked=true" : ""}`
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include", // Important: This ensures cookies are sent with the request
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Authentication required. Please log in.")
-      } else if (response.status === 403) {
-        throw new Error("You do not have permission to access this resource.")
-      } else {
-        throw new Error(`API error: ${response.status} ${response.statusText}`)
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Authentication required. Please log in.")
+        } else if (response.status === 403) {
+          throw new Error("You do not have permission to access this resource.")
+        } else {
+          throw new Error(`API error: ${response.status} ${response.statusText}`)
+        }
       }
+
+      const data = await response.json()
+
+      // Cache the response
+      apiCache.set(cacheKey, {
+        data,
+        timestamp: now,
+      })
+
+      return data
+    } catch (error) {
+      console.error("Error fetching media:", error)
+      throw error
     }
-
-    const data = await response.json()
-
-    // Cache the response
-    apiCache.set(cacheKey, {
-      data,
-      timestamp: now,
-    })
-
-    return data
-  } catch (error) {
-    console.error("Error fetching media:", error)
-    throw error
-  }
+  })
 }
 
 /**
@@ -79,33 +83,37 @@ export async function fetchLockedMedia(): Promise<MediaApiResponse> {
     return cachedData.data
   }
 
-  try {
-    const response = await fetch("/api/media/locked", {
-      method: "GET",
-      credentials: "include", // Important: This ensures cookies are sent with the request
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+  // Use the deduplicator to prevent duplicate requests
+  return deduplicateRequest("fetchLockedMedia", async () => {
+    try {
+      console.log("Actually fetching locked media from API")
+      const response = await fetch("/api/media/locked", {
+        method: "GET",
+        credentials: "include", // Important: This ensures cookies are sent with the request
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      // Cache the response
+      apiCache.set(cacheKey, {
+        data,
+        timestamp: now,
+      })
+
+      return data
+    } catch (error) {
+      console.error("Error fetching locked media:", error)
+      throw error
     }
-
-    const data = await response.json()
-
-    // Cache the response
-    apiCache.set(cacheKey, {
-      data,
-      timestamp: now,
-    })
-
-    return data
-  } catch (error) {
-    console.error("Error fetching locked media:", error)
-    throw error
-  }
+  })
 }
 
 /**
@@ -122,33 +130,36 @@ export async function fetchTrashMedia(): Promise<MediaApiResponse> {
     return cachedData.data
   }
 
-  try {
-    const response = await fetch("/api/media/trash", {
-      method: "GET",
-      credentials: "include", // Important: This sends cookies with the request
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+  // Use the deduplicator to prevent duplicate requests
+  return deduplicateRequest("fetchTrashMedia", async () => {
+    try {
+      const response = await fetch("/api/media/trash", {
+        method: "GET",
+        credentials: "include", // Important: This sends cookies with the request
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      // Cache the response
+      apiCache.set(cacheKey, {
+        data,
+        timestamp: now,
+      })
+
+      return data
+    } catch (error) {
+      console.error("Error fetching trash media:", error)
+      throw error
     }
-
-    const data = await response.json()
-
-    // Cache the response
-    apiCache.set(cacheKey, {
-      data,
-      timestamp: now,
-    })
-
-    return data
-  } catch (error) {
-    console.error("Error fetching trash media:", error)
-    throw error
-  }
+  })
 }
 
 /**
@@ -270,67 +281,54 @@ export async function lockMediaItem(
   }
 }
 
-// Add this function after the lockMediaItem function
-
 /**
- * Moves a media item to trash via the API
- * @param mediaId The ID of the media to move to trash
- * @returns The result of the operation
+ * Unlocks a media item via the API
+ * @param mediaId The ID of the media to unlock
+ * @returns Promise with the result
  */
-export async function moveMediaToTrash(
-  mediaId: string,
-): Promise<{ success: boolean; media?: MediaItem; error?: string }> {
+export async function unlockMediaItem(mediaId: string) {
   try {
-    console.log(`Moving media item with ID: ${mediaId} to trash`)
-
-    if (!mediaId) {
-      console.error("Media ID is missing")
-      return {
-        success: false,
-        error: "Media ID is required",
-      }
-    }
-
-    const response = await fetch("/api/media/trash/move", {
+    const response = await fetch("/api/media/unlock", {
       method: "POST",
-      credentials: "include", // Important: This ensures cookies are sent with the request
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        mediaId,
-      }),
+      body: JSON.stringify({ mediaId }),
     })
 
-    const data = await response.json()
-
     if (!response.ok) {
-      console.error("Error response from move to trash API:", data)
+      const errorData = await response.json()
+      console.error("Error unlocking media:", errorData)
       return {
         success: false,
-        error: data.error || "Failed to move media to trash",
+        error: errorData.error || `Failed to unlock media (${response.status})`,
+        code: errorData.code || "unknown",
       }
     }
 
-    // Clear any cached data
-    const cacheKeys = ["active-media-false", "active-media-true", "locked-media", "trash-media"]
+    // Clear any cached data after successful unlock
+    const cacheKeys = ["active-media-false", "active-media-true", "locked-media"]
     cacheKeys.forEach((key) => {
       if (apiCache.has(key)) {
         apiCache.delete(key)
       }
     })
 
-    return {
-      success: true,
-      media: data.media as MediaItem,
-    }
+    return await response.json()
   } catch (error) {
-    console.error("Error in moveMediaToTrash:", error)
+    console.error("Error in unlockMediaItem:", error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Network error when unlocking media",
     }
   }
+}
+
+// Global state to track if a media type has been loaded
+const mediaLoaded = {
+  active: false,
+  locked: false,
+  trash: false,
 }
 
 /**
@@ -344,21 +342,18 @@ export function useMedia(type: "active" | "locked" | "trash" = "active") {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<Error | null>(null)
 
-  // Use a ref to track if we've already fetched data
-  const hasFetched = React.useRef(false)
-
   React.useEffect(() => {
-    // Reset fetch status when type changes
-    if (hasFetched.current && type) {
-      hasFetched.current = false
+    // Skip if this media type has already been loaded
+    if (mediaLoaded[type]) {
+      console.log(`Media type ${type} already loaded, skipping fetch`)
+      setLoading(false)
+      return
     }
-
-    // Only fetch once per type
-    if (hasFetched.current) return
 
     async function loadMedia() {
       try {
         setLoading(true)
+        console.log(`Loading media type: ${type}`)
         let result: MediaApiResponse
 
         switch (type) {
@@ -377,8 +372,12 @@ export function useMedia(type: "active" | "locked" | "trash" = "active") {
         setMedia(result.media)
         setImageCount(result.imageCount)
         setVideoCount(result.videoCount)
-        hasFetched.current = true
+
+        // Mark this media type as loaded
+        mediaLoaded[type] = true
+        console.log(`Media type ${type} loaded successfully`)
       } catch (err) {
+        console.error(`Error loading media type ${type}:`, err)
         setError(err instanceof Error ? err : new Error("Unknown error"))
       } finally {
         setLoading(false)

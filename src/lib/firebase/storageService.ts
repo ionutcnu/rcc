@@ -814,33 +814,18 @@ export async function lockMedia(item: MediaItem, reason: string): Promise<boolea
     }
 }
 
-/**
- * Unlocks a media item to allow deletion
- * @param item The media item to unlock
- * @returns Promise<boolean> indicating success
- */
-export async function unlockMedia(item: MediaItem): Promise<boolean> {
+// Let's check how the unlockMedia function is implemented
+export async function unlockMedia(media: MediaItem): Promise<boolean> {
     try {
-        const mediaDoc = doc(db, "media", item.id)
+        // Get the document reference
+        const mediaRef = doc(db, "media", media.id)
 
-        await updateDoc(mediaDoc, {
+        // Update the document to set locked to false
+        await updateDoc(mediaRef, {
             locked: false,
-            lockedReason: null,
-            lockedAt: null,
             lockedBy: null,
+            lockedAt: null,
         })
-
-        // Log the action
-        const currentUser = auth.currentUser
-        mediaLogger.warn(
-          `Unlocked media: ${item.name}`,
-          {
-              id: item.id,
-              path: item.path,
-              userEmail: currentUser?.email,
-          },
-          currentUser?.uid,
-        )
 
         return true
     } catch (error) {
