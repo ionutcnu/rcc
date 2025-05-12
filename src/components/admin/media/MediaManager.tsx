@@ -45,7 +45,7 @@ const urlValidationCache = new Map<string, { valid: boolean; timestamp: number }
 const URL_CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour in milliseconds
 
 // Import the new API client at the top of the file
-import { fetchActiveMedia, lockMediaItem, moveMediaToTrash } from "@/lib/api/mediaClient"
+import { fetchActiveMedia, lockMediaItem, moveMediaToTrash, restoreMediaFromTrash } from "@/lib/api/mediaClient"
 
 export default function MediaManager() {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -385,22 +385,15 @@ export default function MediaManager() {
         if (!mediaToRestore) return
 
         try {
-            // Get user info for logging
-            const { userId, userEmail } = getCurrentUserInfo()
+            // Show loading state
+            showPopup("Restoring media...")
 
-            // Log the restoration attempt
-            mediaLogger.info(
-              `Restoring media: ${mediaToRestore.name}`,
-              {
-                  id: mediaToRestore.id,
-                  path: mediaToRestore.path || mediaToRestore.url,
-                  userEmail,
-              },
-              userId,
-            )
+            console.log(`Attempting to restore media: ${mediaToRestore.id}`)
 
-            const success = await restoreMedia(mediaToRestore)
-            if (success) {
+            // Use the API client function
+            const result = await restoreMediaFromTrash(mediaToRestore.id)
+
+            if (result.success) {
                 // Move the item from deleted to active
                 setDeletedMediaItems((prev) => prev.filter((media) => media.id !== mediaToRestore.id))
                 setMediaItems((prev) => [
@@ -409,7 +402,8 @@ export default function MediaManager() {
                 ])
                 showPopup("Media restored successfully")
             } else {
-                showPopup("Failed to restore media")
+                console.error("Failed to restore media:", result.error)
+                showPopup(`Failed to restore media: ${result.error || "Unknown error"}`)
             }
         } catch (err) {
             console.error("Error restoring media:", err)

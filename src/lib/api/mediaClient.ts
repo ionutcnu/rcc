@@ -245,6 +245,57 @@ export async function moveMediaToTrash(mediaId: string) {
 }
 
 /**
+ * Restores a media item from trash
+ * @param mediaId The ID of the media to restore
+ * @returns Promise with the result of the operation
+ */
+export async function restoreMediaFromTrash(
+  mediaId: string,
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  return deduplicateRequest(`restoreMedia-${mediaId}`, async () => {
+    try {
+      console.log(`Restoring media item with ID: ${mediaId} from trash`)
+
+      const response = await fetch(`/api/media/trash/restore`, {
+        method: "POST",
+        credentials: "include", // Important: This ensures cookies are sent with the request
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mediaId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        console.error("Error response from restore media API:", data)
+        return {
+          success: false,
+          error: data.error || "Failed to restore media",
+        }
+      }
+
+      // Clear cache for media lists
+      apiCache.delete("active-media")
+      apiCache.delete("trash-media")
+
+      return {
+        success: true,
+        message: data.message || "Media restored successfully",
+      }
+    } catch (error) {
+      console.error("Error in restoreMediaFromTrash:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }
+    }
+  })
+}
+
+/**
  * Downloads a media file through the API
  * @param mediaId The ID of the media to download
  * @param fileName Optional filename for the downloaded file
