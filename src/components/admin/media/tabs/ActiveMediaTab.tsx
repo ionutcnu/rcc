@@ -2,7 +2,19 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Film, Search, Filter, X, Download, ArchiveIcon, Upload, Loader2, LockIcon, Trash2 } from "lucide-react"
+import {
+    Film,
+    Search,
+    Filter,
+    X,
+    Download,
+    ArchiveIcon,
+    Upload,
+    Loader2,
+    LockIcon,
+    Trash2,
+    AlertTriangle,
+} from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +27,7 @@ import type { MediaItem } from "@/lib/firebase/storageService"
 import { BulkLockMediaDialog } from "../BulkLockMediaDialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { downloadMedia } from "@/lib/api/mediaClient"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ActiveMediaTabProps {
     mediaItems: MediaItem[]
@@ -89,6 +102,15 @@ export default function ActiveMediaTab({
     // Add state for download in progress
     const [isDownloading, setIsDownloading] = useState(false)
     const [downloadingItem, setDownloadingItem] = useState<string | null>(null)
+
+    // Add state for media validation
+    const [isValidating, setIsValidating] = useState(false)
+    const [validationResults, setValidationResults] = useState<{
+        broken: string[]
+        missing: string[]
+        valid: string[]
+        total: number
+    } | null>(null)
 
     const handleBulkLockClick = () => {
         if (selectedItems.length === 0) return
@@ -181,6 +203,43 @@ export default function ActiveMediaTab({
         } finally {
             setIsDownloading(false)
             setDownloadingItem(null)
+        }
+    }
+
+    // Handle media validation
+    const handleValidateMedia = async () => {
+        if (isValidating) return
+
+        try {
+            setIsValidating(true)
+            showPopup("Validating media files...")
+
+            const response = await fetch("/api/media/validate")
+            if (!response.ok) {
+                throw new Error(`Validation failed: ${response.statusText}`)
+            }
+
+            const results = await response.json()
+            setValidationResults(results)
+
+            // Show results in popup
+            const { broken, missing, valid, total } = results
+            showPopup(
+              `Media validation complete: ${valid.length} valid, ${broken.length} broken, ${missing.length} missing out of ${total} total`,
+            )
+
+            // Log the validation
+            mediaLogger.info(`Media validation completed`, {
+                brokenCount: broken.length,
+                missingCount: missing.length,
+                validCount: valid.length,
+                total,
+            })
+        } catch (error) {
+            console.error("Validation error:", error)
+            showPopup("Error validating media files")
+        } finally {
+            setIsValidating(false)
         }
     }
 
@@ -283,6 +342,12 @@ export default function ActiveMediaTab({
         } catch (error) {
             return "Invalid date"
         }
+    }
+
+    // Check if a media item is broken based on validation results
+    const isMediaBroken = (item: MediaItem): boolean => {
+        if (!validationResults) return false
+        return validationResults.broken.some((url) => url === item.url)
     }
 
     return (
@@ -442,26 +507,50 @@ export default function ActiveMediaTab({
               </CardContent>
           </Card>
 
-          <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-500">
+          <div className="flex flex-wrap justify-between items-center mt-4 mb-4">
+              <div className="text-sm text-gray-500 mb-2 md:mb-0">
                   Showing {paginatedItems.length} of {filteredItems.length} media items
                   {filteredItems.length !== mediaItems.length && ` (filtered from ${mediaItems.length} total)`}
               </div>
-              {paginatedItems.length > 0 && (
-                <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={areAllSelected}
-                      onCheckedChange={(checked) => handleSelectAll(checked === true)}
-                      id="select-all"
-                    />
-                    <label htmlFor="select-all" className="text-sm cursor-pointer">
-                        Select All
-                    </label>
-                    {selectedItems.length > 0 && (
-                      <span className="text-sm text-muted-foreground ml-2">({selectedItems.length} selected)</span>
-                    )}
-                </div>
-              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                  {/* Validate Media Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleValidateMedia}
+                    disabled={isValidating}
+                    className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                  >
+                      {isValidating ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Validating...
+                        </>
+                      ) : (
+                        <>
+                            <AlertTriangle className="mr-2 h-4 w-4" />
+                            Validate Media
+                        </>
+                      )}
+                  </Button>
+
+                  {paginatedItems.length > 0 && (
+                    <div className="flex items-center gap-2 ml-2">
+                        <Checkbox
+                          checked={areAllSelected}
+                          onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                          id="select-all"
+                        />
+                        <label htmlFor="select-all" className="text-sm cursor-pointer">
+                            Select All
+                        </label>
+                        {selectedItems.length > 0 && (
+                          <span className="text-sm text-muted-foreground ml-2">({selectedItems.length} selected)</span>
+                        )}
+                    </div>
+                  )}
+              </div>
           </div>
 
           {filteredItems.length === 0 ? (
@@ -492,7 +581,7 @@ export default function ActiveMediaTab({
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {paginatedItems.map((item) => (
-                  <Card key={item.id} className="overflow-hidden">
+                  <Card key={item.id} className={`overflow-hidden ${isMediaBroken(item) ? "border-red-500 border-2" : ""}`}>
                       <div className="aspect-video relative bg-muted">
                           <div className="absolute top-2 right-2 z-10">
                               <Checkbox
@@ -553,11 +642,34 @@ export default function ActiveMediaTab({
                                 </Badge>
                             </div>
                           )}
+                          {isMediaBroken(item) && (
+                            <div className="absolute bottom-2 left-2">
+                                <Badge className="bg-red-500 text-white flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Broken
+                                </Badge>
+                            </div>
+                          )}
                       </div>
                       <CardContent className="p-4">
                           <div className="flex flex-col space-y-2">
                               <div className="flex items-center justify-between">
-                                  <p className="font-medium truncate">{item.name}</p>
+                                  <TooltipProvider>
+                                      <Tooltip>
+                                          <TooltipTrigger asChild>
+                                              <p className="font-medium truncate cursor-pointer">{item.name}</p>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="bottom" className="max-w-xs bg-black text-white p-2 rounded">
+                                              <div className="text-sm">
+                                                  <p className="font-bold">{item.name}</p>
+                                                  <p className="text-xs text-gray-300 mt-1">
+                                                      {item.type.toUpperCase()} • {item.size || "Unknown size"}
+                                                      {item.createdAt ? ` • Added: ${formatDate(item.createdAt)}` : ""}
+                                                  </p>
+                                              </div>
+                                          </TooltipContent>
+                                      </Tooltip>
+                                  </TooltipProvider>
                               </div>
                               <div className="flex items-center gap-2">
                                   {item.catName && (

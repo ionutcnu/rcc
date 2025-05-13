@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getAllMedia } from "@/lib/firebase/storageService"
 import { verifySessionCookie } from "@/lib/auth/session"
 import { isUserAdmin } from "@/lib/auth/admin-check"
-import { mediaLogger } from "@/lib/utils/media-logger"
+// Import commented out to disable logging
+// import { mediaLogger } from "@/lib/utils/media-logger"
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,8 +21,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
-    // Log the API access
-    mediaLogger.info(`API: Fetched active media`, { userEmail: "admin" }, session.uid)
+    // Logging disabled to test if this is causing the permission error
+    // mediaLogger.info(`API: Fetched active media`, { userEmail: "admin" }, session.uid)
+    console.log("API: Fetched active media", { userId: session.uid })
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams

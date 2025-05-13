@@ -1,7 +1,6 @@
 import { admin } from "@/lib/firebase/admin"
 import type { NextRequest } from "next/server"
 
-
 // List of admin email addresses - for initial setup
 const ADMIN_EMAILS = [
     "cioncu_ionut@yahoo.com",
@@ -103,6 +102,23 @@ export async function adminCheck(request: NextRequest): Promise<boolean> {
         return adminStatus
     } catch (error) {
         console.error("Error in adminCheck:", error)
+        return false
+    }
+}
+
+/**
+ * Checks if the user making the request is an admin
+ * @param uid User ID
+ * @returns Promise<boolean> True if the user is an admin
+ */
+export async function checkIsAdmin(uid: string): Promise<boolean> {
+    try {
+        // Check if the user is an admin
+        const adminStatus = await isUserAdmin(uid)
+        console.log(`checkIsAdmin: User ${uid} admin status: ${adminStatus}`)
+        return adminStatus
+    } catch (error) {
+        console.error("Error in checkIsAdmin:", error)
         return false
     }
 }

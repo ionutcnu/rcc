@@ -26,13 +26,13 @@ const nextConfig = {
                     {
                         key: "Content-Security-Policy",
                         value:
-                            "default-src 'self'; " +
-                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com; " +
-                            "connect-src 'self' https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.google-analytics.com https://region1.google-analytics.com; " +
-                            "img-src 'self' data: https://firebasestorage.googleapis.com; " +
-                            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                            "font-src 'self' data: https://fonts.gstatic.com; " +
-                            "frame-src 'self'",
+                          "default-src 'self'; " +
+                          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com; " +
+                          "connect-src 'self' https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.google-analytics.com https://region1.google-analytics.com; " +
+                          "img-src 'self' data: https://firebasestorage.googleapis.com; " +
+                          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                          "font-src 'self' data: https://fonts.gstatic.com; " +
+                          "frame-src 'self'",
                     },
                     {
                         key: "X-Content-Type-Options",
@@ -78,6 +78,46 @@ const nextConfig = {
                     minimizer.options.terserOptions.compress.drop_console = true
                 }
             })
+        }
+
+        // Fix for "Module not found: Can't resolve 'net'" error
+        if (!isServer) {
+            // Provide empty modules for Node.js built-in modules when used on the client side
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                net: false,
+                tls: false,
+                fs: false,
+                dns: false,
+                child_process: false,
+                http2: false,
+                path: false,
+                os: false,
+                crypto: false,
+                stream: false,
+                http: false,
+                https: false,
+                zlib: false,
+                util: false,
+                url: false,
+                querystring: false,
+                buffer: false,
+                assert: false,
+                constants: false,
+                events: false,
+                timers: false,
+                string_decoder: false,
+                punycode: false,
+                process: false,
+                vm: false,
+                tty: false,
+                domain: false,
+                dgram: false,
+                readline: false,
+                perf_hooks: false,
+                async_hooks: false,
+                worker_threads: false,
+            }
         }
 
         return config

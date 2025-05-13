@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers"
 import { getAuth } from "firebase-admin/auth"
+import type { NextRequest } from "next/server"
 
 // Create session cookie
 export async function createSessionCookie(idToken: string) {
@@ -32,10 +33,12 @@ export async function createSessionCookie(idToken: string) {
 }
 
 // Verify session cookie
-export async function verifySessionCookie() {
+export async function verifySessionCookie(request?: NextRequest) {
     try {
         const cookieStore = await cookies()
-        const sessionCookie = cookieStore.get("session")?.value
+
+        // If request is provided, try to get the cookie from the request
+        const sessionCookie = request ? request.cookies.get("session")?.value : cookieStore.get("session")?.value
 
         if (!sessionCookie) {
             return { authenticated: false }
@@ -72,7 +75,6 @@ export async function revokeSessionCookie() {
         }
 
         // Delete the cookie - with await for Next.js 15
-        // const cookieStore = await cookies() // Removed redeclaration
         cookieStore.delete("session")
 
         return { success: true }

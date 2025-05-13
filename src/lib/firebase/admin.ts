@@ -1,3 +1,9 @@
+import { isServer } from "@/lib/utils/isServer"
+
+if (!isServer()) {
+    throw new Error("Firebase Admin SDK can only be used on the server. Do not import this file in client components.")
+}
+
 import { initializeApp, getApps, cert } from "firebase-admin/app"
 import { getFirestore } from "firebase-admin/firestore"
 import { getStorage } from "firebase-admin/storage"
