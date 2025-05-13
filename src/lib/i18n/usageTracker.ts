@@ -35,26 +35,22 @@ export function getLocalUsage(): DeepLUsage {
 export function updateLocalUsage(usage: DeepLUsage): void {
     try {
         localStorage.setItem(
-            LOCAL_USAGE_KEY,
-            JSON.stringify({
-                ...usage,
-                lastChecked: new Date(),
-            }),
+          LOCAL_USAGE_KEY,
+          JSON.stringify({
+              ...usage,
+              lastChecked: new Date(),
+          }),
         )
     } catch (error) {
         console.error("Error saving usage to localStorage:", error)
     }
 }
 
-export function resetUsageTracking(): Promise<void> {
-    return new Promise((resolve) => {
-        try {
-            localStorage.removeItem(LOCAL_USAGE_KEY)
-            console.log("Translation usage tracking reset successfully")
-        } catch (error) {
-            console.error("Error resetting translation usage tracking:", error)
-        } finally {
-            resolve()
-        }
-    })
+// Reset usage tracking
+export async function resetUsageTracking(): Promise<void> {
+    try {
+        localStorage.removeItem(LOCAL_USAGE_KEY)
+    } catch (error) {
+        console.error("Error resetting usage tracking:", error)
+    }
 }

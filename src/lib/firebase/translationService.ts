@@ -17,7 +17,7 @@ export interface TranslationSettings {
 // Default settings
 export const defaultTranslationSettings: TranslationSettings = {
     enabled: true,
-    customLimit: 400000, // 80% of free tier
+    customLimit: 400000, // 80% of free tier (500,000)
     warningThreshold: 80,
     criticalThreshold: 95,
     defaultLanguage: "en",
@@ -60,8 +60,10 @@ async function initializeTranslationSettings(): Promise<void> {
             ...defaultTranslationSettings,
             updatedAt: serverTimestamp(),
         })
+        console.log("Translation settings initialized successfully")
     } catch (error) {
         console.error("Error initializing translation settings:", error)
+        // Don't throw, just log the error
     }
 }
 
@@ -72,17 +74,18 @@ export async function updateTranslationSettings(settings: TranslationSettings): 
     try {
         const settingsRef = doc(db, "settings", TRANSLATION_SETTINGS_DOC_ID)
         await setDoc(
-            settingsRef,
-            {
-                ...settings,
-                updatedAt: serverTimestamp(),
-            },
-            { merge: true },
+          settingsRef,
+          {
+              ...settings,
+              updatedAt: serverTimestamp(),
+          },
+          { merge: true },
         )
+        console.log("Translation settings updated successfully")
         return true
     } catch (error) {
         console.error("Error updating translation settings:", error)
-        return false
+        throw error // Re-throw to allow API to handle the error
     }
 }
 

@@ -5,11 +5,14 @@ import type { Language } from "./types"
 // Collection name for translation cache
 const CACHE_COLLECTION = "translation_cache"
 
+// Define a type that includes "auto" for source language
+type SourceLanguage = Language | "auto"
+
 // Interface for cached translation
 interface CachedTranslation {
     sourceText: string
     targetLanguage: Language
-    sourceLanguage: Language
+    sourceLanguage: SourceLanguage
     translatedText: string
     timestamp: Date
     expiresAt: Date
@@ -19,13 +22,13 @@ interface CachedTranslation {
  * Get a cached translation
  */
 export async function getCachedTranslation(
-    sourceText: string,
-    targetLanguage: Language,
-    sourceLanguage: Language,
+  sourceText: string,
+  targetLanguage: Language,
+  sourceLanguage?: Language,
 ): Promise<string | null> {
     try {
         // Create a hash of the source text to use as document ID
-        const cacheKey = createCacheKey(sourceText, targetLanguage, sourceLanguage)
+        const cacheKey = createCacheKey(sourceText, targetLanguage, sourceLanguage || "auto")
 
         // Get the document from Firestore
         const docRef = doc(db, CACHE_COLLECTION, cacheKey)
@@ -55,15 +58,15 @@ export async function getCachedTranslation(
  * Cache a translation
  */
 export async function cacheTranslation(
-    sourceText: string,
-    targetLanguage: Language,
-    sourceLanguage: Language,
-    translatedText: string,
-    ttlHours = 24,
+  sourceText: string,
+  targetLanguage: Language,
+  sourceLanguage: Language | undefined,
+  translatedText: string,
+  ttlHours = 24,
 ): Promise<boolean> {
     try {
         // Create a hash of the source text to use as document ID
-        const cacheKey = createCacheKey(sourceText, targetLanguage, sourceLanguage)
+        const cacheKey = createCacheKey(sourceText, targetLanguage, sourceLanguage || "auto")
 
         // Calculate expiration time
         const now = new Date()
@@ -74,7 +77,7 @@ export async function cacheTranslation(
         await setDoc(docRef, {
             sourceText,
             targetLanguage,
-            sourceLanguage,
+            sourceLanguage: sourceLanguage || "auto",
             translatedText,
             timestamp: now,
             expiresAt,
@@ -109,7 +112,7 @@ export async function clearTranslationCache(): Promise<boolean> {
 /**
  * Create a cache key for a translation
  */
-function createCacheKey(sourceText: string, targetLanguage: Language, sourceLanguage: Language): string {
+function createCacheKey(sourceText: string, targetLanguage: Language, sourceLanguage: SourceLanguage): string {
     // Simple hash function for the source text
     let hash = 0
     for (let i = 0; i < sourceText.length; i++) {
