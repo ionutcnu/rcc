@@ -16,7 +16,7 @@ import {
     AlertTriangle,
     ExternalLink,
     Cat,
-    Calendar,
+    CalendarIcon,
     DownloadCloud,
     Clock,
     ChevronLeft,
@@ -24,13 +24,12 @@ import {
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import type { DateRange } from "react-day-picker"
-import { format, subDays, isSameDay } from "date-fns"
+import { format, subDays, isBefore, isAfter, startOfDay, endOfDay, isValid } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { LogEntry, DateRange as DateRangeType } from "@/lib/types"
 
-// REDUCED: Number of logs to load at once
+// Number of logs to load at once
 const PAGE_SIZE = 25
 
 export default function LogsPage() {
@@ -44,14 +43,12 @@ export default function LogsPage() {
     const [cursor, setCursor] = useState<string | null>(null)
     const [hasMore, setHasMore] = useState(true)
     const [loadingMore, setLoadingMore] = useState(false)
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: undefined,
-        to: undefined,
-    })
-    const [isFilterOpen, setIsFilterOpen] = useState(false)
+    const [startDate, setStartDate] = useState<Date | null>(null)
+    const [endDate, setEndDate] = useState<Date | null>(null)
+    const [isStartDateOpen, setIsStartDateOpen] = useState(false)
+    const [isEndDateOpen, setIsEndDateOpen] = useState(false)
     const [actionTypeFilter, setActionTypeFilter] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState("all")
-    const [currentMonth, setCurrentMonth] = useState(new Date())
     const [logStats, setLogStats] = useState({
         total: 0,
         info: 0,
@@ -63,31 +60,58 @@ export default function LogsPage() {
     const [initialLoad, setInitialLoad] = useState(true)
 
     // Format date for display
-    const formatDate = (date?: Date) => (date ? format(date, "PPP") : "")
+    const formatDate = (date?: Date | null) => (date && isValid(date) ? format(date, "MMM d, yyyy") : "")
 
     // Create date range string for display
-    const dateRangeText = dateRange?.from ? (
-      dateRange.to ? (
+    const dateRangeText = startDate ? (
+      endDate ? (
         <>
-            From <time dateTime={dateRange.from.toISOString()}>{formatDate(dateRange.from)}</time> to{" "}
-            <time dateTime={dateRange.to.toISOString()}>{formatDate(dateRange.to)}</time>
+            From <time dateTime={startDate.toISOString()}>{formatDate(startDate)}</time> to{" "}
+            <time dateTime={endDate.toISOString()}>{formatDate(endDate)}</time>
         </>
       ) : (
         <>
-            From <time dateTime={dateRange.from.toISOString()}>{formatDate(dateRange.from)}</time>
+            From <time dateTime={startDate.toISOString()}>{formatDate(startDate)}</time>
         </>
       )
     ) : (
-      "Select a date range"
+      "Select date range"
     )
 
     // Convert DateRange to DateRangeType for query
     const getQueryDateRange = useCallback((): DateRangeType => {
         return {
-            startDate: dateRange?.from || null,
-            endDate: dateRange?.to || null,
+            startDate: startDate,
+            endDate: endDate,
         }
-    }, [dateRange])
+    }, [startDate, endDate])
+
+    // Validate date range
+    const validateDateRange = useCallback(() => {
+        const now = new Date()
+
+        // Don't allow future dates
+        if (startDate && isAfter(startDate, now)) {
+            setStartDate(now)
+            showPopup("Start date cannot be in the future")
+            return false
+        }
+
+        if (endDate && isAfter(endDate, now)) {
+            setEndDate(now)
+            showPopup("End date cannot be in the future")
+            return false
+        }
+
+        // Make sure start date is before end date
+        if (startDate && endDate && isAfter(startDate, endDate)) {
+            setEndDate(startDate)
+            showPopup("End date must be after start date")
+            return false
+        }
+
+        return true
+    }, [startDate, endDate])
 
     // FIX: Only fetch logs once on initial load and when filters change
     useEffect(() => {
@@ -101,10 +125,12 @@ export default function LogsPage() {
     // FIX: Only fetch when filters explicitly change, not on every render
     useEffect(() => {
         if (!initialLoad) {
-            fetchLogs()
-            fetchLogStats()
+            if (validateDateRange()) {
+                fetchLogs()
+                fetchLogStats()
+            }
         }
-    }, [filter, dateRange, actionTypeFilter, searchQuery])
+    }, [filter, startDate, endDate, actionTypeFilter, searchQuery, validateDateRange])
 
     const fetchLogs = async () => {
         try {
@@ -120,8 +146,8 @@ export default function LogsPage() {
                 pageSize: PAGE_SIZE.toString(),
             })
 
-            if (startDate) params.append("startDate", startDate.toISOString())
-            if (endDate) params.append("endDate", endDate.toISOString())
+            if (startDate) params.append("startDate", startOfDay(startDate).toISOString())
+            if (endDate) params.append("endDate", endOfDay(endDate).toISOString())
             if (actionTypeFilter) params.append("actionType", actionTypeFilter)
             if (searchQuery) params.append("search", searchQuery)
 
@@ -175,8 +201,8 @@ export default function LogsPage() {
                 cursor: cursor,
             })
 
-            if (startDate) params.append("startDate", startDate.toISOString())
-            if (endDate) params.append("endDate", endDate.toISOString())
+            if (startDate) params.append("startDate", startOfDay(startDate).toISOString())
+            if (endDate) params.append("endDate", endOfDay(endDate).toISOString())
             if (actionTypeFilter) params.append("actionType", actionTypeFilter)
             if (searchQuery) params.append("search", searchQuery)
 
@@ -217,7 +243,8 @@ export default function LogsPage() {
 
     // Clear all filters
     const clearFilters = () => {
-        setDateRange(undefined)
+        setStartDate(null)
+        setEndDate(null)
         setFilter("all")
         setActionTypeFilter(null)
         setSearchQuery("")
@@ -226,26 +253,26 @@ export default function LogsPage() {
     // Set predefined date ranges
     const setLastDay = () => {
         const today = new Date()
-        setDateRange({
-            from: subDays(today, 1),
-            to: today,
-        })
+        setStartDate(subDays(today, 1))
+        setEndDate(today)
+        setIsStartDateOpen(false)
+        setIsEndDateOpen(false)
     }
 
     const setLastWeek = () => {
         const today = new Date()
-        setDateRange({
-            from: subDays(today, 7),
-            to: today,
-        })
+        setStartDate(subDays(today, 7))
+        setEndDate(today)
+        setIsStartDateOpen(false)
+        setIsEndDateOpen(false)
     }
 
     const setLastMonth = () => {
         const today = new Date()
-        setDateRange({
-            from: subDays(today, 30),
-            to: today,
-        })
+        setStartDate(subDays(today, 30))
+        setEndDate(today)
+        setIsStartDateOpen(false)
+        setIsEndDateOpen(false)
     }
 
     const exportLogsToCSV = () => {
@@ -256,8 +283,8 @@ export default function LogsPage() {
                 filter,
             })
 
-            if (startDate) params.append("startDate", startDate.toISOString())
-            if (endDate) params.append("endDate", endDate.toISOString())
+            if (startDate) params.append("startDate", startOfDay(startDate).toISOString())
+            if (endDate) params.append("endDate", endOfDay(endDate).toISOString())
             if (actionTypeFilter) params.append("actionType", actionTypeFilter)
             if (searchQuery) params.append("search", searchQuery)
 
@@ -352,34 +379,6 @@ export default function LogsPage() {
         system: { label: "System", color: "bg-gray-100 text-gray-800" },
     }
 
-    const [month, setMonth] = useState(new Date())
-
-    const daysInMonth = (date: Date) => {
-        const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-        return Array.from({ length: lastDayOfMonth }, (_, i) => i + 1)
-    }
-
-    const firstDayOfMonth = (date: Date) => {
-        return new Date(date.getFullYear(), date.getMonth(), 1).getDay()
-    }
-
-    const prevMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
-    }
-
-    const nextMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
-    }
-
-    const days = daysInMonth(currentMonth)
-    const paddingDays = firstDayOfMonth(currentMonth)
-
-    const handleDateSelect = (day: number) => {
-        const selectedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-        setDateRange({ from: selectedDate, to: selectedDate })
-        setIsFilterOpen(false)
-    }
-
     const [popupMessage, setPopupMessage] = useState<string | null>(null)
 
     const showPopup = (message: string) => {
@@ -395,8 +394,8 @@ export default function LogsPage() {
             const { startDate, endDate } = getQueryDateRange()
             const params = new URLSearchParams()
 
-            if (startDate) params.append("startDate", startDate.toISOString())
-            if (endDate) params.append("endDate", endDate.toISOString())
+            if (startDate) params.append("startDate", startOfDay(startDate).toISOString())
+            if (endDate) params.append("endDate", endOfDay(endDate).toISOString())
             if (filter !== "all") params.append("filter", filter)
 
             const response = await fetch(`/api/logs/stats?${params.toString()}`)
@@ -452,6 +451,104 @@ export default function LogsPage() {
             setFilter("all")
         }
     }
+
+    // Handle date selection
+    const handleDateChange = (date: Date | null, type: "start" | "end") => {
+        const now = new Date()
+
+        // Don't allow future dates
+        if (date && isAfter(date, now)) {
+            showPopup(`${type === "start" ? "Start" : "End"} date cannot be in the future`)
+            date = now
+        }
+
+        if (type === "start") {
+            setStartDate(date)
+            // If end date is before start date, update end date
+            if (date && endDate && isBefore(endDate, date)) {
+                setEndDate(date)
+            }
+            setIsStartDateOpen(false)
+            // If no end date is set, open end date picker
+            if (date && !endDate) {
+                setTimeout(() => setIsEndDateOpen(true), 100)
+            }
+        } else {
+            setEndDate(date)
+            setIsEndDateOpen(false)
+        }
+    }
+
+    // Generate calendar days
+    const generateCalendarDays = (year: number, month: number) => {
+        const daysInMonth = new Date(year, month + 1, 0).getDate()
+        const firstDayOfMonth = new Date(year, month, 1).getDay()
+        const today = new Date()
+
+        // Create array of day numbers
+        const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+
+        // Create array for padding days
+        const paddingDays = Array(firstDayOfMonth).fill(null)
+
+        return { days, paddingDays, today }
+    }
+
+    // Get current month and year for calendar
+    const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth())
+    const [calendarYear, setCalendarYear] = useState(new Date().getFullYear())
+
+    // Navigate to previous month
+    const goToPrevMonth = () => {
+        if (calendarMonth === 0) {
+            setCalendarMonth(11)
+            setCalendarYear(calendarYear - 1)
+        } else {
+            setCalendarMonth(calendarMonth - 1)
+        }
+    }
+
+    // Navigate to next month
+    const goToNextMonth = () => {
+        if (calendarMonth === 11) {
+            setCalendarMonth(0)
+            setCalendarYear(calendarYear + 1)
+        } else {
+            setCalendarMonth(calendarMonth + 1)
+        }
+    }
+
+    // Check if a date is selected
+    const isDateSelected = (date: Date) => {
+        if (!startDate && !endDate) return false
+
+        if (startDate && !endDate) {
+            return isSameDay(date, startDate)
+        }
+
+        if (startDate && endDate) {
+            return (
+              isSameDay(date, startDate) || isSameDay(date, endDate) || (isAfter(date, startDate) && isBefore(date, endDate))
+            )
+        }
+
+        return false
+    }
+
+    // Check if two dates are the same day
+    const isSameDay = (date1: Date, date2: Date) => {
+        return (
+          date1.getFullYear() === date2.getFullYear() &&
+          date1.getMonth() === date2.getMonth() &&
+          date1.getDate() === date2.getDate()
+        )
+    }
+
+    // Get calendar for current month
+    const { days, paddingDays, today } = generateCalendarDays(calendarYear, calendarMonth)
+
+    // Format month name
+    const monthName = new Intl.DateTimeFormat("en-US", { month: "long" }).format(new Date(calendarYear, calendarMonth))
 
     return (
       <div className="space-y-6">
@@ -563,21 +660,18 @@ export default function LogsPage() {
                               </div>
 
                               <div className="flex flex-wrap gap-2">
-                                  <Popover>
+                                  {/* Start Date Picker */}
+                                  <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
                                       <PopoverTrigger asChild>
                                           <Button variant="outline" className="flex items-center">
-                                              <Calendar className="h-4 w-4 mr-2" />
-                                              {dateRange?.from ? (
-                                                <span className="hidden md:inline">{dateRangeText}</span>
-                                              ) : (
-                                                <span>Date Range</span>
-                                              )}
+                                              <CalendarIcon className="h-4 w-4 mr-2" />
+                                              {startDate ? formatDate(startDate) : "Start Date"}
                                           </Button>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-auto p-0" align="start">
                                           <div className="p-3 border-b">
                                               <div className="flex justify-between items-center">
-                                                  <h4 className="font-medium">Select Date Range</h4>
+                                                  <h4 className="font-medium">Select start date</h4>
                                                   <div className="flex gap-1">
                                                       <Button variant="ghost" size="sm" onClick={setLastDay} className="h-7 text-xs">
                                                           Last 24h
@@ -591,47 +685,192 @@ export default function LogsPage() {
                                                   </div>
                                               </div>
                                           </div>
-                                          {/* Custom Calendar Component */}
-                                          <div className="p-2">
-                                              <div className="flex justify-between items-center mb-2">
-                                                  <Button variant="ghost" size="icon" onClick={prevMonth}>
+
+                                          {/* Custom Calendar */}
+                                          <div className="p-3">
+                                              <div className="flex justify-between items-center mb-4">
+                                                  <Button variant="ghost" size="sm" onClick={goToPrevMonth}>
                                                       <ChevronLeft className="h-4 w-4" />
                                                   </Button>
-                                                  <span className="text-sm font-medium">{format(currentMonth, "MMMM yyyy")}</span>
-                                                  <Button variant="ghost" size="icon" onClick={nextMonth}>
+                                                  <div className="font-medium">
+                                                      {monthName} {calendarYear}
+                                                  </div>
+                                                  <Button variant="ghost" size="sm" onClick={goToNextMonth}>
                                                       <ChevronRight className="h-4 w-4" />
                                                   </Button>
                                               </div>
-                                              <div className="grid grid-cols-7 gap-1">
+
+                                              <div className="grid grid-cols-7 gap-1 text-center">
                                                   {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                                                    <div key={day} className="text-center text-xs font-medium text-gray-500">
+                                                    <div
+                                                      key={day}
+                                                      className="text-xs font-medium text-gray-500 h-8 flex items-center justify-center"
+                                                    >
                                                         {day}
                                                     </div>
                                                   ))}
-                                                  {Array(paddingDays)
-                                                    .fill(null)
-                                                    .map((_, index) => (
-                                                      <div key={`padding-${index}`} className="text-center text-sm p-1" />
-                                                    ))}
+
+                                                  {paddingDays.map((_, index) => (
+                                                    <div key={`padding-${index}`} className="h-8" />
+                                                  ))}
+
                                                   {days.map((day) => {
-                                                      const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-                                                      const isSelected =
-                                                        dateRange?.from &&
-                                                        dateRange.to &&
-                                                        isSameDay(date, dateRange.from) &&
-                                                        isSameDay(date, dateRange.to)
+                                                      const date = new Date(calendarYear, calendarMonth, day)
+                                                      const isToday = isSameDay(date, today)
+                                                      const isFuture = isAfter(date, today)
+                                                      const isSelected = startDate && isSameDay(date, startDate)
+
                                                       return (
                                                         <Button
-                                                          key={day}
-                                                          variant={isSelected ? "secondary" : "ghost"}
-                                                          className="text-center text-sm p-1 rounded-md w-8 h-8"
-                                                          onClick={() => handleDateSelect(day)}
+                                                          key={`day-${day}`}
+                                                          variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
+                                                          className={`h-8 w-8 p-0 ${isFuture ? "text-gray-300" : ""}`}
+                                                          disabled={isFuture}
+                                                          onClick={() => handleDateChange(date, "start")}
                                                         >
                                                             {day}
                                                         </Button>
                                                       )
                                                   })}
                                               </div>
+                                          </div>
+
+                                          <div className="p-3 border-t flex justify-between">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setStartDate(null)
+                                                    setEndDate(null)
+                                                    setIsStartDateOpen(false)
+                                                }}
+                                              >
+                                                  Clear
+                                              </Button>
+                                              <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setIsStartDateOpen(false)
+                                                }}
+                                              >
+                                                  Apply
+                                              </Button>
+                                          </div>
+                                      </PopoverContent>
+                                  </Popover>
+
+                                  {/* End Date Picker */}
+                                  <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
+                                      <PopoverTrigger asChild>
+                                          <Button variant="outline" className="flex items-center">
+                                              <CalendarIcon className="h-4 w-4 mr-2" />
+                                              {endDate ? formatDate(endDate) : "End Date"}
+                                          </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="start">
+                                          <div className="p-3 border-b">
+                                              <div className="flex justify-between items-center">
+                                                  <h4 className="font-medium">Select end date</h4>
+                                                  <div className="flex gap-1">
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (startDate) {
+                                                                setEndDate(startDate)
+                                                                setIsEndDateOpen(false)
+                                                            }
+                                                        }}
+                                                        className="h-7 text-xs"
+                                                      >
+                                                          Same as start
+                                                      </Button>
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setEndDate(new Date())
+                                                            setIsEndDateOpen(false)
+                                                        }}
+                                                        className="h-7 text-xs"
+                                                      >
+                                                          Today
+                                                      </Button>
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                          {/* Custom Calendar */}
+                                          <div className="p-3">
+                                              <div className="flex justify-between items-center mb-4">
+                                                  <Button variant="ghost" size="sm" onClick={goToPrevMonth}>
+                                                      <ChevronLeft className="h-4 w-4" />
+                                                  </Button>
+                                                  <div className="font-medium">
+                                                      {monthName} {calendarYear}
+                                                  </div>
+                                                  <Button variant="ghost" size="sm" onClick={goToNextMonth}>
+                                                      <ChevronRight className="h-4 w-4" />
+                                                  </Button>
+                                              </div>
+
+                                              <div className="grid grid-cols-7 gap-1 text-center">
+                                                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                                                    <div
+                                                      key={day}
+                                                      className="text-xs font-medium text-gray-500 h-8 flex items-center justify-center"
+                                                    >
+                                                        {day}
+                                                    </div>
+                                                  ))}
+
+                                                  {paddingDays.map((_, index) => (
+                                                    <div key={`padding-${index}`} className="h-8" />
+                                                  ))}
+
+                                                  {days.map((day) => {
+                                                      const date = new Date(calendarYear, calendarMonth, day)
+                                                      const isToday = isSameDay(date, today)
+                                                      const isFuture = isAfter(date, today)
+                                                      const isSelected = endDate && isSameDay(date, endDate)
+                                                      const isTooEarly = startDate && isBefore(date, startDate)
+
+                                                      return (
+                                                        <Button
+                                                          key={`day-${day}`}
+                                                          variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
+                                                          className={`h-8 w-8 p-0 ${isFuture || isTooEarly ? "text-gray-300" : ""}`}
+                                                          disabled={!!(isFuture || isTooEarly)}
+                                                          onClick={() => handleDateChange(date, "end")}
+                                                        >
+                                                            {day}
+                                                        </Button>
+                                                      )
+                                                  })}
+                                              </div>
+                                          </div>
+
+                                          <div className="p-3 border-t flex justify-between">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setEndDate(null)
+                                                    setIsEndDateOpen(false)
+                                                }}
+                                              >
+                                                  Clear
+                                              </Button>
+                                              <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setIsEndDateOpen(false)
+                                                }}
+                                              >
+                                                  Apply
+                                              </Button>
                                           </div>
                                       </PopoverContent>
                                   </Popover>
@@ -656,7 +895,7 @@ export default function LogsPage() {
                                     </Select>
                                   )}
 
-                                  {(dateRange?.from || filter !== "all" || actionTypeFilter || searchQuery) && (
+                                  {(startDate || endDate || filter !== "all" || actionTypeFilter || searchQuery) && (
                                     <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
                                         Clear filters
                                     </Button>
@@ -666,15 +905,19 @@ export default function LogsPage() {
                       </div>
 
                       {/* Show active filters */}
-                      {(dateRange?.from || filter !== "all" || actionTypeFilter || searchQuery) && (
+                      {(startDate || endDate || filter !== "all" || actionTypeFilter || searchQuery) && (
                         <div className="flex flex-wrap gap-2 mb-4">
                             <div className="text-sm text-gray-500 mr-2">Active filters:</div>
-                            {dateRange?.from && (
+                            {(startDate || endDate) && (
                               <Badge variant="outline" className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {dateRange.to
-                                    ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d, yyyy")}`
-                                    : format(dateRange.from, "MMM d, yyyy")}
+                                  <CalendarIcon className="h-3 w-3" />
+                                  {startDate && endDate
+                                    ? `${formatDate(startDate)} - ${formatDate(endDate)}`
+                                    : startDate
+                                      ? `From ${formatDate(startDate)}`
+                                      : endDate
+                                        ? `Until ${formatDate(endDate)}`
+                                        : ""}
                               </Badge>
                             )}
                             {filter !== "all" && (

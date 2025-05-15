@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebase/admin"
 import { getAuth } from "firebase-admin/auth"
 import { Timestamp, type Query, type DocumentData } from "firebase-admin/firestore"
 
-// REDUCED: Number of logs to load at once
+// Number of logs to load at once
 const PAGE_SIZE = 25
 
 export async function GET(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // IMPORTANT: Force page size to be no more than 25
     const pageSize = Math.min(Number.parseInt(searchParams.get("pageSize") || String(PAGE_SIZE), 10), PAGE_SIZE)
 
-    console.log("API Request:", { filter, actionTypeFilter, cursor, pageSize })
+    console.log("API Request:", { filter, actionTypeFilter, cursor, pageSize, startDateParam, endDateParam })
 
     // Verify session
     const sessionCookie = request.cookies.get("session")?.value
@@ -88,18 +88,28 @@ export async function GET(request: NextRequest) {
 
     // Apply date range filter if provided
     if (startDateParam && endDateParam) {
-      const startDate = new Date(startDateParam)
-      const endDate = new Date(endDateParam)
-
       try {
+        const startDate = new Date(startDateParam)
+        const endDate = new Date(endDateParam)
+
+        // Validate dates
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return NextResponse.json({ error: "Invalid date format" }, { status: 400 })
+        }
+
+        // Don't allow future dates
+        const now = new Date()
+        if (startDate > now || endDate > now) {
+          return NextResponse.json({ error: "Dates cannot be in the future" }, { status: 400 })
+        }
+
         // Create a new query with date filters
-        // Note: This might require a composite index
         logsQuery = logsQuery
           .where("timestamp", ">=", Timestamp.fromDate(startDate))
           .where("timestamp", "<=", Timestamp.fromDate(endDate))
       } catch (error) {
         console.error("Error adding date filters:", error)
-        // Continue without date filters if there's an error
+        return NextResponse.json({ error: "Invalid date parameters" }, { status: 400 })
       }
     }
 
