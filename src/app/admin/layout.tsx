@@ -6,6 +6,7 @@ import { CatPopupProvider } from "@/components/CatPopupProvider"
 import AdminProtected from "@/components/admin-protected"
 import { isUserAdmin } from "@/lib/auth/admin-check"
 import { admin } from "@/lib/firebase/admin"
+import { SettingsProvider } from "@/lib/contexts/settings-context"
 
 export default async function AdminLayout({
                                               children,
@@ -35,14 +36,16 @@ export default async function AdminLayout({
 
         // If user is authenticated and is an admin, render the layout with client-side protection
         return (
-            <AdminProtected>
-                <CatPopupProvider>
-                    <div className="flex min-h-screen bg-gray-50">
-                        <AdminSidebar />
-                        <main className="flex-1 overflow-auto p-6">{children}</main>
-                    </div>
-                </CatPopupProvider>
-            </AdminProtected>
+          <AdminProtected>
+              <CatPopupProvider>
+                  <SettingsProvider>
+                      <div className="flex min-h-screen bg-gray-50">
+                          <AdminSidebar />
+                          <main className="flex-1 overflow-auto p-6">{children}</main>
+                      </div>
+                  </SettingsProvider>
+              </CatPopupProvider>
+          </AdminProtected>
         )
     } catch (error) {
         console.error("Admin layout authentication error:", error)

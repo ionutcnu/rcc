@@ -5,12 +5,13 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const url = searchParams.get("url")
     const isPlaceholder = searchParams.get("placeholder") === "true"
-    const width = Number.parseInt(searchParams.get("width") || "200")
-    const height = Number.parseInt(searchParams.get("height") || "200")
+    const width = Number.parseInt(searchParams.get("width") || "1200")
+    const height = Number.parseInt(searchParams.get("height") || "630")
+    const query = searchParams.get("query") || "image"
 
     // If placeholder is requested, generate a simple SVG placeholder
     if (isPlaceholder) {
-        const svg = generatePlaceholderSVG(width, height)
+        const svg = generatePlaceholderSVG(width, height, query)
         return new NextResponse(svg, {
             headers: {
                 "Content-Type": "image/svg+xml",
@@ -19,9 +20,9 @@ export async function GET(request: NextRequest) {
         })
     }
 
-    // If no URL provided, return an error or placeholder
+    // If no URL provided, return a placeholder
     if (!url) {
-        const svg = generatePlaceholderSVG(width, height)
+        const svg = generatePlaceholderSVG(width, height, query)
         return new NextResponse(svg, {
             headers: {
                 "Content-Type": "image/svg+xml",
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
             })
 
             // Return a placeholder for failed images
-            const svg = generatePlaceholderSVG(width, height)
+            const svg = generatePlaceholderSVG(width, height, "Image not available")
             return new NextResponse(svg, {
                 headers: {
                     "Content-Type": "image/svg+xml",
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
         })
 
         // Return a placeholder for errors
-        const svg = generatePlaceholderSVG(width, height)
+        const svg = generatePlaceholderSVG(width, height, "Image not available")
         return new NextResponse(svg, {
             headers: {
                 "Content-Type": "image/svg+xml",
@@ -85,14 +86,32 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// Generate a simple SVG placeholder
-function generatePlaceholderSVG(width: number, height: number): string {
+// Generate a simple SVG placeholder with customizable text
+function generatePlaceholderSVG(width: number, height: number, query = "Image"): string {
+    // Generate a background color based on the query string
+    const hash = query.split("").reduce((acc, char) => char.charCodeAt(0) + acc, 0)
+    const hue = hash % 360
+    const saturation = 15 + (hash % 20) // 15-35%
+    const lightness = 85 + (hash % 10) // 85-95%
+
+    const bgColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`
+    const textColor = `hsl(${hue}, ${saturation + 10}%, 30%)`
+
+    // Format the query text for display
+    const displayText = query
+      .replace(/[+]/g, " ")
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+      .slice(0, 30) // Limit length
+
     return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-    <rect width="${width}" height="${height}" fill="#f1f5f9" />
-    <svg x="${width / 2 - 20}" y="${height / 2 - 20}" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 9C3 7.89543 3.89543 7 5 7H7L8 5H16L17 7H19C20.1046 7 21 7.89543 21 9V18C21 19.1046 20.1046 20 19 20H5C3.89543 20 3 19.1046 3 18V9Z" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="12" cy="13" r="3" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect width="${width}" height="${height}" fill="${bgColor}" />
+    <svg x="${width / 2 - 40}" y="${height / 2 - 60}" width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 9C3 7.89543 3.89543 7 5 7H7L8 5H16L17 7H19C20.1046 7 21 7.89543 21 9V18C21 19.1046 20.1046 20 19 20H5C3.89543 20 3 19.1046 3 18V9Z" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="13" r="3" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-    <text x="50%" y="85%" font-family="Arial, sans-serif" font-size="12" fill="#64748b" text-anchor="middle">Image not available</text>
+    <text x="50%" y="65%" font-family="Arial, sans-serif" font-size="${Math.max(width / 30, 12)}" fill="${textColor}" text-anchor="middle">${displayText}</text>
+    <text x="50%" y="75%" font-family="Arial, sans-serif" font-size="${Math.max(width / 40, 10)}" fill="${textColor}" opacity="0.7" text-anchor="middle">${width} × ${height}</text>
   </svg>`
 }

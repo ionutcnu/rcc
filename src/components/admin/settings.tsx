@@ -5,11 +5,6 @@ import { SettingsUi } from "@/components/admin/settings-ui"
 import { Loader2 } from "lucide-react"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import {
-  getSettings,
-  updateFirebaseSettings,
-  updateSeoSettings,
-  validateSeoSettings,
-  validateFirebaseSettings,
   type SeoSettings,
   type FirebaseSettings,
   defaultSettings,
@@ -33,7 +28,15 @@ export function Settings() {
     async function fetchSettings() {
       try {
         setLoading(true)
-        const settings = await getSettings()
+
+        // Fetch settings from the API
+        const response = await fetch("/api/settings")
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch settings: ${response.status}`)
+        }
+
+        const settings = await response.json()
 
         setSeoSettings(settings.seo)
         setFirebaseSettings(settings.firebase)
@@ -49,54 +52,72 @@ export function Settings() {
   }, [showPopup])
 
   const handleSaveSeo = async () => {
-    // Validate settings
-    const validation = validateSeoSettings(seoSettings)
-    if (!validation.valid) {
-      // Convert the first error to string to ensure type safety
-      const firstError = String(Object.values(validation.errors)[0])
-      showPopup(firstError)
-      return
-    }
-
     try {
       setSaving({ ...saving, seo: true })
-      const success = await updateSeoSettings(seoSettings)
 
-      if (success) {
+      // Save SEO settings via the API
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "seo",
+          data: seoSettings,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Failed to save SEO settings: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
         showPopup("SEO settings saved successfully!")
       } else {
         showPopup("Failed to save SEO settings")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving SEO settings:", error)
-      showPopup("An error occurred while saving settings")
+      showPopup(error.message || "An error occurred while saving settings")
     } finally {
       setSaving({ ...saving, seo: false })
     }
   }
 
   const handleSaveFirebase = async () => {
-    // Validate settings
-    const validation = validateFirebaseSettings(firebaseSettings)
-    if (!validation.valid) {
-      // Convert the first error to string to ensure type safety
-      const firstError = String(Object.values(validation.errors)[0])
-      showPopup(firstError)
-      return
-    }
-
     try {
       setSaving({ ...saving, firebase: true })
-      const success = await updateFirebaseSettings(firebaseSettings)
 
-      if (success) {
+      // Save Firebase settings via the API
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "firebase",
+          data: firebaseSettings,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Failed to save Firebase settings: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
         showPopup("Firebase settings saved successfully!")
       } else {
         showPopup("Failed to save Firebase settings")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving Firebase settings:", error)
-      showPopup("An error occurred while saving settings")
+      showPopup(error.message || "An error occurred while saving settings")
     } finally {
       setSaving({ ...saving, firebase: false })
     }
