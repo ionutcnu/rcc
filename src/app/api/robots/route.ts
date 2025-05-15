@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
-import { getSeoSettings } from "@/lib/firebase/seoService"
+import { getSettings } from "@/lib/firebase/settingsService"
 
 export async function GET() {
     try {
-        const seoSettings = await getSeoSettings()
+        const settings = await getSettings()
+        const seoSettings = settings.seo || {}
 
         // Create a basic robots.txt
         const robotsTxt = `User-agent: *

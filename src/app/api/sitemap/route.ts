@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
-import { getSeoSettings } from "@/lib/firebase/seoService"
+import { getSettings } from "@/lib/firebase/settingsService"
 import { getAllCats } from "@/lib/firebase/catService"
 
 export async function GET() {
     try {
-        const seoSettings = await getSeoSettings()
+        const settings = await getSettings()
+        const seoSettings = settings.seo || {}
 
         // Try to determine the base URL from the OG image or use a default
         let baseUrl = "https://example.com"

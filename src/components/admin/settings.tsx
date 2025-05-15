@@ -7,14 +7,14 @@ import { useCatPopup } from "@/components/CatPopupProvider"
 import {
   getSettings,
   updateFirebaseSettings,
+  updateSeoSettings,
+  validateSeoSettings,
+  validateFirebaseSettings,
   type SeoSettings,
   type FirebaseSettings,
   defaultSettings,
+  defaultSeoSettings,
 } from "@/lib/firebase/settingsService"
-import { validateSeoSettings, validateFirebaseSettings } from "@/lib/utils/settings-validator"
-import { getSeoSettings, updateSeoSettings as updateSeo, defaultSeoSettings } from "@/lib/firebase/seoService"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { InfoIcon } from "lucide-react"
 
 export function Settings() {
   const [loading, setLoading] = useState(true)
@@ -34,9 +34,8 @@ export function Settings() {
       try {
         setLoading(true)
         const settings = await getSettings()
-        const seo = await getSeoSettings()
 
-        setSeoSettings(seo)
+        setSeoSettings(settings.seo)
         setFirebaseSettings(settings.firebase)
       } catch (error) {
         console.error("Error fetching settings:", error)
@@ -61,7 +60,7 @@ export function Settings() {
 
     try {
       setSaving({ ...saving, seo: true })
-      const success = await updateSeo(seoSettings)
+      const success = await updateSeoSettings(seoSettings)
 
       if (success) {
         showPopup("SEO settings saved successfully!")
@@ -105,27 +104,25 @@ export function Settings() {
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-          <span className="ml-2 text-lg">Loading settings...</span>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <span className="ml-2 text-lg">Loading settings...</span>
+      </div>
     )
   }
 
   return (
-      <div className="container px-4 md:px-6">
-
-
-        <SettingsUi
-            seoSettings={seoSettings}
-            firebaseSettings={firebaseSettings}
-            onSeoSettingsChange={setSeoSettings}
-            onFirebaseSettingsChange={setFirebaseSettings}
-            onSaveSeo={handleSaveSeo}
-            onSaveFirebase={handleSaveFirebase}
-            savingSeo={saving.seo}
-            savingFirebase={saving.firebase}
-        />
-      </div>
+    <div className="container px-4 md:px-6">
+      <SettingsUi
+        seoSettings={seoSettings}
+        firebaseSettings={firebaseSettings}
+        onSeoSettingsChange={setSeoSettings}
+        onFirebaseSettingsChange={setFirebaseSettings}
+        onSaveSeo={handleSaveSeo}
+        onSaveFirebase={handleSaveFirebase}
+        savingSeo={saving.seo}
+        savingFirebase={saving.firebase}
+      />
+    </div>
   )
 }

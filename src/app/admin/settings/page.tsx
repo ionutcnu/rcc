@@ -26,10 +26,10 @@ export default function SettingsPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                <span className="ml-2 text-lg font-medium">Loading settings...</span>
-            </div>
+          <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+              <span className="ml-2 text-lg font-medium">Loading settings...</span>
+          </div>
         )
     }
 

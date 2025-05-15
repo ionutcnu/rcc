@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getSeoSettings } from "@/lib/firebase/seoService"
+import { getSettings } from "@/lib/firebase/settingsService"
 import { getStorage, ref, getDownloadURL } from "firebase/storage"
 import { app } from "@/lib/firebase/firebaseConfig"
 
@@ -16,15 +16,15 @@ export default function TestImagePage() {
             try {
                 setLoading(true)
                 // Get the OG image URL from settings
-                const settings = await getSeoSettings()
+                const settings = await getSettings()
 
-                if (settings.ogImage) {
-                    setOgImage(settings.ogImage)
+                if (settings.seo?.ogImage) {
+                    setOgImage(settings.seo.ogImage)
 
                     // Create proxy URL
-                    if (settings.ogImage.includes("firebasestorage.googleapis.com")) {
+                    if (settings.seo.ogImage.includes("firebasestorage.googleapis.com")) {
                         try {
-                            const urlObj = new URL(settings.ogImage)
+                            const urlObj = new URL(settings.seo.ogImage)
                             const pathStartIndex = urlObj.pathname.indexOf("/o/") + 3
                             if (pathStartIndex > 3) {
                                 let filePath = urlObj.pathname.substring(pathStartIndex)
@@ -73,44 +73,44 @@ export default function TestImagePage() {
     }
 
     return (
-        <div className="p-8 space-y-8">
-            <h1 className="text-2xl font-bold">Image Test Page</h1>
+      <div className="p-8 space-y-8">
+          <h1 className="text-2xl font-bold">Image Test Page</h1>
 
+          <div className="space-y-4">
+              <h2 className="text-xl">Original Firebase URL</h2>
+              <div className="overflow-x-auto">
+                  <code className="bg-gray-100 p-2 rounded block">{ogImage}</code>
+              </div>
+              <img
+                src={ogImage || "/placeholder.svg"}
+                alt="Original Firebase URL"
+                className="border rounded max-w-md"
+                onError={() => setError("Failed to load original image")}
+              />
+          </div>
+
+          {proxyUrl && (
             <div className="space-y-4">
-                <h2 className="text-xl">Original Firebase URL</h2>
+                <h2 className="text-xl">Proxy URL</h2>
                 <div className="overflow-x-auto">
-                    <code className="bg-gray-100 p-2 rounded block">{ogImage}</code>
+                    <code className="bg-gray-100 p-2 rounded block">{proxyUrl}</code>
                 </div>
                 <img
-                    src={ogImage || "/placeholder.svg"}
-                    alt="Original Firebase URL"
-                    className="border rounded max-w-md"
-                    onError={() => setError("Failed to load original image")}
+                  src={proxyUrl || "/placeholder.svg"}
+                  alt="Proxied image"
+                  className="border rounded max-w-md"
+                  onError={() => setError("Failed to load proxied image")}
                 />
             </div>
+          )}
 
-            {proxyUrl && (
-                <div className="space-y-4">
-                    <h2 className="text-xl">Proxy URL</h2>
-                    <div className="overflow-x-auto">
-                        <code className="bg-gray-100 p-2 rounded block">{proxyUrl}</code>
-                    </div>
-                    <img
-                        src={proxyUrl || "/placeholder.svg"}
-                        alt="Proxied image"
-                        className="border rounded max-w-md"
-                        onError={() => setError("Failed to load proxied image")}
-                    />
-                </div>
-            )}
-
-            <div className="mt-8 p-4 bg-blue-50 rounded">
-                <h3 className="font-bold">How this works:</h3>
-                <p>
-                    The proxy route converts Firebase Storage URLs to server-side requests, bypassing CORS restrictions and
-                    ensuring your images work in OG tags.
-                </p>
-            </div>
-        </div>
+          <div className="mt-8 p-4 bg-blue-50 rounded">
+              <h3 className="font-bold">How this works:</h3>
+              <p>
+                  The proxy route converts Firebase Storage URLs to server-side requests, bypassing CORS restrictions and
+                  ensuring your images work in OG tags.
+              </p>
+          </div>
+      </div>
     )
 }
