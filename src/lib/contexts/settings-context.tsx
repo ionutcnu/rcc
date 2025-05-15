@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
 
 // Define the structure of our settings
 interface AppSettings {
@@ -29,6 +30,7 @@ interface SettingsContextType {
   updateSeoSettings: (data: any) => Promise<void>
   updateFirebaseSettings: (data: any) => Promise<void>
   refreshSettings: () => Promise<void>
+  fetchSettingsIfNeeded: (force?: boolean) => Promise<AppSettings | null>
 }
 
 // Create the context with a default value
@@ -39,43 +41,93 @@ const SettingsContext = createContext<SettingsContextType>({
   updateSeoSettings: async () => {},
   updateFirebaseSettings: async () => {},
   refreshSettings: async () => {},
+  fetchSettingsIfNeeded: async () => null,
 })
 
 // Custom hook to use the settings context
 export const useSettings = () => useContext(SettingsContext)
 
-// Flag to track if we've already started fetching settings
-let isInitialFetchStarted = false
+// Cache for settings data
+const settingsCache = {
+  data: null as AppSettings | null,
+  timestamp: 0,
+  pendingPromise: null as Promise<AppSettings | null> | null,
+}
+
+// Cache expiration time in milliseconds (5 minutes)
+const CACHE_EXPIRATION = 5 * 60 * 1000
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<Error | null>(null)
+  const isMounted = useRef(true)
+
+  // Clean up on unmount
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
 
   // Function to fetch settings
-  const fetchSettings = useCallback(async () => {
-    if (isInitialFetchStarted) return
-    isInitialFetchStarted = true
+  const fetchSettings = useCallback(async (force = false): Promise<AppSettings | null> => {
+    // If we're already loading settings and not forcing a refresh, return the pending promise
+    if (settingsCache.pendingPromise && !force) {
+      return settingsCache.pendingPromise
+    }
+
+    // If we have cached data that's not expired and not forcing a refresh, use it
+    const now = Date.now()
+    if (!force && settingsCache.data && now - settingsCache.timestamp < CACHE_EXPIRATION) {
+      if (isMounted.current) {
+        setSettings(settingsCache.data)
+      }
+      return settingsCache.data
+    }
+
+    // Otherwise, fetch new data
+    setIsLoading(true)
+
+    const fetchPromise = fetch("/api/settings")
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch settings: ${res.status}`)
+        }
+        return res.json()
+      })
+      .then((data: AppSettings) => {
+        // Update cache
+        settingsCache.data = data
+        settingsCache.timestamp = Date.now()
+        settingsCache.pendingPromise = null
+
+        // Update state if component is still mounted
+        if (isMounted.current) {
+          setSettings(data)
+          setIsLoading(false)
+        }
+        return data
+      })
+      .catch((err) => {
+        settingsCache.pendingPromise = null
+
+        if (isMounted.current) {
+          setError(err as Error)
+          setIsLoading(false)
+        }
+        throw err
+      })
+
+    settingsCache.pendingPromise = fetchPromise
 
     try {
-      setIsLoading(true)
-      console.log("Fetching settings from API...")
-
-      const response = await fetch("/api/settings")
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch settings: ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log("Settings fetched successfully:", data)
-      setSettings(data)
-      setError(null)
-    } catch (err) {
-      console.error("Error fetching settings:", err)
-      setError(err as Error)
+      return await fetchPromise
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) {
+        setIsLoading(false)
+      }
     }
   }, [])
 
@@ -83,22 +135,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const refreshSettings = useCallback(async () => {
     try {
       setIsLoading(true)
-      const response = await fetch("/api/settings")
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch settings: ${response.status}`)
+      const data = await fetchSettings(true)
+      if (isMounted.current) {
+        setSettings(data)
       }
-
-      const data = await response.json()
-      console.log("Settings refreshed:", data)
-      setSettings(data)
-      setError(null)
     } catch (err) {
-      setError(err as Error)
+      if (isMounted.current) {
+        setError(err as Error)
+      }
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) {
+        setIsLoading(false)
+      }
     }
-  }, [])
+  }, [fetchSettings])
 
   // Function to update SEO settings
   const updateSeoSettings = useCallback(
@@ -132,6 +182,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             },
           }
         })
+
+        // Update cache
+        if (settingsCache.data) {
+          settingsCache.data = {
+            ...settingsCache.data,
+            seo: {
+              ...settingsCache.data.seo,
+              ...seoData,
+            },
+          }
+        }
 
         // Refresh settings to ensure we have the latest data
         await refreshSettings()
@@ -178,6 +239,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           }
         })
 
+        // Update cache
+        if (settingsCache.data) {
+          settingsCache.data = {
+            ...settingsCache.data,
+            firebase: {
+              ...settingsCache.data.firebase,
+              ...firebaseData,
+            },
+          }
+        }
+
         // Refresh settings to ensure we have the latest data
         await refreshSettings()
       } catch (err) {
@@ -190,9 +262,24 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [refreshSettings],
   )
 
+  // Function to fetch settings if needed
+  const fetchSettingsIfNeeded = useCallback(
+    async (force = false) => {
+      try {
+        return await fetchSettings(force)
+      } catch (err) {
+        console.error("Error fetching settings:", err)
+        return null
+      }
+    },
+    [fetchSettings],
+  )
+
   // Fetch settings on mount
   useEffect(() => {
-    fetchSettings()
+    fetchSettings().catch((err) => {
+      console.error("Error fetching settings on mount:", err)
+    })
   }, [fetchSettings])
 
   return (
@@ -204,6 +291,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         updateSeoSettings,
         updateFirebaseSettings,
         refreshSettings,
+        fetchSettingsIfNeeded,
       }}
     >
       {children}

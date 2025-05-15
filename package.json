@@ -49,6 +49,7 @@
     "@vercel/speed-insights": "^1.2.0",
     "accordion": "^3.0.2",
     "bun": "^1.1.33",
+    "calendar": "^0.1.1",
     "chart": "^0.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

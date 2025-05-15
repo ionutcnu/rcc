@@ -7,7 +7,7 @@ import SettingsUi from "@/components/admin/settings-ui"
 import { useCatPopup } from "@/hooks/use-cat-popup"
 
 export default function SettingsPage() {
-    const { settings, isLoading, error, updateSeoSettings, updateFirebaseSettings } = useSettings()
+    const { settings, isLoading, error, updateSeoSettings, updateFirebaseSettings, fetchSettingsIfNeeded } = useSettings()
     const { showPopup } = useCatPopup()
     const [localSeoSettings, setLocalSeoSettings] = useState<any>({})
     const [localFirebaseSettings, setLocalFirebaseSettings] = useState<any>({})
@@ -24,6 +24,21 @@ export default function SettingsPage() {
             setLocalFirebaseSettings(settings.firebase || {})
         }
     }, [settings])
+
+    // Add this useEffect to fetch settings when the page mounts
+    /*
+    useEffect(() => {
+      const loadSettings = async () => {
+        try {
+          await fetchSettingsIfNeeded()
+        } catch (error) {
+          console.error("Error loading settings:", error)
+        }
+      }
+
+      loadSettings()
+    }, [fetchSettingsIfNeeded])
+    */
 
     const handleSaveSeo = async (seoData: any) => {
         try {

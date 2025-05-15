@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { useCatPopup } from "@/components/CatPopupProvider"
-import { getAllCats } from "@/lib/firebase/catService"
+import { fetchAllCats } from "@/lib/api/catClient" // Changed from direct Firebase import
 import type { CatProfile } from "@/lib/types/cat"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 
@@ -82,8 +82,10 @@ export default function ActiveCatsTab() {
         const fetchCats = async () => {
             try {
                 setLoading(true)
-                // Explicitly pass false to exclude deleted cats
-                const fetchedCats = await getAllCats(false)
+                console.log("ActiveCatsTab: Fetching cats via API client")
+                // Use the API client instead of direct Firebase access
+                const fetchedCats = await fetchAllCats(false)
+                console.log(`ActiveCatsTab: Fetched ${fetchedCats.length} cats via API client`)
                 setCats(fetchedCats)
                 setFilteredCats(fetchedCats)
             } catch (err) {
@@ -232,6 +234,7 @@ export default function ActiveCatsTab() {
     const handleConfirmDelete = async () => {
         if (catToDelete) {
             try {
+                console.log(`ActiveCatsTab: Deleting cat ${catToDelete.id} via API`)
                 // Call the API route to move the cat to trash
                 const response = await fetch(`/api/cats/delete?id=${catToDelete.id}`, {
                     method: "DELETE",

@@ -182,5 +182,69 @@ export function useSettings() {
     isLoading,
     error,
     updateSettings,
+    updateSeoSettings: (data: any) => updateSettings("seo", data),
+    updateFirebaseSettings: (data: any) => updateSettings("firebase", data),
+    fetchSettingsIfNeeded: async (force = false) => {
+      // If we're already loading settings, wait for that promise
+      if (settingsCache.isLoading && settingsCache.pendingPromise) {
+        try {
+          return await settingsCache.pendingPromise
+        } catch (err) {
+          throw err
+        }
+      }
+
+      // If we have cached data that's not expired and we're not forcing a refresh, use it
+      const now = Date.now()
+      if (!force && settingsCache.data && now - settingsCache.timestamp < CACHE_EXPIRATION) {
+        return settingsCache.data
+      }
+
+      // Otherwise, fetch new data
+      setIsLoading(true)
+      settingsCache.isLoading = true
+
+      const fetchPromise = fetch("/api/settings")
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`Failed to fetch settings: ${res.status}`)
+          }
+          return res.json()
+        })
+        .then((data: AppSettings) => {
+          // Update cache
+          settingsCache.data = data
+          settingsCache.timestamp = Date.now()
+          settingsCache.isLoading = false
+          settingsCache.pendingPromise = null
+
+          // Update state if component is still mounted
+          if (isMounted.current) {
+            setSettings(data)
+            setIsLoading(false)
+          }
+          return data
+        })
+        .catch((err) => {
+          settingsCache.isLoading = false
+          settingsCache.pendingPromise = null
+
+          if (isMounted.current) {
+            setError(err as Error)
+            setIsLoading(false)
+          }
+          throw err
+        })
+
+      settingsCache.pendingPromise = fetchPromise as Promise<AppSettings>
+
+      try {
+        return await fetchPromise
+      } catch (err) {
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    },
   }
 }

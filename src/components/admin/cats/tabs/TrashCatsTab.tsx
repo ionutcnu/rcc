@@ -1,7 +1,6 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
@@ -11,10 +10,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCatPopup } from "@/components/CatPopupProvider"
-import { getDeletedCats } from "@/lib/firebase/catService"
 import type { CatProfile } from "@/lib/types/cat"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 import { Loader2 } from "lucide-react"
+
+// Import the API client instead of the Firebase service
+import { fetchTrashCats } from "@/lib/api/catClient"
 
 export default function TrashCatsTab() {
     const [cats, setCats] = useState<CatProfile[]>([])
@@ -50,12 +51,17 @@ export default function TrashCatsTab() {
         const fetchDeletedCats = async () => {
             try {
                 setLoading(true)
-                const fetchedCats = await getDeletedCats()
+                console.log("[TrashCatsTab] Fetching deleted cats via API client")
+
+                // Use the API client instead of direct Firebase access
+                const fetchedCats = await fetchTrashCats()
+                console.log(`[TrashCatsTab] Fetched ${fetchedCats.length} deleted cats`)
+
                 setCats(fetchedCats)
                 setFilteredCats(fetchedCats)
                 setTotalPages(Math.ceil(fetchedCats.length / itemsPerPage))
             } catch (err) {
-                console.error("Error fetching deleted cats:", err)
+                console.error("[TrashCatsTab] Error fetching deleted cats:", err)
                 setError("Failed to load deleted cats. Please try again later.")
                 showPopup("Failed to load deleted cats")
             } finally {
@@ -126,6 +132,8 @@ export default function TrashCatsTab() {
         if (!catToRestore) return
 
         try {
+            console.log(`[TrashCatsTab] Restoring cat: ${catToRestore.id}`)
+
             // Call the API route instead of directly using the service
             const response = await fetch("/api/cats/restore", {
                 method: "POST",
@@ -145,7 +153,7 @@ export default function TrashCatsTab() {
             setFilteredCats(filteredCats.filter((cat) => cat.id !== catToRestore.id))
             showPopup(`${catToRestore.name} restored successfully`)
         } catch (err) {
-            console.error("Error restoring cat:", err)
+            console.error("[TrashCatsTab] Error restoring cat:", err)
             showPopup("Error restoring cat")
         } finally {
             setRestoreDialogOpen(false)
@@ -158,6 +166,8 @@ export default function TrashCatsTab() {
         if (!catToDelete) return
 
         try {
+            console.log(`[TrashCatsTab] Permanently deleting cat: ${catToDelete.id}`)
+
             // Call the API route instead of directly using the service
             const response = await fetch(`/api/cats/delete?id=${catToDelete.id}&permanent=true`, {
                 method: "DELETE",
@@ -176,7 +186,7 @@ export default function TrashCatsTab() {
             setFilteredCats(filteredCats.filter((cat) => cat.id !== catToDelete.id))
             showPopup(`${catToDelete.name} permanently deleted`)
         } catch (err) {
-            console.error("Error deleting cat:", err)
+            console.error("[TrashCatsTab] Error deleting cat:", err)
             showPopup("Error permanently deleting cat")
         } finally {
             setDeleteDialogOpen(false)

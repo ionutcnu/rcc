@@ -60,6 +60,61 @@ export async function fetchAllCats(includeDeleted = false): Promise<CatProfile[]
 }
 
 /**
+ * Fetches deleted cats from the API
+ * @returns Array of deleted cat profiles
+ */
+export async function fetchTrashCats(): Promise<CatProfile[]> {
+  try {
+    console.log("[catClient] Fetching deleted cats from API")
+    const response = await fetch("/api/cats/trash", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    })
+
+    console.log("[catClient] Trash API response status:", response.status)
+
+    if (!response.ok) {
+      throw new Error(`Error fetching deleted cats: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log("[catClient] Trash API response data:", data)
+
+    // Check the structure of the response
+    if (data && typeof data === "object") {
+      // If the response has a cats property that is an array
+      if (data.cats && Array.isArray(data.cats)) {
+        console.log(`[catClient] Found ${data.cats.length} deleted cats in data.cats`)
+        return transformCatApiResponseArray(data.cats)
+      }
+
+      // If the response itself is an array
+      if (Array.isArray(data)) {
+        console.log(`[catClient] Found ${data.length} deleted cats in data array`)
+        return transformCatApiResponseArray(data)
+      }
+
+      // If the response has a different structure but contains cat objects
+      const possibleCatsArray = Object.values(data).find((val) => Array.isArray(val))
+      if (possibleCatsArray) {
+        console.log(`[catClient] Found ${possibleCatsArray.length} deleted cats in a nested property`)
+        return transformCatApiResponseArray(possibleCatsArray)
+      }
+    }
+
+    console.error("[catClient] Could not find cats array in API response:", data)
+    return []
+  } catch (error) {
+    console.error("[catClient] Error in fetchTrashCats:", error)
+    // Return empty array instead of throwing to prevent component crashes
+    return []
+  }
+}
+
+/**
  * Fetches a cat by name from the API
  * @param name The name of the cat to fetch
  * @returns The cat profile or null if not found
