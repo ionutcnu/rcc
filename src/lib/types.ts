@@ -10,6 +10,7 @@ export interface LogEntry {
     catId?: string // Cat identifier for cat-related logs
     catName?: string // Cat name for easier identification
     actionType?: "add" | "update" | "delete" | "upload" | "archive" | "restore" | "system" // Log action type
+    archivedAt?: Date // Timestamp when the log was archived
 }
 
 export interface DateRange {

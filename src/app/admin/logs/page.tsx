@@ -17,10 +17,11 @@ import {
     ExternalLink,
     Cat,
     CalendarIcon,
-    DownloadCloud,
     Clock,
     ChevronLeft,
     ChevronRight,
+    Download,
+    FileText,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -28,13 +29,15 @@ import { format, subDays, isBefore, isAfter, startOfDay, endOfDay, isValid } fro
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { LogEntry, DateRange as DateRangeType } from "@/lib/types"
+import { ArchiveLogsTab } from "@/components/admin/logs/archive-logs-tab"
+import { LogStats } from "@/components/admin/log-stats"
 
-// Number of logs to load at once
-const PAGE_SIZE = 25
+// Number of logs to load at once - reduced from 25 to 10
+const PAGE_SIZE = 10
 
 export default function LogsPage() {
     const [logs, setLogs] = useState<LogEntry[]>([])
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(false)
     const [filter, setFilter] = useState<"all" | "info" | "warn" | "error" | "cat-activity">("all")
     const [searchQuery, setSearchQuery] = useState("")
     const [refreshing, setRefreshing] = useState(false)
@@ -58,6 +61,9 @@ export default function LogsPage() {
         other: 0,
     })
     const [initialLoad, setInitialLoad] = useState(true)
+    const [exporting, setExporting] = useState(false)
+    const [useCache, setUseCache] = useState(true)
+    const [logsLoaded, setLogsLoaded] = useState(false)
 
     // Format date for display
     const formatDate = (date?: Date | null) => (date && isValid(date) ? format(date, "MMM d, yyyy") : "")
@@ -113,39 +119,39 @@ export default function LogsPage() {
         return true
     }, [startDate, endDate])
 
-    // FIX: Only fetch logs once on initial load and when filters change
+    // Only fetch stats on initial load, not logs
     useEffect(() => {
         if (initialLoad) {
-            fetchLogs()
             fetchLogStats()
             setInitialLoad(false)
         }
     }, [initialLoad])
 
-    // FIX: Only fetch when filters explicitly change, not on every render
+    // Reset logs when filters change
     useEffect(() => {
         if (!initialLoad) {
-            if (validateDateRange()) {
-                fetchLogs()
-                fetchLogStats()
-            }
+            // Clear current logs and reset cursor when filters change
+            setLogs([])
+            setCursor(null)
+            setHasMore(true)
+            setLogsLoaded(false)
         }
-    }, [filter, startDate, endDate, actionTypeFilter, searchQuery, validateDateRange])
+    }, [filter, startDate, endDate, actionTypeFilter, searchQuery, initialLoad])
 
     const fetchLogs = async () => {
         try {
             setLoading(true)
             setError(null)
-            setCursor(null)
-            setHasMore(true)
 
             // Build API URL with filters
             const { startDate, endDate } = getQueryDateRange()
             const params = new URLSearchParams({
                 filter,
                 pageSize: PAGE_SIZE.toString(),
+                skipCache: (!useCache).toString(),
             })
 
+            if (cursor) params.append("cursor", cursor)
             if (startDate) params.append("startDate", startOfDay(startDate).toISOString())
             if (endDate) params.append("endDate", endOfDay(endDate).toISOString())
             if (actionTypeFilter) params.append("actionType", actionTypeFilter)
@@ -170,16 +176,28 @@ export default function LogsPage() {
                         timestamp: new Date(log.timestamp),
                     }))
 
-                    setLogs(fetchedLogs)
+                    // If we already have logs and this is a "load more" operation, append
+                    if (cursor && logs.length > 0) {
+                        setLogs((prevLogs) => [...prevLogs, ...fetchedLogs])
+                    } else {
+                        // Otherwise this is a fresh load
+                        setLogs(fetchedLogs)
+                    }
+
                     setCursor(data.cursor)
                     setHasMore(data.hasMore)
+                    setLogsLoaded(true)
                 } else {
-                    setLogs([])
+                    if (!cursor) {
+                        // Only clear logs if this is a fresh load
+                        setLogs([])
+                    }
                     setHasMore(false)
+                    setLogsLoaded(true)
                 }
             } catch (error: any) {
                 console.error("Error fetching logs:", error)
-                setError(error.message || "Failed to fetch logs")
+                setError(error?.message || "Failed to fetch logs")
             }
         } finally {
             setLoading(false)
@@ -192,43 +210,7 @@ export default function LogsPage() {
 
         try {
             setLoadingMore(true)
-
-            // Build API URL with filters and cursor
-            const { startDate, endDate } = getQueryDateRange()
-            const params = new URLSearchParams({
-                filter,
-                pageSize: PAGE_SIZE.toString(),
-                cursor: cursor,
-            })
-
-            if (startDate) params.append("startDate", startOfDay(startDate).toISOString())
-            if (endDate) params.append("endDate", endOfDay(endDate).toISOString())
-            if (actionTypeFilter) params.append("actionType", actionTypeFilter)
-            if (searchQuery) params.append("search", searchQuery)
-
-            const response = await fetch(`/api/logs?${params.toString()}`)
-
-            if (!response.ok) {
-                throw new Error(`API error: ${response.status}`)
-            }
-
-            const data = await response.json()
-
-            if (data.logs) {
-                const moreLogs = data.logs.map((log: any) => ({
-                    ...log,
-                    timestamp: new Date(log.timestamp),
-                }))
-
-                // Append new logs to existing logs
-                setLogs((prevLogs) => [...prevLogs, ...moreLogs])
-                setCursor(data.cursor)
-                setHasMore(data.hasMore)
-            } else {
-                setHasMore(false)
-            }
-        } catch (error) {
-            console.error("Error loading more logs:", error)
+            await fetchLogs()
         } finally {
             setLoadingMore(false)
         }
@@ -236,7 +218,13 @@ export default function LogsPage() {
 
     const handleRefresh = async () => {
         setRefreshing(true)
-        await fetchLogs()
+        // Reset logs data
+        setLogs([])
+        setCursor(null)
+        setHasMore(true)
+        setLogsLoaded(false)
+
+        // Refresh stats
         await fetchLogStats()
         setRefreshing(false)
     }
@@ -248,6 +236,12 @@ export default function LogsPage() {
         setFilter("all")
         setActionTypeFilter(null)
         setSearchQuery("")
+
+        // Clear logs when filters change
+        setLogs([])
+        setCursor(null)
+        setHasMore(true)
+        setLogsLoaded(false)
     }
 
     // Set predefined date ranges
@@ -392,7 +386,9 @@ export default function LogsPage() {
     const fetchLogStats = async () => {
         try {
             const { startDate, endDate } = getQueryDateRange()
-            const params = new URLSearchParams()
+            const params = new URLSearchParams({
+                skipCache: (!useCache).toString(),
+            })
 
             if (startDate) params.append("startDate", startOfDay(startDate).toISOString())
             if (endDate) params.append("endDate", endOfDay(endDate).toISOString())
@@ -442,14 +438,11 @@ export default function LogsPage() {
     const handleTabChange = (value: string) => {
         setActiveTab(value)
 
-        // Update filter based on tab
-        if (value === "catActivity") {
-            setFilter("cat-activity")
-        } else if (value === "system") {
-            setFilter("all") // We'll filter out cat activity logs in the UI
-        } else {
-            setFilter("all")
-        }
+        // Reset logs when changing tabs
+        setLogs([])
+        setCursor(null)
+        setHasMore(true)
+        setLogsLoaded(false)
     }
 
     // Handle date selection
@@ -550,6 +543,42 @@ export default function LogsPage() {
     // Format month name
     const monthName = new Intl.DateTimeFormat("en-US", { month: "long" }).format(new Date(calendarYear, calendarMonth))
 
+    const handleExport = async () => {
+        try {
+            setExporting(true)
+
+            const params = new URLSearchParams({
+                filter,
+            })
+
+            if (searchQuery) {
+                params.append("search", searchQuery)
+            }
+
+            const response = await fetch(`/api/logs/export?${params.toString()}`)
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`)
+            }
+
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.style.display = "none"
+            a.href = url
+            a.download = `logs-export-${new Date().toISOString().split("T")[0]}.csv`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+        } catch (error: any) {
+            console.error("Error exporting logs:", error)
+            setError(error?.message || "Failed to export logs")
+            showPopup("Failed to export logs")
+        } finally {
+            setExporting(false)
+        }
+    }
+
     return (
       <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -558,9 +587,9 @@ export default function LogsPage() {
                   <Button variant="outline" onClick={fixLogLevels}>
                       Fix Log Levels
                   </Button>
-                  <Button variant="outline" onClick={exportLogsToCSV}>
-                      <DownloadCloud className="h-4 w-4 mr-2" />
-                      Export CSV
+                  <Button variant="outline" onClick={handleExport} disabled={exporting}>
+                      {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                      {exporting ? "Exporting..." : "Export CSV"}
                   </Button>
                   <Button onClick={handleRefresh} disabled={refreshing}>
                       {refreshing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
@@ -600,39 +629,7 @@ export default function LogsPage() {
             </Alert>
           )}
 
-          <Card>
-              <CardHeader>
-                  <CardTitle>Log Statistics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <div className="grid grid-cols-6 gap-4">
-                      <div className="bg-gray-100 p-4 rounded-md text-center">
-                          <div className="text-2xl font-bold">{logStats.total}</div>
-                          <div className="text-sm text-gray-500">Total</div>
-                      </div>
-                      <div className="bg-blue-50 p-4 rounded-md text-center">
-                          <div className="text-2xl font-bold text-blue-600">{logStats.info}</div>
-                          <div className="text-sm text-gray-500">Info</div>
-                      </div>
-                      <div className="bg-amber-50 p-4 rounded-md text-center">
-                          <div className="text-2xl font-bold text-amber-600">{logStats.warn}</div>
-                          <div className="text-sm text-gray-500">Warning</div>
-                      </div>
-                      <div className="bg-red-50 p-4 rounded-md text-center">
-                          <div className="text-2xl font-bold text-red-600">{logStats.error}</div>
-                          <div className="text-sm text-gray-500">Error</div>
-                      </div>
-                      <div className="bg-orange-50 p-4 rounded-md text-center">
-                          <div className="text-2xl font-bold text-orange-600">{logStats.catActivity}</div>
-                          <div className="text-sm text-gray-500">Cat Activity</div>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-md text-center">
-                          <div className="text-2xl font-bold text-gray-600">{logStats.other}</div>
-                          <div className="text-sm text-gray-500">Other</div>
-                      </div>
-                  </div>
-              </CardContent>
-          </Card>
+          <LogStats />
 
           <Card>
               <CardHeader className="pb-0">
@@ -644,6 +641,7 @@ export default function LogsPage() {
                           <TabsTrigger value="all">All Logs</TabsTrigger>
                           <TabsTrigger value="system">System</TabsTrigger>
                           <TabsTrigger value="catActivity">Cat Activity</TabsTrigger>
+                          <TabsTrigger value="archive">Archive</TabsTrigger>
                       </TabsList>
 
                       {/* Improved filter UI */}
@@ -895,6 +893,43 @@ export default function LogsPage() {
                                     </Select>
                                   )}
 
+                                  {/* Log Levels Dropdown */}
+                                  <Select
+                                    value={filter}
+                                    onValueChange={(value: "all" | "info" | "warn" | "error" | "cat-activity") => {
+                                        setFilter(value)
+                                        // Reset logs when filter changes
+                                        setLogs([])
+                                        setCursor(null)
+                                        setHasMore(true)
+                                        setLogsLoaded(false)
+                                    }}
+                                  >
+                                      <SelectTrigger className="w-[150px]">
+                                          <SelectValue placeholder="All Levels" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="all">All Levels</SelectItem>
+                                          <SelectItem value="info">Info</SelectItem>
+                                          <SelectItem value="warn">Warning</SelectItem>
+                                          <SelectItem value="error">Error</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+
+                                  {/* Add cache control checkbox */}
+                                  <div className="flex items-center ml-2">
+                                      <input
+                                        type="checkbox"
+                                        id="useCache"
+                                        checked={useCache}
+                                        onChange={(e) => setUseCache(e.target.checked)}
+                                        className="mr-2"
+                                      />
+                                      <label htmlFor="useCache" className="text-sm">
+                                          Use cache
+                                      </label>
+                                  </div>
+
                                   {(startDate || endDate || filter !== "all" || actionTypeFilter || searchQuery) && (
                                     <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
                                         Clear filters
@@ -937,6 +972,30 @@ export default function LogsPage() {
                                   <Search className="h-3 w-3" />"{searchQuery}"
                               </Badge>
                             )}
+                            {!useCache && (
+                              <Badge variant="outline" className="bg-yellow-50">
+                                  Cache disabled
+                              </Badge>
+                            )}
+                        </div>
+                      )}
+
+                      {/* Fetch Logs button */}
+                      {!logsLoaded && (
+                        <div className="flex justify-center my-8">
+                            <Button onClick={fetchLogs} disabled={loading} size="lg" className="px-8">
+                                {loading ? (
+                                  <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Loading...
+                                  </>
+                                ) : (
+                                  <>
+                                      <FileText className="mr-2 h-5 w-5" />
+                                      Fetch Logs
+                                  </>
+                                )}
+                            </Button>
                         </div>
                       )}
 
@@ -951,6 +1010,7 @@ export default function LogsPage() {
                             getLevelIcon={getLevelIcon}
                             formatDateTime={formatDateTime}
                             actionTypeLabels={actionTypeLabels}
+                            logsLoaded={logsLoaded}
                           />
                       </TabsContent>
 
@@ -965,6 +1025,7 @@ export default function LogsPage() {
                             getLevelIcon={getLevelIcon}
                             formatDateTime={formatDateTime}
                             actionTypeLabels={actionTypeLabels}
+                            logsLoaded={logsLoaded}
                           />
                       </TabsContent>
 
@@ -979,7 +1040,11 @@ export default function LogsPage() {
                             getLevelIcon={getLevelIcon}
                             formatDateTime={formatDateTime}
                             actionTypeLabels={actionTypeLabels}
+                            logsLoaded={logsLoaded}
                           />
+                      </TabsContent>
+                      <TabsContent value="archive">
+                          <ArchiveLogsTab />
                       </TabsContent>
                   </Tabs>
               </CardContent>
@@ -999,6 +1064,7 @@ function LogsContent({
                          getLevelIcon,
                          formatDateTime,
                          actionTypeLabels,
+                         logsLoaded,
                      }: {
     logs: LogEntry[]
     loading: boolean
@@ -1009,6 +1075,7 @@ function LogsContent({
     getLevelIcon: (level: string) => React.ReactNode
     formatDateTime: (date: Date) => string
     actionTypeLabels: Record<string, { label: string; color: string }>
+    logsLoaded: boolean
 }) {
     if (loading) {
         return (
@@ -1017,6 +1084,10 @@ function LogsContent({
               <span className="ml-2">Loading logs...</span>
           </div>
         )
+    }
+
+    if (!logsLoaded) {
+        return null // Don't show any content until logs are loaded
     }
 
     if (logs.length === 0) {

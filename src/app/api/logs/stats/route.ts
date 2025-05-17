@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebase/admin"
 import { getAuth } from "firebase-admin/auth"
 import { Timestamp, type Query, type DocumentData } from "firebase-admin/firestore"
+import { redis } from "@/lib/redis"
+
+// Cache TTL in seconds (15 minutes)
+const CACHE_TTL = 900
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,6 +14,24 @@ export async function GET(request: NextRequest) {
     const startDateParam = searchParams.get("startDate")
     const endDateParam = searchParams.get("endDate")
     const filter = searchParams.get("filter") || "all"
+    const skipCache = searchParams.get("skipCache") === "true"
+
+    // Generate a cache key based on the query parameters
+    const cacheKey = `logs_stats:${filter}:${startDateParam || ""}:${endDateParam || ""}`
+
+    // Try to get from cache first if not explicitly skipped
+    if (!skipCache) {
+      try {
+        const cachedData = await redis.get(cacheKey)
+        if (cachedData && typeof cachedData === "string") {
+          console.log("Cache hit for stats:", cacheKey)
+          return NextResponse.json(JSON.parse(cachedData))
+        }
+      } catch (cacheError) {
+        console.error("Redis cache error for stats:", cacheError)
+        // Continue with database query if cache fails
+      }
+    }
 
     // Verify session
     const sessionCookie = request.cookies.get("session")?.value
@@ -165,7 +187,22 @@ export async function GET(request: NextRequest) {
       if (stats.other < 0) stats.other = 0 // Ensure we don't have negative counts
     }
 
-    return NextResponse.json({ stats })
+    const responseData = { stats }
+
+    // Cache the results
+    if (!skipCache) {
+      try {
+        await redis.set(cacheKey, JSON.stringify(responseData), {
+          ex: CACHE_TTL,
+        })
+        console.log("Cached stats data for:", cacheKey)
+      } catch (cacheError) {
+        console.error("Redis cache set error for stats:", cacheError)
+        // Continue even if caching fails
+      }
+    }
+
+    return NextResponse.json(responseData)
   } catch (error: any) {
     console.error("Error fetching log stats:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })

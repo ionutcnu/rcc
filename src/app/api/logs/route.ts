@@ -2,9 +2,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebase/admin"
 import { getAuth } from "firebase-admin/auth"
 import { Timestamp, type Query, type DocumentData } from "firebase-admin/firestore"
+import { redis } from "@/lib/redis"
 
 // Number of logs to load at once
-const PAGE_SIZE = 25
+const PAGE_SIZE = 10
+
+// Cache TTL in seconds (15 minutes)
+const CACHE_TTL = 900
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,11 +20,32 @@ export async function GET(request: NextRequest) {
     const actionTypeFilter = searchParams.get("actionType") || null
     const searchQuery = searchParams.get("search") || ""
     const cursor = searchParams.get("cursor") || null
+    const skipCache = searchParams.get("skipCache") === "true"
 
-    // IMPORTANT: Force page size to be no more than 25
+    // IMPORTANT: Force page size to be no more than the configured PAGE_SIZE
     const pageSize = Math.min(Number.parseInt(searchParams.get("pageSize") || String(PAGE_SIZE), 10), PAGE_SIZE)
 
-    console.log("API Request:", { filter, actionTypeFilter, cursor, pageSize, startDateParam, endDateParam })
+    console.log("API Request:", { filter, actionTypeFilter, cursor, pageSize, startDateParam, endDateParam, skipCache })
+
+    // Generate a cache key based on the query parameters
+    const cacheKey = `logs:${filter}:${startDateParam || ""}:${endDateParam || ""}:${actionTypeFilter || ""}:${cursor || ""}:${pageSize}:${searchQuery || ""}`
+
+    // Skip cache for certain conditions
+    const useCache = !skipCache && !searchQuery
+
+    // Try to get from cache first
+    if (useCache) {
+      try {
+        const cachedData = await redis.get(cacheKey)
+        if (cachedData && typeof cachedData === "string") {
+          console.log("Cache hit for:", cacheKey)
+          return NextResponse.json(JSON.parse(cachedData))
+        }
+      } catch (cacheError) {
+        console.error("Redis cache error:", cacheError)
+        // Continue with database query if cache fails
+      }
+    }
 
     // Verify session
     const sessionCookie = request.cookies.get("session")?.value
@@ -190,11 +215,26 @@ export async function GET(request: NextRequest) {
 
     console.log(`Returning ${logs.length} filtered logs`)
 
-    return NextResponse.json({
+    const responseData = {
       logs,
       cursor: nextCursor,
       hasMore: logs.length === pageSize,
-    })
+    }
+
+    // Cache the results if applicable
+    if (useCache) {
+      try {
+        await redis.set(cacheKey, JSON.stringify(responseData), {
+          ex: CACHE_TTL,
+        })
+        console.log("Cached data for:", cacheKey)
+      } catch (cacheError) {
+        console.error("Redis cache set error:", cacheError)
+        // Continue even if caching fails
+      }
+    }
+
+    return NextResponse.json(responseData)
   } catch (error: any) {
     console.error("Error fetching logs:", error)
     return NextResponse.json(
