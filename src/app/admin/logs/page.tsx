@@ -64,6 +64,7 @@ export default function LogsPage() {
     const [exporting, setExporting] = useState(false)
     const [useCache, setUseCache] = useState(true)
     const [logsLoaded, setLogsLoaded] = useState(false)
+    const [mainTabsValue, setMainTabsValue] = useState("logs")
 
     // Format date for display
     const formatDate = (date?: Date | null) => (date && isValid(date) ? format(date, "MMM d, yyyy") : "")
@@ -631,424 +632,407 @@ export default function LogsPage() {
 
           <LogStats />
 
-          <Card>
-              <CardHeader className="pb-0">
-                  <CardTitle>Log Entries</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <Tabs defaultValue="all" className="mt-4" onValueChange={handleTabChange} value={activeTab}>
-                      <TabsList className="mb-4">
-                          <TabsTrigger value="all">All Logs</TabsTrigger>
-                          <TabsTrigger value="system">System</TabsTrigger>
-                          <TabsTrigger value="catActivity">Cat Activity</TabsTrigger>
-                          <TabsTrigger value="archive">Archive</TabsTrigger>
-                      </TabsList>
+          <Tabs defaultValue="logs" value={mainTabsValue} onValueChange={setMainTabsValue}>
+              <TabsList className="mb-4">
+                  <TabsTrigger value="logs">Log Entries</TabsTrigger>
+                  <TabsTrigger value="archive">Archive Management</TabsTrigger>
+              </TabsList>
 
-                      {/* Improved filter UI */}
-                      <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                          <div className="flex flex-col md:flex-row gap-4">
-                              <div className="relative flex-grow">
-                                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                                  <Input
-                                    placeholder="Search logs..."
-                                    className="pl-10"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                  />
-                              </div>
+              <TabsContent value="logs">
+                  <Card>
+                      <CardHeader className="pb-0">
+                          <CardTitle>Log Entries</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <Tabs defaultValue="all" className="mt-4" onValueChange={handleTabChange} value={activeTab}>
+                              <TabsList className="mb-4">
+                                  <TabsTrigger value="all">All Logs</TabsTrigger>
+                                  <TabsTrigger value="system">System</TabsTrigger>
+                                  <TabsTrigger value="catActivity">Cat Activity</TabsTrigger>
+                              </TabsList>
 
-                              <div className="flex flex-wrap gap-2">
-                                  {/* Start Date Picker */}
-                                  <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
-                                      <PopoverTrigger asChild>
-                                          <Button variant="outline" className="flex items-center">
-                                              <CalendarIcon className="h-4 w-4 mr-2" />
-                                              {startDate ? formatDate(startDate) : "Start Date"}
-                                          </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0" align="start">
-                                          <div className="p-3 border-b">
-                                              <div className="flex justify-between items-center">
-                                                  <h4 className="font-medium">Select start date</h4>
-                                                  <div className="flex gap-1">
-                                                      <Button variant="ghost" size="sm" onClick={setLastDay} className="h-7 text-xs">
-                                                          Last 24h
-                                                      </Button>
-                                                      <Button variant="ghost" size="sm" onClick={setLastWeek} className="h-7 text-xs">
-                                                          Last 7d
-                                                      </Button>
-                                                      <Button variant="ghost" size="sm" onClick={setLastMonth} className="h-7 text-xs">
-                                                          Last 30d
-                                                      </Button>
-                                                  </div>
-                                              </div>
-                                          </div>
+                              {/* Improved filter UI */}
+                              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                                  <div className="flex flex-col md:flex-row gap-4">
+                                      <div className="relative flex-grow">
+                                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                          <Input
+                                            placeholder="Search logs..."
+                                            className="pl-10"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                          />
+                                      </div>
 
-                                          {/* Custom Calendar */}
-                                          <div className="p-3">
-                                              <div className="flex justify-between items-center mb-4">
-                                                  <Button variant="ghost" size="sm" onClick={goToPrevMonth}>
-                                                      <ChevronLeft className="h-4 w-4" />
+                                      <div className="flex flex-wrap gap-2">
+                                          {/* Start Date Picker */}
+                                          <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
+                                              <PopoverTrigger asChild>
+                                                  <Button variant="outline" className="flex items-center">
+                                                      <CalendarIcon className="h-4 w-4 mr-2" />
+                                                      {startDate ? formatDate(startDate) : "Start Date"}
                                                   </Button>
-                                                  <div className="font-medium">
-                                                      {monthName} {calendarYear}
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                  <div className="p-3 border-b">
+                                                      <div className="flex justify-between items-center">
+                                                          <h4 className="font-medium">Select start date</h4>
+                                                          <div className="flex gap-1">
+                                                              <Button variant="ghost" size="sm" onClick={setLastDay} className="h-7 text-xs">
+                                                                  Last 24h
+                                                              </Button>
+                                                              <Button variant="ghost" size="sm" onClick={setLastWeek} className="h-7 text-xs">
+                                                                  Last 7d
+                                                              </Button>
+                                                              <Button variant="ghost" size="sm" onClick={setLastMonth} className="h-7 text-xs">
+                                                                  Last 30d
+                                                              </Button>
+                                                          </div>
+                                                      </div>
                                                   </div>
-                                                  <Button variant="ghost" size="sm" onClick={goToNextMonth}>
-                                                      <ChevronRight className="h-4 w-4" />
-                                                  </Button>
-                                              </div>
 
-                                              <div className="grid grid-cols-7 gap-1 text-center">
-                                                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                                                    <div
-                                                      key={day}
-                                                      className="text-xs font-medium text-gray-500 h-8 flex items-center justify-center"
-                                                    >
-                                                        {day}
-                                                    </div>
-                                                  ))}
+                                                  {/* Custom Calendar */}
+                                                  <div className="p-3">
+                                                      <div className="flex justify-between items-center mb-4">
+                                                          <Button variant="ghost" size="sm" onClick={goToPrevMonth}>
+                                                              <ChevronLeft className="h-4 w-4" />
+                                                          </Button>
+                                                          <div className="font-medium">
+                                                              {monthName} {calendarYear}
+                                                          </div>
+                                                          <Button variant="ghost" size="sm" onClick={goToNextMonth}>
+                                                              <ChevronRight className="h-4 w-4" />
+                                                          </Button>
+                                                      </div>
 
-                                                  {paddingDays.map((_, index) => (
-                                                    <div key={`padding-${index}`} className="h-8" />
-                                                  ))}
+                                                      <div className="grid grid-cols-7 gap-1 text-center">
+                                                          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                                                            <div
+                                                              key={day}
+                                                              className="text-xs font-medium text-gray-500 h-8 flex items-center justify-center"
+                                                            >
+                                                                {day}
+                                                            </div>
+                                                          ))}
 
-                                                  {days.map((day) => {
-                                                      const date = new Date(calendarYear, calendarMonth, day)
-                                                      const isToday = isSameDay(date, today)
-                                                      const isFuture = isAfter(date, today)
-                                                      const isSelected = startDate && isSameDay(date, startDate)
+                                                          {paddingDays.map((_, index) => (
+                                                            <div key={`padding-${index}`} className="h-8" />
+                                                          ))}
 
-                                                      return (
-                                                        <Button
-                                                          key={`day-${day}`}
-                                                          variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
-                                                          className={`h-8 w-8 p-0 ${isFuture ? "text-gray-300" : ""}`}
-                                                          disabled={isFuture}
-                                                          onClick={() => handleDateChange(date, "start")}
-                                                        >
-                                                            {day}
-                                                        </Button>
-                                                      )
-                                                  })}
-                                              </div>
-                                          </div>
+                                                          {days.map((day) => {
+                                                              const date = new Date(calendarYear, calendarMonth, day)
+                                                              const isToday = isSameDay(date, today)
+                                                              const isFuture = isAfter(date, today)
+                                                              const isSelected = startDate && isSameDay(date, startDate)
 
-                                          <div className="p-3 border-t flex justify-between">
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setStartDate(null)
-                                                    setEndDate(null)
-                                                    setIsStartDateOpen(false)
-                                                }}
-                                              >
-                                                  Clear
-                                              </Button>
-                                              <Button
-                                                variant="default"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setIsStartDateOpen(false)
-                                                }}
-                                              >
-                                                  Apply
-                                              </Button>
-                                          </div>
-                                      </PopoverContent>
-                                  </Popover>
+                                                              return (
+                                                                <Button
+                                                                  key={`day-${day}`}
+                                                                  variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
+                                                                  className={`h-8 w-8 p-0 ${isFuture ? "text-gray-300" : ""}`}
+                                                                  disabled={isFuture}
+                                                                  onClick={() => handleDateChange(date, "start")}
+                                                                >
+                                                                    {day}
+                                                                </Button>
+                                                              )
+                                                          })}
+                                                      </div>
+                                                  </div>
 
-                                  {/* End Date Picker */}
-                                  <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
-                                      <PopoverTrigger asChild>
-                                          <Button variant="outline" className="flex items-center">
-                                              <CalendarIcon className="h-4 w-4 mr-2" />
-                                              {endDate ? formatDate(endDate) : "End Date"}
-                                          </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0" align="start">
-                                          <div className="p-3 border-b">
-                                              <div className="flex justify-between items-center">
-                                                  <h4 className="font-medium">Select end date</h4>
-                                                  <div className="flex gap-1">
+                                                  <div className="p-3 border-t flex justify-between">
                                                       <Button
-                                                        variant="ghost"
+                                                        variant="outline"
                                                         size="sm"
                                                         onClick={() => {
-                                                            if (startDate) {
-                                                                setEndDate(startDate)
-                                                                setIsEndDateOpen(false)
-                                                            }
+                                                            setStartDate(null)
+                                                            setEndDate(null)
+                                                            setIsStartDateOpen(false)
                                                         }}
-                                                        className="h-7 text-xs"
                                                       >
-                                                          Same as start
+                                                          Clear
                                                       </Button>
                                                       <Button
-                                                        variant="ghost"
+                                                        variant="default"
                                                         size="sm"
                                                         onClick={() => {
-                                                            setEndDate(new Date())
+                                                            setIsStartDateOpen(false)
+                                                        }}
+                                                      >
+                                                          Apply
+                                                      </Button>
+                                                  </div>
+                                              </PopoverContent>
+                                          </Popover>
+
+                                          {/* End Date Picker */}
+                                          <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
+                                              <PopoverTrigger asChild>
+                                                  <Button variant="outline" className="flex items-center">
+                                                      <CalendarIcon className="h-4 w-4 mr-2" />
+                                                      {endDate ? formatDate(endDate) : "End Date"}
+                                                  </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                  <div className="p-3 border-b">
+                                                      <div className="flex justify-between items-center">
+                                                          <h4 className="font-medium">Select end date</h4>
+                                                          <div className="flex gap-1">
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    if (startDate) {
+                                                                        setEndDate(startDate)
+                                                                        setIsEndDateOpen(false)
+                                                                    }
+                                                                }}
+                                                                className="h-7 text-xs"
+                                                              >
+                                                                  Same as start
+                                                              </Button>
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    setEndDate(new Date())
+                                                                    setIsEndDateOpen(false)
+                                                                }}
+                                                                className="h-7 text-xs"
+                                                              >
+                                                                  Today
+                                                              </Button>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+
+                                                  {/* Custom Calendar */}
+                                                  <div className="p-3">
+                                                      <div className="flex justify-between items-center mb-4">
+                                                          <Button variant="ghost" size="sm" onClick={goToPrevMonth}>
+                                                              <ChevronLeft className="h-4 w-4" />
+                                                          </Button>
+                                                          <div className="font-medium">
+                                                              {monthName} {calendarYear}
+                                                          </div>
+                                                          <Button variant="ghost" size="sm" onClick={goToNextMonth}>
+                                                              <ChevronRight className="h-4 w-4" />
+                                                          </Button>
+                                                      </div>
+
+                                                      <div className="grid grid-cols-7 gap-1 text-center">
+                                                          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                                                            <div
+                                                              key={day}
+                                                              className="text-xs font-medium text-gray-500 h-8 flex items-center justify-center"
+                                                            >
+                                                                {day}
+                                                            </div>
+                                                          ))}
+
+                                                          {paddingDays.map((_, index) => (
+                                                            <div key={`padding-${index}`} className="h-8" />
+                                                          ))}
+
+                                                          {days.map((day) => {
+                                                              const date = new Date(calendarYear, calendarMonth, day)
+                                                              const isToday = isSameDay(date, today)
+                                                              const isFuture = isAfter(date, today)
+                                                              const isSelected = endDate && isSameDay(date, endDate)
+                                                              const isTooEarly = startDate && isBefore(date, startDate)
+
+                                                              return (
+                                                                <Button
+                                                                  key={`day-${day}`}
+                                                                  variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
+                                                                  className={`h-8 w-8 p-0 ${isFuture || isTooEarly ? "text-gray-300" : ""}`}
+                                                                  disabled={!!(isFuture || isTooEarly)}
+                                                                  onClick={() => handleDateChange(date, "end")}
+                                                                >
+                                                                    {day}
+                                                                </Button>
+                                                              )
+                                                          })}
+                                                      </div>
+                                                  </div>
+
+                                                  <div className="p-3 border-t flex justify-between">
+                                                      <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setEndDate(null)
                                                             setIsEndDateOpen(false)
                                                         }}
-                                                        className="h-7 text-xs"
                                                       >
-                                                          Today
+                                                          Clear
+                                                      </Button>
+                                                      <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setIsEndDateOpen(false)
+                                                        }}
+                                                      >
+                                                          Apply
                                                       </Button>
                                                   </div>
-                                              </div>
+                                              </PopoverContent>
+                                          </Popover>
+
+                                          {activeTab === "catActivity" && (
+                                            <Select
+                                              value={actionTypeFilter || "all"}
+                                              onValueChange={(value) => setActionTypeFilter(value === "all" ? null : value)}
+                                            >
+                                                <SelectTrigger className="w-[150px]">
+                                                    <SelectValue placeholder="Action Type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Actions</SelectItem>
+                                                    <SelectItem value="add">Added</SelectItem>
+                                                    <SelectItem value="update">Updated</SelectItem>
+                                                    <SelectItem value="delete">Deleted</SelectItem>
+                                                    <SelectItem value="upload">Uploaded</SelectItem>
+                                                    <SelectItem value="archive">Archived</SelectItem>
+                                                    <SelectItem value="restore">Restored</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                          )}
+
+                                          {/* Log Levels Dropdown */}
+                                          <Select
+                                            value={filter}
+                                            onValueChange={(value: "all" | "info" | "warn" | "error" | "cat-activity") => {
+                                                setFilter(value)
+                                                // Reset logs when filter changes
+                                                setLogs([])
+                                                setCursor(null)
+                                                setHasMore(true)
+                                                setLogsLoaded(false)
+                                            }}
+                                          >
+                                              <SelectTrigger className="w-[150px]">
+                                                  <SelectValue placeholder="All Levels" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                  <SelectItem value="all">All Levels</SelectItem>
+                                                  <SelectItem value="info">Info</SelectItem>
+                                                  <SelectItem value="warn">Warning</SelectItem>
+                                                  <SelectItem value="error">Error</SelectItem>
+                                              </SelectContent>
+                                          </Select>
+
+                                          {/* Add cache control checkbox */}
+                                          <div className="flex items-center ml-2">
+                                              <input
+                                                type="checkbox"
+                                                id="useCache"
+                                                checked={useCache}
+                                                onChange={(e) => setUseCache(e.target.checked)}
+                                                className="mr-2"
+                                              />
+                                              <label htmlFor="useCache" className="text-sm">
+                                                  Use cache
+                                              </label>
                                           </div>
 
-                                          {/* Custom Calendar */}
-                                          <div className="p-3">
-                                              <div className="flex justify-between items-center mb-4">
-                                                  <Button variant="ghost" size="sm" onClick={goToPrevMonth}>
-                                                      <ChevronLeft className="h-4 w-4" />
-                                                  </Button>
-                                                  <div className="font-medium">
-                                                      {monthName} {calendarYear}
-                                                  </div>
-                                                  <Button variant="ghost" size="sm" onClick={goToNextMonth}>
-                                                      <ChevronRight className="h-4 w-4" />
-                                                  </Button>
-                                              </div>
-
-                                              <div className="grid grid-cols-7 gap-1 text-center">
-                                                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                                                    <div
-                                                      key={day}
-                                                      className="text-xs font-medium text-gray-500 h-8 flex items-center justify-center"
-                                                    >
-                                                        {day}
-                                                    </div>
-                                                  ))}
-
-                                                  {paddingDays.map((_, index) => (
-                                                    <div key={`padding-${index}`} className="h-8" />
-                                                  ))}
-
-                                                  {days.map((day) => {
-                                                      const date = new Date(calendarYear, calendarMonth, day)
-                                                      const isToday = isSameDay(date, today)
-                                                      const isFuture = isAfter(date, today)
-                                                      const isSelected = endDate && isSameDay(date, endDate)
-                                                      const isTooEarly = startDate && isBefore(date, startDate)
-
-                                                      return (
-                                                        <Button
-                                                          key={`day-${day}`}
-                                                          variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
-                                                          className={`h-8 w-8 p-0 ${isFuture || isTooEarly ? "text-gray-300" : ""}`}
-                                                          disabled={!!(isFuture || isTooEarly)}
-                                                          onClick={() => handleDateChange(date, "end")}
-                                                        >
-                                                            {day}
-                                                        </Button>
-                                                      )
-                                                  })}
-                                              </div>
-                                          </div>
-
-                                          <div className="p-3 border-t flex justify-between">
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setEndDate(null)
-                                                    setIsEndDateOpen(false)
-                                                }}
-                                              >
-                                                  Clear
-                                              </Button>
-                                              <Button
-                                                variant="default"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setIsEndDateOpen(false)
-                                                }}
-                                              >
-                                                  Apply
-                                              </Button>
-                                          </div>
-                                      </PopoverContent>
-                                  </Popover>
-
-                                  {activeTab === "catActivity" && (
-                                    <Select
-                                      value={actionTypeFilter || "all"}
-                                      onValueChange={(value) => setActionTypeFilter(value === "all" ? null : value)}
-                                    >
-                                        <SelectTrigger className="w-[150px]">
-                                            <SelectValue placeholder="Action Type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Actions</SelectItem>
-                                            <SelectItem value="add">Added</SelectItem>
-                                            <SelectItem value="update">Updated</SelectItem>
-                                            <SelectItem value="delete">Deleted</SelectItem>
-                                            <SelectItem value="upload">Uploaded</SelectItem>
-                                            <SelectItem value="archive">Archived</SelectItem>
-                                            <SelectItem value="restore">Restored</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                  )}
-
-                                  {/* Log Levels Dropdown */}
-                                  <Select
-                                    value={filter}
-                                    onValueChange={(value: "all" | "info" | "warn" | "error" | "cat-activity") => {
-                                        setFilter(value)
-                                        // Reset logs when filter changes
-                                        setLogs([])
-                                        setCursor(null)
-                                        setHasMore(true)
-                                        setLogsLoaded(false)
-                                    }}
-                                  >
-                                      <SelectTrigger className="w-[150px]">
-                                          <SelectValue placeholder="All Levels" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="all">All Levels</SelectItem>
-                                          <SelectItem value="info">Info</SelectItem>
-                                          <SelectItem value="warn">Warning</SelectItem>
-                                          <SelectItem value="error">Error</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-
-                                  {/* Add cache control checkbox */}
-                                  <div className="flex items-center ml-2">
-                                      <input
-                                        type="checkbox"
-                                        id="useCache"
-                                        checked={useCache}
-                                        onChange={(e) => setUseCache(e.target.checked)}
-                                        className="mr-2"
-                                      />
-                                      <label htmlFor="useCache" className="text-sm">
-                                          Use cache
-                                      </label>
+                                          {(startDate || endDate || filter !== "all" || actionTypeFilter || searchQuery) && (
+                                            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
+                                                Clear filters
+                                            </Button>
+                                          )}
+                                      </div>
                                   </div>
-
-                                  {(startDate || endDate || filter !== "all" || actionTypeFilter || searchQuery) && (
-                                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
-                                        Clear filters
-                                    </Button>
-                                  )}
                               </div>
-                          </div>
-                      </div>
 
-                      {/* Show active filters */}
-                      {(startDate || endDate || filter !== "all" || actionTypeFilter || searchQuery) && (
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            <div className="text-sm text-gray-500 mr-2">Active filters:</div>
-                            {(startDate || endDate) && (
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                  <CalendarIcon className="h-3 w-3" />
-                                  {startDate && endDate
-                                    ? `${formatDate(startDate)} - ${formatDate(endDate)}`
-                                    : startDate
-                                      ? `From ${formatDate(startDate)}`
-                                      : endDate
-                                        ? `Until ${formatDate(endDate)}`
-                                        : ""}
-                              </Badge>
-                            )}
-                            {filter !== "all" && (
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                  <AlertCircle className="h-3 w-3" />
-                                  {filter === "cat-activity" ? "Cat Activity" : filter}
-                              </Badge>
-                            )}
-                            {actionTypeFilter && (
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                  <Cat className="h-3 w-3" />
-                                  {actionTypeLabels[actionTypeFilter]?.label || actionTypeFilter}
-                              </Badge>
-                            )}
-                            {searchQuery && (
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                  <Search className="h-3 w-3" />"{searchQuery}"
-                              </Badge>
-                            )}
-                            {!useCache && (
-                              <Badge variant="outline" className="bg-yellow-50">
-                                  Cache disabled
-                              </Badge>
-                            )}
-                        </div>
-                      )}
+                              {/* Show active filters */}
+                              {(startDate || endDate || filter !== "all" || actionTypeFilter || searchQuery) && (
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    <div className="text-sm text-gray-500 mr-2">Active filters:</div>
+                                    {(startDate || endDate) && (
+                                      <Badge variant="outline" className="flex items-center gap-1">
+                                          <CalendarIcon className="h-3 w-3" />
+                                          {startDate && endDate
+                                            ? `${formatDate(startDate)} - ${formatDate(endDate)}`
+                                            : startDate
+                                              ? `From ${formatDate(startDate)}`
+                                              : endDate
+                                                ? `Until ${formatDate(endDate)}`
+                                                : ""}
+                                      </Badge>
+                                    )}
+                                    {filter !== "all" && (
+                                      <Badge variant="outline" className="flex items-center gap-1">
+                                          <AlertCircle className="h-3 w-3" />
+                                          {filter === "cat-activity" ? "Cat Activity" : filter}
+                                      </Badge>
+                                    )}
+                                    {actionTypeFilter && (
+                                      <Badge variant="outline" className="flex items-center gap-1">
+                                          <Cat className="h-3 w-3" />
+                                          {actionTypeLabels[actionTypeFilter]?.label || actionTypeFilter}
+                                      </Badge>
+                                    )}
+                                    {searchQuery && (
+                                      <Badge variant="outline" className="flex items-center gap-1">
+                                          <Search className="h-3 w-3" />"{searchQuery}"
+                                      </Badge>
+                                    )}
+                                    {!useCache && (
+                                      <Badge variant="outline" className="bg-yellow-50">
+                                          Cache disabled
+                                      </Badge>
+                                    )}
+                                </div>
+                              )}
 
-                      {/* Fetch Logs button */}
-                      {!logsLoaded && (
-                        <div className="flex justify-center my-8">
-                            <Button onClick={fetchLogs} disabled={loading} size="lg" className="px-8">
-                                {loading ? (
-                                  <>
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      Loading...
-                                  </>
-                                ) : (
-                                  <>
-                                      <FileText className="mr-2 h-5 w-5" />
-                                      Fetch Logs
-                                  </>
-                                )}
-                            </Button>
-                        </div>
-                      )}
+                              {/* Fetch Logs button */}
+                              {!logsLoaded && (
+                                <div className="flex justify-center my-8">
+                                    <Button onClick={fetchLogs} disabled={loading} size="lg" className="px-8">
+                                        {loading ? (
+                                          <>
+                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                              Loading...
+                                          </>
+                                        ) : (
+                                          <>
+                                              <FileText className="mr-2 h-5 w-5" />
+                                              Fetch Logs
+                                          </>
+                                        )}
+                                    </Button>
+                                </div>
+                              )}
 
-                      <TabsContent value="all">
-                          <LogsContent
-                            logs={logs}
-                            loading={loading}
-                            hasMore={hasMore}
-                            loadingMore={loadingMore}
-                            loadMoreLogs={loadMoreLogs}
-                            formatUserInfo={formatUserInfo}
-                            getLevelIcon={getLevelIcon}
-                            formatDateTime={formatDateTime}
-                            actionTypeLabels={actionTypeLabels}
-                            logsLoaded={logsLoaded}
-                          />
-                      </TabsContent>
+                              <LogsContent
+                                logs={
+                                    activeTab === "all"
+                                      ? logs
+                                      : activeTab === "system"
+                                        ? logs.filter((log) => !log.actionType)
+                                        : logs.filter((log) => log.actionType)
+                                }
+                                loading={loading}
+                                hasMore={hasMore}
+                                loadingMore={loadingMore}
+                                loadMoreLogs={loadMoreLogs}
+                                formatUserInfo={formatUserInfo}
+                                getLevelIcon={getLevelIcon}
+                                formatDateTime={formatDateTime}
+                                actionTypeLabels={actionTypeLabels}
+                                logsLoaded={logsLoaded}
+                              />
+                          </Tabs>
+                      </CardContent>
+                  </Card>
+              </TabsContent>
 
-                      <TabsContent value="system">
-                          <LogsContent
-                            logs={logs.filter((log) => !log.actionType)}
-                            loading={loading}
-                            hasMore={hasMore}
-                            loadingMore={loadingMore}
-                            loadMoreLogs={loadMoreLogs}
-                            formatUserInfo={formatUserInfo}
-                            getLevelIcon={getLevelIcon}
-                            formatDateTime={formatDateTime}
-                            actionTypeLabels={actionTypeLabels}
-                            logsLoaded={logsLoaded}
-                          />
-                      </TabsContent>
-
-                      <TabsContent value="catActivity">
-                          <LogsContent
-                            logs={logs.filter((log) => log.actionType)}
-                            loading={loading}
-                            hasMore={hasMore}
-                            loadingMore={loadingMore}
-                            loadMoreLogs={loadMoreLogs}
-                            formatUserInfo={formatUserInfo}
-                            getLevelIcon={getLevelIcon}
-                            formatDateTime={formatDateTime}
-                            actionTypeLabels={actionTypeLabels}
-                            logsLoaded={logsLoaded}
-                          />
-                      </TabsContent>
-                      <TabsContent value="archive">
-                          <ArchiveLogsTab />
-                      </TabsContent>
-                  </Tabs>
-              </CardContent>
-          </Card>
+              <TabsContent value="archive">
+                  <ArchiveLogsTab />
+              </TabsContent>
+          </Tabs>
       </div>
     )
 }
@@ -1117,7 +1101,9 @@ function LogsContent({
 
                             {log.actionType && (
                               <span
-                                className={`ml-2 text-xs px-2 py-0.5 rounded ${actionTypeLabels[log.actionType]?.color || "bg-gray-100"}`}
+                                className={`ml-2 text-xs px-2 py-0.5 rounded ${
+                                  actionTypeLabels[log.actionType]?.color || "bg-gray-100"
+                                }`}
                               >
                     {actionTypeLabels[log.actionType]?.label || log.actionType}
                   </span>

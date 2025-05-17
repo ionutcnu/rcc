@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   Cat,
   Clock,
-  Trash2,
   Database,
   Calendar,
 } from "lucide-react"
@@ -39,20 +38,11 @@ export function ArchivedLogsViewer() {
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
   const [actionTypeFilter, setActionTypeFilter] = useState<string | null>(null)
-  const [deleteDate, setDeleteDate] = useState<Date | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [deleteResult, setDeleteResult] = useState<{
-    success: boolean
-    message: string
-    deleted?: number
-    hasMore?: boolean
-  } | null>(null)
   const [popupMessage, setPopupMessage] = useState<string | null>(null)
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [initialLoadDone, setInitialLoadDone] = useState(false)
   const [useCache, setUseCache] = useState(true)
   const [oldestLogDate, setOldestLogDate] = useState<Date | null>(null)
-  const [deleteAll, setDeleteAll] = useState(false)
   const [logsLoaded, setLogsLoaded] = useState(false)
   const [levelFilter, setLevelFilter] = useState<"all" | "info" | "warn" | "error">("all")
   const [activeTab, setActiveTab] = useState<"all" | "system" | "cat-activity">("all")
@@ -249,76 +239,6 @@ export function ArchivedLogsViewer() {
     fetchArchivedLogs(false)
   }
 
-  // Delete archived logs
-  const deleteArchivedLogs = async () => {
-    if (!deleteDate && !deleteAll) {
-      setDeleteResult({
-        success: false,
-        message: "Please select a date first or choose to delete all logs",
-      })
-      return
-    }
-
-    try {
-      setIsDeleting(true)
-      setDeleteResult(null)
-
-      const requestBody: any = {
-        batchSize: 100,
-        deleteAll,
-      }
-
-      if (!deleteAll && deleteDate) {
-        requestBody.beforeDate = startOfDay(deleteDate).toISOString()
-        console.log(`Deleting logs older than: ${requestBody.beforeDate}`)
-      } else {
-        console.log("Deleting ALL archived logs")
-      }
-
-      const response = await fetch("/api/logs/archived/delete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(`API error: ${response.status} - ${errorData.error || "Unknown error"}`)
-      }
-
-      const result = await response.json()
-      console.log("Delete result:", result)
-
-      setDeleteResult({
-        success: true,
-        message: result.message || `Successfully deleted ${result.deleted} archived logs`,
-        deleted: result.deleted,
-        hasMore: result.hasMore,
-      })
-
-      // If there are more logs to delete, show a message
-      if (result.hasMore) {
-        setDeleteResult((prev) => ({
-          ...prev!,
-          message: `${prev!.message}. There are more logs to delete. Run the operation again.`,
-        }))
-      }
-
-      // Refresh the logs list
-      fetchArchivedLogs(false)
-    } catch (error: any) {
-      console.error("Error deleting archived logs:", error)
-      setDeleteResult({
-        success: false,
-        message: error.message || "Failed to delete archived logs",
-      })
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
   // Initial load
   useEffect(() => {
     fetchArchivedLogs(true)
@@ -368,46 +288,6 @@ export function ArchivedLogsViewer() {
     const today = new Date()
     setStartDate(subDays(today, 30))
     setEndDate(today)
-  }
-
-  // Set predefined delete date ranges
-  const setDeleteLastMonth = () => {
-    const today = new Date()
-    setDeleteDate(subDays(today, 30))
-    setDeleteAll(false)
-  }
-
-  const setDeleteLastThreeMonths = () => {
-    const today = new Date()
-    setDeleteDate(subDays(today, 90))
-    setDeleteAll(false)
-  }
-
-  const setDeleteLastSixMonths = () => {
-    const today = new Date()
-    setDeleteDate(subDays(today, 180))
-    setDeleteAll(false)
-  }
-
-  // Set delete date to oldest log date
-  const setDeleteToOldestLog = () => {
-    if (oldestLogDate) {
-      // Add 1 day to make sure we include the oldest log
-      const date = new Date(oldestLogDate)
-      date.setDate(date.getDate() + 1)
-      setDeleteDate(date)
-      setDeleteAll(false)
-    } else {
-      showPopup("No logs available to determine oldest date")
-    }
-  }
-
-  // Toggle delete all mode
-  const toggleDeleteAll = () => {
-    setDeleteAll(!deleteAll)
-    if (!deleteAll) {
-      setDeleteDate(null)
-    }
   }
 
   // Get icon for log level
@@ -758,146 +638,6 @@ export function ArchivedLogsViewer() {
                   )}
                 </Button>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Permanent Deletion Card */}
-      <Card className="border-red-200">
-        <CardHeader className="bg-red-50 border-b border-red-200">
-          <CardTitle className="text-red-800">Permanent Deletion</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="space-y-4">
-            <div className="bg-red-50 p-4 rounded-md border border-red-200">
-              <div className="flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-2" />
-                <div>
-                  <h3 className="font-medium text-red-800">Warning: Permanent Deletion</h3>
-                  <p className="text-sm text-red-700 mt-1">
-                    This action will permanently delete archived logs. This operation cannot be undone. Please ensure
-                    you have exported any logs you wish to keep.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-4 items-start">
-              <div>
-                <div className="flex items-center mb-3">
-                  <input
-                    type="checkbox"
-                    id="deleteAll"
-                    checked={deleteAll}
-                    onChange={toggleDeleteAll}
-                    className="mr-2"
-                  />
-                  <label htmlFor="deleteAll" className="text-sm font-medium text-red-700 flex items-center">
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Delete ALL archived logs
-                  </label>
-                </div>
-
-                {!deleteAll && (
-                  <>
-                    <label className="block text-sm font-medium mb-1">Delete archived logs older than:</label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        placeholder="Days ago"
-                        className="w-24"
-                        value={
-                          deleteDate
-                            ? Math.round((new Date().getTime() - deleteDate.getTime()) / (1000 * 60 * 60 * 24))
-                            : ""
-                        }
-                        onChange={(e) => {
-                          const days = Number.parseInt(e.target.value)
-                          if (!isNaN(days) && days > 0) {
-                            setDeleteDate(subDays(new Date(), days))
-                          } else {
-                            setDeleteDate(null)
-                          }
-                        }}
-                      />
-                      <span className="text-sm flex items-center">days ago</span>
-
-                      <div className="flex gap-2 ml-2">
-                        <Button variant="outline" size="sm" onClick={setDeleteLastMonth}>
-                          30 days
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={setDeleteLastThreeMonths}>
-                          90 days
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={setDeleteLastSixMonths}>
-                          180 days
-                        </Button>
-                        {oldestLogDate && (
-                          <Button variant="outline" size="sm" onClick={setDeleteToOldestLog}>
-                            <Calendar className="h-3 w-3 mr-1" />
-                            All logs
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {deleteDate && (
-                      <div className="mt-2 text-sm text-gray-500">
-                        Will delete logs before: <span className="font-medium">{formatDate(deleteDate)}</span>
-                      </div>
-                    )}
-                    {oldestLogDate && (
-                      <div className="mt-1 text-xs text-gray-500">Oldest log date: {formatDate(oldestLogDate)}</div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              <Button
-                onClick={deleteArchivedLogs}
-                disabled={isDeleting || (!deleteDate && !deleteAll)}
-                variant="destructive"
-                className="mt-6 md:mt-0"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Permanently
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {deleteResult && (
-              <Alert variant={deleteResult.success ? "default" : "destructive"}>
-                {deleteResult.success ? <Info className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                <AlertTitle>{deleteResult.success ? "Success" : "Error"}</AlertTitle>
-                <AlertDescription>{deleteResult.message}</AlertDescription>
-                {deleteResult.success && deleteResult.hasMore && (
-                  <Button
-                    onClick={deleteArchivedLogs}
-                    disabled={isDeleting}
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        Deleting more...
-                      </>
-                    ) : (
-                      "Delete More"
-                    )}
-                  </Button>
-                )}
-              </Alert>
             )}
           </div>
         </CardContent>
