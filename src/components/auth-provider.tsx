@@ -2,9 +2,8 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase/firebaseConfig"
 import { useRouter } from "next/navigation"
+import { authService } from "@/lib/services/authService"
 
 type User = {
     uid: string
@@ -36,50 +35,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
 
-    // Check if user is admin based on email
-    const checkIfAdmin = (email: string | null) => {
-        // Add your admin emails here
-        const adminEmails = ["cioncu_ionut@yahoo.com", "admin@example.com"]
-        return email ? adminEmails.includes(email.toLowerCase()) : false
-    }
-
+    // Check session status on mount and periodically
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        const checkSession = async () => {
             setLoading(true)
+            try {
+                const sessionData = await authService.checkSession()
 
-            if (firebaseUser) {
-                // User is signed in
-                const isAdmin = checkIfAdmin(firebaseUser.email)
-
-                setUser({
-                    uid: firebaseUser.uid,
-                    email: firebaseUser.email,
-                    isAdmin,
-                })
-
-                // Create session cookie
-                try {
-                    const idToken = await firebaseUser.getIdToken(true)
-                    await fetch("/api/auth/session", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ idToken }),
-                        credentials: "include",
+                if (sessionData.authenticated) {
+                    setUser({
+                        uid: sessionData.uid,
+                        email: sessionData.email,
+                        isAdmin: sessionData.isAdmin,
                     })
-                } catch (err) {
-                    console.error("Failed to create session:", err)
+                } else {
+                    setUser(null)
                 }
-            } else {
-                // User is signed out
+            } catch (err) {
+                console.error("Session check error:", err)
                 setUser(null)
+            } finally {
+                setLoading(false)
             }
+        }
 
-            setLoading(false)
-        })
+        // Check immediately on mount
+        checkSession()
 
-        return () => unsubscribe()
+        // Set up periodic checks (every 5 minutes)
+        const intervalId = setInterval(checkSession, 5 * 60 * 1000)
+
+        // Clean up interval on unmount
+        return () => clearInterval(intervalId)
     }, [])
 
     const login = async (email: string, password: string) => {
@@ -87,19 +74,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setError(null)
 
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password)
-            const isAdmin = checkIfAdmin(userCredential.user.email)
+            const result = await authService.login(email, password)
 
-            if (!isAdmin) {
-                await signOut(auth)
-                setError("You don't have admin privileges")
-                setLoading(false)
-                return
+            if (result.success) {
+                // Fetch the session data after successful login
+                const sessionData = await authService.checkSession()
+
+                if (!sessionData.isAdmin) {
+                    await authService.logout()
+                    setError("You don't have admin privileges")
+                    setLoading(false)
+                    return
+                }
+
+                setUser({
+                    uid: sessionData.uid,
+                    email: sessionData.email,
+                    isAdmin: sessionData.isAdmin,
+                })
+            } else {
+                setError(result.message || "Failed to login")
             }
-
-            // User will be set by the onAuthStateChanged listener
         } catch (err: any) {
-            setError(err.message || "Failed to login")
+            setError(err.message || "An unexpected error occurred")
+        } finally {
             setLoading(false)
         }
     }
@@ -107,11 +105,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const logout = async () => {
         setLoading(true)
         try {
-            await signOut(auth)
-            await fetch("/api/auth/logout", {
-                method: "POST",
-                credentials: "include",
-            })
+            await authService.logout()
+            setUser(null)
             router.push("/login")
         } catch (err: any) {
             setError(err.message || "Failed to logout")

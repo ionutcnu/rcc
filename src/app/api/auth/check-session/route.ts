@@ -24,11 +24,23 @@ export async function GET() {
                 user: {
                     uid: userRecord.uid,
                     email: userRecord.email,
+                    displayName: userRecord.displayName || null,
+                    photoURL: userRecord.photoURL || null,
                     isAdmin: decodedClaims.admin === true || userRecord.customClaims?.admin === true,
                 },
             })
         } catch (error) {
             console.error("Error verifying session:", error)
+
+            // Clear the invalid session cookie - with await
+            const cookieStore = await cookies()
+            cookieStore.set({
+                name: "session",
+                value: "",
+                expires: new Date(0),
+                path: "/",
+            })
+
             return NextResponse.json({ authenticated: false })
         }
     } catch (error) {

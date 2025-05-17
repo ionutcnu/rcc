@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server"
 
 export async function POST() {
-    // Return an error response indicating registration is disabled
-    return NextResponse.json(
-        {
-            success: false,
-            error: "Registration is currently disabled",
-        },
-        { status: 403 },
-    )
+  // Return an error response indicating registration is disabled
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Registration is currently disabled",
+    },
+    { status: 403 },
+  )
 }
 
 /* Original registration code - commented out for future use
