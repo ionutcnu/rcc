@@ -1,13 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
 import { admin } from "@/lib/firebase/admin"
-import { v4 as uuidv4 } from "uuid"
 import { redis } from "@/lib/redis"
+import { v4 as uuidv4 } from "uuid"
+import { FieldValue } from "firebase-admin/firestore"
 
 // Function to update progress in Redis
 async function updateProgress(operationId: string, data: any) {
   const progressKey = `archive_progress:${operationId}`
   await redis.set(progressKey, JSON.stringify(data), { ex: 3600 }) // Expire after 1 hour
+  console.log(`Updated progress for ${operationId}:`, data)
 }
 
 export async function POST(request: NextRequest) {
@@ -19,21 +21,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { date } = body
+    const { beforeDate } = body
 
-    if (!date) {
+    if (!beforeDate) {
       return NextResponse.json({ error: "Date is required" }, { status: 400 })
     }
 
-    const targetDate = new Date(date)
+    const targetDate = new Date(beforeDate)
 
     // Generate a unique operation ID
     const operationId = uuidv4()
+    console.log(`Starting archive operation ${operationId} with date: ${targetDate.toISOString()}`)
 
     // Start the archiving process in the background
     archiveLogs(targetDate, operationId).catch((error) => {
       console.error("Error in background archiving process:", error)
       updateProgress(operationId, {
+        inProgress: false,
         error: true,
         message: error.message,
         completed: true,
@@ -64,11 +68,13 @@ async function archiveLogs(targetDate: Date, operationId: string) {
     const logsRef = admin.db.collection("logs")
 
     // Count total logs to be archived
-    const snapshot = await logsRef.where("timestamp", "<", targetDate).get()
-    const totalLogs = snapshot.size
+    const countSnapshot = await logsRef.where("timestamp", "<", targetDate).count().get()
+    const totalLogs = countSnapshot.data().count
+    console.log(`Found ${totalLogs} logs to archive`)
 
     if (totalLogs === 0) {
       await updateProgress(operationId, {
+        inProgress: false,
         total: 0,
         processed: 0,
         percentage: 100,
@@ -80,61 +86,70 @@ async function archiveLogs(targetDate: Date, operationId: string) {
 
     // Initialize progress
     await updateProgress(operationId, {
+      inProgress: true,
       total: totalLogs,
       processed: 0,
       percentage: 0,
-      completed: false,
     })
 
     let processed = 0
-    let batch = admin.db.batch()
-    let batchCount = 0
-    const MAX_BATCH_SIZE = 450 // Firestore limit is 500, using 450 to be safe
+    const batchSize = 500 // Firestore batch limit
 
     // Process logs in batches
-    for (const doc of snapshot.docs) {
-      const logData = doc.data()
+    while (processed < totalLogs) {
+      // Get a batch of logs to archive
+      const snapshot = await logsRef.where("timestamp", "<", targetDate).limit(batchSize).get()
 
-      // Add to archived collection
-      const archivedRef = admin.db.collection("logs_archived").doc(doc.id)
-      batch.set(archivedRef, logData)
-
-      // Delete from logs collection
-      batch.delete(doc.ref)
-
-      batchCount++
-      processed++
-
-      // Commit batch when it reaches the max size
-      if (batchCount >= MAX_BATCH_SIZE) {
-        await batch.commit()
-        batch = admin.db.batch()
-        batchCount = 0
-
-        // Update progress
-        const percentage = Math.round((processed / totalLogs) * 100)
-        await updateProgress(operationId, {
-          total: totalLogs,
-          processed,
-          percentage,
-          completed: false,
-        })
+      if (snapshot.empty) {
+        break
       }
-    }
 
-    // Commit any remaining operations
-    if (batchCount > 0) {
+      // Create a batch operation
+      const batch = admin.db.batch()
+
+      // Add archive operations to batch
+      // @ts-ignore - Suppress the TypeScript warning about 'doc' parameter
+      snapshot.docs.forEach((doc) => {
+        const logData = doc.data()
+
+        // Add to archived collection
+        const archivedRef = admin.db.collection("logs_archived").doc(doc.id)
+        batch.set(archivedRef, {
+          ...logData,
+          archivedAt: FieldValue.serverTimestamp(),
+        })
+
+        // Delete from logs collection
+        batch.delete(doc.ref)
+      })
+
+      // Commit the batch
       await batch.commit()
+
+      // Update progress
+      processed += snapshot.size
+      const percentage = Math.round((processed / totalLogs) * 100)
+      console.log(`Archived batch of ${snapshot.size} logs. Progress: ${processed}/${totalLogs} (${percentage}%)`)
+
+      await updateProgress(operationId, {
+        inProgress: true,
+        total: totalLogs,
+        processed,
+        percentage,
+      })
     }
 
-    // Update final progress
+    // Mark operation as complete
     await updateProgress(operationId, {
+      inProgress: false,
       total: totalLogs,
-      processed: totalLogs,
+      processed,
       percentage: 100,
       completed: true,
-      message: `Successfully archived ${totalLogs} logs`,
+      message: `Successfully archived ${processed} logs`,
     })
+
+    console.log(`Archive operation ${operationId} completed. Archived ${processed} logs.`)
   } catch (error) {
     console.error("Error in archiving process:", error)
     throw error

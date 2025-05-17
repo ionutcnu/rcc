@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
-    // Get operation ID from query params
+    // Get operation ID from query parameters
     const { searchParams } = new URL(request.url)
     const operationId = searchParams.get("operationId")
 
@@ -18,18 +18,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing operationId parameter" }, { status: 400 })
     }
 
+    console.log(`Checking final result for delete operation: ${operationId}`)
+
     // Get progress data from Redis
-    const progressKey = `archive_progress:${operationId}`
+    const progressKey = `delete_progress:${operationId}`
     const progressData = await redis.get(progressKey)
 
+    console.log(`Final result data for ${operationId}:`, progressData)
+
     if (!progressData) {
-      return NextResponse.json(
-        {
-          inProgress: false,
-          error: "No progress data found for this operation",
-        },
-        { status: 404 },
-      )
+      return NextResponse.json({ error: "No progress data found for this operation" }, { status: 404 })
     }
 
     // Parse progress data
@@ -38,7 +36,7 @@ export async function GET(request: NextRequest) {
       const progress = typeof progressData === "string" ? JSON.parse(progressData) : progressData
       return NextResponse.json(progress)
     } catch (error) {
-      console.error("Error parsing progress data:", error)
+      console.error(`Error parsing progress data: ${error}`)
       return NextResponse.json(
         {
           inProgress: false,
@@ -48,10 +46,10 @@ export async function GET(request: NextRequest) {
       )
     }
   } catch (error: any) {
-    console.error("Error checking archive progress:", error)
+    console.error(`Error checking delete final result: ${error}`)
     return NextResponse.json(
       {
-        error: "Failed to check archive progress",
+        error: "Failed to check delete final result",
         details: error.message,
       },
       { status: 500 },

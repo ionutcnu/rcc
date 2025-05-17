@@ -18,9 +18,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing operationId parameter" }, { status: 400 })
     }
 
+    console.log(`Checking progress for delete operation: ${operationId}`)
+
     // Get progress data from Redis
-    const progressKey = `archive_progress:${operationId}`
+    const progressKey = `delete_progress:${operationId}`
     const progressData = await redis.get(progressKey)
+
+    console.log(`Progress data for ${operationId}:`, progressData)
 
     if (!progressData) {
       return NextResponse.json(
@@ -38,7 +42,7 @@ export async function GET(request: NextRequest) {
       const progress = typeof progressData === "string" ? JSON.parse(progressData) : progressData
       return NextResponse.json(progress)
     } catch (error) {
-      console.error("Error parsing progress data:", error)
+      console.error(`Error parsing progress data: ${error}`, progressData)
       return NextResponse.json(
         {
           inProgress: false,
@@ -48,10 +52,10 @@ export async function GET(request: NextRequest) {
       )
     }
   } catch (error: any) {
-    console.error("Error checking archive progress:", error)
+    console.error(`Error checking delete progress: ${error}`)
     return NextResponse.json(
       {
-        error: "Failed to check archive progress",
+        error: "Failed to check delete progress",
         details: error.message,
       },
       { status: 500 },
