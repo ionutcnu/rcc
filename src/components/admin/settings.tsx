@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { SettingsUi } from "@/components/admin/settings-ui"
 import { Loader2 } from "lucide-react"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import {
@@ -132,18 +131,118 @@ export function Settings() {
     )
   }
 
+  // Create a custom settings UI since SettingsUi is no longer available
   return (
     <div className="container px-4 md:px-6">
-      <SettingsUi
-        seoSettings={seoSettings}
-        firebaseSettings={firebaseSettings}
-        onSeoSettingsChange={setSeoSettings}
-        onFirebaseSettingsChange={setFirebaseSettings}
-        onSaveSeo={handleSaveSeo}
-        onSaveFirebase={handleSaveFirebase}
-        savingSeo={saving.seo}
-        savingFirebase={saving.firebase}
-      />
+      <div className="space-y-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-4">SEO Settings</h2>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="metaTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                Meta Title
+              </label>
+              <input
+                id="metaTitle"
+                type="text"
+                className="w-full p-2 border rounded-md"
+                value={seoSettings.metaTitle}
+                onChange={(e) => setSeoSettings({ ...seoSettings, metaTitle: e.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                Meta Description
+              </label>
+              <textarea
+                id="metaDescription"
+                className="w-full p-2 border rounded-md"
+                rows={3}
+                value={seoSettings.metaDescription}
+                onChange={(e) => setSeoSettings({ ...seoSettings, metaDescription: e.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="ogImage" className="block text-sm font-medium text-gray-700 mb-1">
+                OG Image URL
+              </label>
+              <input
+                id="ogImage"
+                type="text"
+                className="w-full p-2 border rounded-md"
+                value={seoSettings.ogImage}
+                onChange={(e) => setSeoSettings({ ...seoSettings, ogImage: e.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="googleAnalyticsId" className="block text-sm font-medium text-gray-700 mb-1">
+                Google Analytics ID
+              </label>
+              <input
+                id="googleAnalyticsId"
+                type="text"
+                className="w-full p-2 border rounded-md"
+                value={seoSettings.googleAnalyticsId}
+                onChange={(e) => setSeoSettings({ ...seoSettings, googleAnalyticsId: e.target.value })}
+              />
+            </div>
+            <button
+              onClick={handleSaveSeo}
+              disabled={saving.seo}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving.seo ? "Saving..." : "Save SEO Settings"}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-4">Firebase Settings</h2>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="maxImageSize" className="block text-sm font-medium text-gray-700 mb-1">
+                Max Image Size (MB)
+              </label>
+              <input
+                id="maxImageSize"
+                type="number"
+                className="w-full p-2 border rounded-md"
+                value={firebaseSettings.maxImageSize}
+                onChange={(e) =>
+                  setFirebaseSettings({
+                    ...firebaseSettings,
+                    maxImageSize: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label htmlFor="maxVideoSize" className="block text-sm font-medium text-gray-700 mb-1">
+                Max Video Size (MB)
+              </label>
+              <input
+                id="maxVideoSize"
+                type="number"
+                className="w-full p-2 border rounded-md"
+                value={firebaseSettings.maxVideoSize}
+                onChange={(e) =>
+                  setFirebaseSettings({
+                    ...firebaseSettings,
+                    maxVideoSize: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <button
+              onClick={handleSaveFirebase}
+              disabled={saving.firebase}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving.firebase ? "Saving..." : "Save Firebase Settings"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

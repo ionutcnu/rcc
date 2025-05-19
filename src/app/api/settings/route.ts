@@ -1,9 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
-import { adminDb } from "@/lib/firebase/admin"
-import { FieldValue } from "firebase-admin/firestore"
-
-const SETTINGS_DOC_ID = "app_settings"
+import { getSettings, getSeoSettings, updateSeoSettings, updateFirebaseSettings } from "@/lib/server/settingsService"
+import { serverLogger } from "@/lib/utils/server-logger"
 
 /**
  * GET /api/settings
@@ -18,59 +16,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get settings from Firestore
-    const settingsRef = adminDb.collection("settings").doc(SETTINGS_DOC_ID)
-    const settingsDoc = await settingsRef.get()
+    // Get query parameters
+    const searchParams = request.nextUrl.searchParams
+    const type = searchParams.get("type")
 
-    if (!settingsDoc.exists) {
-      // Create default settings if they don't exist
-      const defaultSettings = {
-        seo: {
-          metaTitle: "",
-          metaDescription: "",
-          ogImage: "",
-          googleAnalyticsId: "",
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        firebase: {
-          enableImageCompression: true,
-          imageQuality: "medium",
-          maxImageSize: 5,
-          maxVideoSize: 20,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        updatedAt: FieldValue.serverTimestamp(),
-      }
+    // Get settings based on type
+    if (type === "seo") {
+      const seoSettings = await getSeoSettings()
+      return NextResponse.json(seoSettings)
+    } else {
+      // Get all settings
+      const settings = await getSettings()
 
-      await settingsRef.set(defaultSettings)
+      // Log the data for debugging
+      serverLogger.debug("Settings data:", settings)
 
-      // Return the default settings (without the server timestamp)
-      return NextResponse.json({
-        seo: {
-          metaTitle: "",
-          metaDescription: "",
-          ogImage: "",
-          googleAnalyticsId: "",
-        },
-        firebase: {
-          enableImageCompression: true,
-          imageQuality: "medium",
-          maxImageSize: 5,
-          maxVideoSize: 20,
-        },
-      })
+      // Return the settings
+      return NextResponse.json(settings)
     }
-
-    // Get settings data
-    const settingsData = settingsDoc.data()
-
-    // Log the data for debugging
-    console.log("Settings data from Firestore:", settingsData)
-
-    // Return the settings
-    return NextResponse.json(settingsData)
   } catch (error) {
-    console.error("Error getting settings:", error)
+    serverLogger.error("Error getting settings:", error)
     return NextResponse.json({ error: "Failed to get settings" }, { status: 500 })
   }
 }
@@ -101,52 +66,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid type. Must be 'seo', 'firebase', or 'all'" }, { status: 400 })
     }
 
-    // Get settings reference
-    const settingsRef = adminDb.collection("settings").doc(SETTINGS_DOC_ID)
-
     // Update settings based on type
     if (type === "seo") {
-      await settingsRef.update({
-        "seo.metaTitle": data.metaTitle || "",
-        "seo.metaDescription": data.metaDescription || "",
-        "seo.ogImage": data.ogImage || "",
-        "seo.googleAnalyticsId": data.googleAnalyticsId || "",
-        "seo.updatedAt": FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      })
+      const success = await updateSeoSettings(data)
+      if (!success) {
+        return NextResponse.json({ error: "Failed to update SEO settings" }, { status: 500 })
+      }
     } else if (type === "firebase") {
-      await settingsRef.update({
-        "firebase.enableImageCompression": !!data.enableImageCompression,
-        "firebase.imageQuality": data.imageQuality || "medium",
-        "firebase.maxImageSize": Number(data.maxImageSize) || 5,
-        "firebase.maxVideoSize": Number(data.maxVideoSize) || 20,
-        "firebase.updatedAt": FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      })
+      const success = await updateFirebaseSettings(data)
+      if (!success) {
+        return NextResponse.json({ error: "Failed to update Firebase settings" }, { status: 500 })
+      }
     } else if (type === "all") {
       // Update all settings
-      await settingsRef.update({
-        seo: {
-          metaTitle: data.seo?.metaTitle || "",
-          metaDescription: data.seo?.metaDescription || "",
-          ogImage: data.seo?.ogImage || "",
-          googleAnalyticsId: data.seo?.googleAnalyticsId || "",
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        firebase: {
-          enableImageCompression: !!data.firebase?.enableImageCompression,
-          imageQuality: data.firebase?.imageQuality || "medium",
-          maxImageSize: Number(data.firebase?.maxImageSize) || 5,
-          maxVideoSize: Number(data.firebase?.maxVideoSize) || 20,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        updatedAt: FieldValue.serverTimestamp(),
-      })
+      const seoSuccess = await updateSeoSettings(data.seo || {})
+      const firebaseSuccess = await updateFirebaseSettings(data.firebase || {})
+
+      if (!seoSuccess || !firebaseSuccess) {
+        return NextResponse.json({ error: "Failed to update all settings" }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ success: true, type })
   } catch (error) {
-    console.error("Error updating settings:", error)
-    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 })
+    serverLogger.error("Error updating settings:", error)
+
+    // Provide more specific error message if available
+    const errorMessage = error instanceof Error ? error.message : "Failed to update settings"
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
