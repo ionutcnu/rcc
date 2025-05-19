@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { admin } from "@/lib/firebase/admin"
 import { adminCheck } from "@/lib/auth/admin-check"
-import { getCatById } from "@/lib/firebase/catService"
+import { getCatById, updateCat } from "@/lib/server/catService"
 
 export async function PUT(request: NextRequest) {
   try {
@@ -35,22 +34,13 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Prepare cat data with updated timestamp
-    const catWithTimestamp = {
-      ...catData,
-      updatedAt: new Date(),
-    }
-
-    // Remove id from the data to be updated
-    const { id, ...updateData } = catWithTimestamp
-
-    // Update cat directly using admin SDK
-    await admin.db.collection("cats").doc(id).update(updateData)
+    // Use the server-side updateCat function
+    await updateCat(catData.id, catData)
 
     return NextResponse.json({
       success: true,
       message: "Cat updated successfully",
-      catId: id,
+      catId: catData.id,
     })
   } catch (error: any) {
     console.error("Error in cats/update API:", error)

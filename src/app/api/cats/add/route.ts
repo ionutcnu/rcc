@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
-import { admin } from "@/lib/firebase/admin"
+import { addCat } from "@/lib/server/catService"
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,23 +30,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`Adding new cat: ${catData.name}`)
 
-    // Prepare cat data with timestamps
-    const catWithTimestamps = {
-      ...catData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isDeleted: false,
-    }
+    // Use the server-side addCat function
+    const catId = await addCat(catData)
 
-    // Add cat directly using admin SDK
-    const docRef = await admin.db.collection("cats").add(catWithTimestamps)
-
-    console.log(`Cat added successfully with ID: ${docRef.id}`)
+    console.log(`Cat added successfully with ID: ${catId}`)
 
     return NextResponse.json({
       success: true,
       message: "Cat added successfully",
-      catId: docRef.id,
+      catId: catId,
     })
   } catch (error: any) {
     console.error("Error in cats/add API:", error)

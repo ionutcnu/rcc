@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getAllCats, getCatById } from "@/lib/firebase/catService"
+import { getAllCats, getCatById } from "@/lib/server/catService"
 import { adminCheck } from "@/lib/auth/admin-check"
-
 
 export async function GET(request: NextRequest) {
   try {

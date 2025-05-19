@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCatByName } from "@/lib/firebase/catService"
+import { getCatByName } from "@/lib/server/catService"
 
 export async function GET(request: NextRequest) {
   try {

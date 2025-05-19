@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCatById } from "@/lib/firebase/catService"
+import { getCatById, deleteCat } from "@/lib/server/catService"
 import { adminCheck } from "@/lib/auth/admin-check"
-import { admin } from "@/lib/firebase/admin"
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -40,20 +39,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Cat not found" }, { status: 404 })
     }
 
-    // Delete cat from database using admin SDK directly
-    if (permanent) {
-      // Permanently delete the document
-      await admin.db.collection("cats").doc(id).delete()
-      console.log(`Cat with ID ${id} permanently deleted`)
-    } else {
-      // Soft delete - mark as deleted
-      await admin.db.collection("cats").doc(id).update({
-        isDeleted: true,
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      console.log(`Cat with ID ${id} moved to trash`)
-    }
+    // Use the server-side deleteCat function
+    await deleteCat(id, permanent)
 
     return NextResponse.json({
       success: true,

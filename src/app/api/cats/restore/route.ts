@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
-import { admin } from "@/lib/firebase/admin"
+import { restoreCat, getCatById } from "@/lib/server/catService"
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,21 +32,14 @@ export async function POST(request: NextRequest) {
     console.log(`Attempting to restore cat with ID: ${id}`)
 
     // Check if cat exists
-    const catRef = admin.db.collection("cats").doc(id)
-    const catDoc = await catRef.get()
-
-    if (!catDoc.exists) {
+    const existingCat = await getCatById(id)
+    if (!existingCat) {
       console.log(`Cat with ID ${id} not found`)
       return NextResponse.json({ error: "Cat not found" }, { status: 404 })
     }
 
-    // Restore cat from trash by updating isDeleted field
-    await catRef.update({
-      isDeleted: false,
-      deletedAt: null,
-      deletedBy: null,
-      updatedAt: new Date(),
-    })
+    // Use the server-side restoreCat function
+    await restoreCat(id)
 
     console.log(`Successfully restored cat with ID: ${id}`)
 

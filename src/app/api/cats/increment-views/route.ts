@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { incrementCatViewsServer } from "@/lib/firebase/server-api"
+import { incrementCatViews } from "@/lib/server/catService"
 import { logError } from "@/lib/utils/logger"
 
 export async function POST(request: NextRequest) {
@@ -11,7 +11,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cat ID is required" }, { status: 400 })
     }
 
-    await incrementCatViewsServer(catId)
+    // Use the server-side incrementCatViews function
+    await incrementCatViews(catId)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

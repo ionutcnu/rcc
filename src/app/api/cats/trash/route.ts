@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getDeletedCats } from "@/lib/firebase/catService"
+import { getDeletedCats } from "@/lib/server/catService"
 import { adminCheck } from "@/lib/auth/admin-check"
 
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
-    // Get all deleted cats
+    // Use the server-side getDeletedCats function
     const deletedCats = await getDeletedCats()
 
     return NextResponse.json(deletedCats)
