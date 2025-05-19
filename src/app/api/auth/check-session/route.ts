@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { admin } from "@/lib/firebase/admin"
+import { authService } from "@/lib/server/authService"
 
 export async function GET() {
     try {
-        // Get the session cookie - with await to resolve the Promise
+        // Get the session cookie
         const cookieStore = await cookies()
         const sessionCookie = cookieStore.get("session")?.value
 
@@ -14,37 +14,31 @@ export async function GET() {
 
         try {
             // Verify the session cookie
-            const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
+            const decodedClaims = await authService.verifySessionToken(sessionCookie)
+
+            if (!decodedClaims || !decodedClaims.uid) {
+                return NextResponse.json({ authenticated: false })
+            }
 
             // Get user details
-            const userRecord = await admin.auth.getUser(decodedClaims.uid)
+            const user = await authService.getUserById(decodedClaims.uid)
+            const isAdmin = await authService.isUserAdmin(decodedClaims.uid)
 
             return NextResponse.json({
                 authenticated: true,
                 user: {
-                    uid: userRecord.uid,
-                    email: userRecord.email,
-                    displayName: userRecord.displayName || null,
-                    photoURL: userRecord.photoURL || null,
-                    isAdmin: decodedClaims.admin === true || userRecord.customClaims?.admin === true,
+                    uid: decodedClaims.uid,
+                    email: user?.email || decodedClaims.email || "",
+                    displayName: user?.displayName || "",
+                    isAdmin,
                 },
             })
         } catch (error) {
-            console.error("Error verifying session:", error)
-
-            // Clear the invalid session cookie - with await
-            const cookieStore = await cookies()
-            cookieStore.set({
-                name: "session",
-                value: "",
-                expires: new Date(0),
-                path: "/",
-            })
-
+            console.error("Session verification error:", error)
             return NextResponse.json({ authenticated: false })
         }
     } catch (error) {
-        console.error("Error checking session:", error)
+        console.error("Session check error:", error)
         return NextResponse.json({ authenticated: false })
     }
 }

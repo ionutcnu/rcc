@@ -1,45 +1,50 @@
 import { NextResponse } from "next/server"
-import { admin } from "@/lib/firebase/admin"
+import { cookies } from "next/headers"
+import { authService } from "@/lib/server/authService"
 
 export async function POST(request: Request) {
     try {
-        const { email, password } = await request.json()
+        const body = await request.json().catch(() => ({}))
+        const { email, password } = body
 
         if (!email || !password) {
             return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
         }
 
         try {
-            // Create user with email and password
-            const userRecord = await admin.auth.getUserByEmail(email)
+            // Authenticate user with email and password
+            const { user, token } = await authService.signInWithEmailAndPassword(email, password)
 
-            // Sign in with Firebase Admin SDK
-            const userCredential = await admin.auth.createCustomToken(userRecord.uid)
-
-            // Get the user's ID token
-            const idToken = userCredential
+            if (!user || !token) {
+                return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+            }
 
             // Create a session cookie
             const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
-            const sessionCookie = await admin.auth.createSessionCookie(idToken, { expiresIn })
+            const sessionCookie = await authService.createSessionCookie(token, expiresIn)
 
-            // Get user details to check admin status
-            const customClaims = userRecord.customClaims || {}
-            const isAdmin = customClaims?.admin === true
+            if (!sessionCookie) {
+                return NextResponse.json({ success: false, error: "Failed to create session" }, { status: 500 })
+            }
+
+            // Check if user is admin
+            const isAdmin = await authService.isUserAdmin(user.uid)
 
             // Create response with the cookie and include redirect information
             const response = NextResponse.json({
                 success: true,
                 user: {
-                    uid: userRecord.uid,
-                    email: userRecord.email,
+                    uid: user.uid,
+                    email: user.email || "",
+                    displayName: user.displayName || "",
                     isAdmin: isAdmin,
                 },
                 redirectUrl: isAdmin ? "/admin" : "/",
             })
 
             // Set cookie on the response object with explicit path
-            response.cookies.set({
+            const cookieStore = await cookies()
+            cookieStore.set({
                 name: "session",
                 value: sessionCookie,
                 maxAge: expiresIn / 1000, // Convert to seconds
@@ -58,10 +63,10 @@ export async function POST(request: Request) {
                 return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 })
             }
 
-            return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+            return NextResponse.json({ success: false, error: error.message || "Authentication failed" }, { status: 401 })
         }
     } catch (error: any) {
         console.error("Login process error:", error.message)
-        return NextResponse.json({ success: false, error: "Server error" }, { status: 500 })
+        return NextResponse.json({ success: false, error: error.message || "Server error" }, { status: 500 })
     }
 }

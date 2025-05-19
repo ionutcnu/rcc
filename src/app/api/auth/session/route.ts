@@ -1,22 +1,27 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { admin } from "@/lib/firebase/admin"
-import { isUserAdmin } from "@/lib/auth/admin-check"
+import { authService } from "@/lib/server/authService"
 
 export async function POST(request: Request) {
     try {
-        const { idToken } = await request.json()
+        const body = await request.json().catch(() => ({}))
+        const { idToken } = body
 
         if (!idToken) {
             return NextResponse.json({ success: false, error: "No ID token provided" }, { status: 400 })
         }
 
         // Verify the ID token
-        const decodedToken = await admin.auth.verifyIdToken(idToken)
+        const decodedToken = await authService.verifyIdToken(idToken)
+
+        if (!decodedToken || !decodedToken.uid) {
+            return NextResponse.json({ success: false, error: "Invalid token" }, { status: 401 })
+        }
+
         const uid = decodedToken.uid
 
         // Check if user is admin
-        const isAdmin = await isUserAdmin(uid)
+        const isAdmin = await authService.isUserAdmin(uid)
 
         if (!isAdmin) {
             return NextResponse.json({ success: false, error: "Not authorized" }, { status: 403 })
@@ -24,16 +29,22 @@ export async function POST(request: Request) {
 
         // Create a session cookie
         const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
-        const sessionCookie = await admin.auth.createSessionCookie(idToken, { expiresIn })
+        const sessionCookie = await authService.createSessionCookie(idToken, expiresIn)
+
+        if (!sessionCookie) {
+            return NextResponse.json({ success: false, error: "Failed to create session" }, { status: 500 })
+        }
 
         // Create response
         const response = NextResponse.json({ success: true, isAdmin })
 
-        // Get the cookie store - UPDATED FOR NEXT.JS 15
+        // Get the cookie store
         const cookieStore = await cookies()
 
         // Set cookie with explicit path
-        cookieStore.set("session", sessionCookie, {
+        cookieStore.set({
+            name: "session",
+            value: sessionCookie,
             maxAge: expiresIn / 1000, // Convert to seconds
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -48,8 +59,8 @@ export async function POST(request: Request) {
         return response
     } catch (error: any) {
         if (process.env.NODE_ENV !== "production") {
-            console.error("Session creation error occurred")
+            console.error("Session creation error occurred:", error)
         }
-        return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+        return NextResponse.json({ success: false, error: error.message || "Authentication failed" }, { status: 401 })
     }
 }

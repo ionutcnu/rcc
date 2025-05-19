@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { admin } from "@/lib/firebase/admin"
-import { isUserAdmin } from "@/lib/auth/admin-check"
+import { authService } from "@/lib/server/authService"
 
 export async function GET() {
     try {
-        // Get the session cookie - with await to resolve the Promise
+        // Get the session cookie
         const cookieStore = await cookies()
         const sessionCookie = cookieStore.get("session")?.value
 
@@ -15,18 +14,22 @@ export async function GET() {
 
         try {
             // Verify the session cookie
-            const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
+            const decodedClaims = await authService.verifySessionToken(sessionCookie)
+
+            if (!decodedClaims || !decodedClaims.uid) {
+                return NextResponse.json({ isAdmin: false })
+            }
 
             // Check if user is admin
-            const adminStatus = await isUserAdmin(decodedClaims.uid)
+            const isAdmin = await authService.isUserAdmin(decodedClaims.uid)
 
-            return NextResponse.json({ isAdmin: adminStatus })
+            return NextResponse.json({ isAdmin })
         } catch (error) {
-            console.error("Session verification error")
+            console.error("Session verification error:", error)
             return NextResponse.json({ isAdmin: false })
         }
     } catch (error) {
-        console.error("Permission check error")
+        console.error("Permission check error:", error)
         return NextResponse.json({ isAdmin: false })
     }
 }

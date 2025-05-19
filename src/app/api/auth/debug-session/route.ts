@@ -1,34 +1,19 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { getAuth } from "firebase-admin/auth"
-import { initializeApp, getApps, cert } from "firebase-admin/app"
-
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }
-
-    initializeApp({
-        credential: cert(serviceAccount as any),
-    })
-}
+import { authService } from "@/lib/server/authService"
 
 export async function GET() {
     try {
-        // Get all cookies - with await to resolve the Promise
+        // Get all cookies
         const cookieStore = await cookies()
         const allCookies = cookieStore.getAll()
         const sessionCookie = cookieStore.get("session")?.value
 
-        // Basic cookie info - only include name and value which are guaranteed to exist
+        // Basic cookie info
         const cookieInfo = {
             allCookies: allCookies.map((c) => ({
                 name: c.name,
                 value: c.name === "session" ? "***" : c.value.substring(0, 5) + "...",
-                // Remove all properties that don't exist on RequestCookie in Next.js 15
             })),
             hasSessionCookie: !!sessionCookie,
             sessionCookieLength: sessionCookie ? sessionCookie.length : 0,
@@ -38,22 +23,31 @@ export async function GET() {
         let sessionInfo = null
         if (sessionCookie) {
             try {
-                const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true)
-                const uid = decodedClaims.uid
-                const userRecord = await getAuth().getUser(uid)
+                const decodedClaims = await authService.verifySessionToken(sessionCookie)
 
-                sessionInfo = {
-                    valid: true,
-                    uid: uid,
-                    email: userRecord.email,
-                    isAdmin: userRecord.customClaims?.admin === true,
-                    expiresAt: new Date(decodedClaims.exp * 1000).toISOString(),
-                    claims: decodedClaims,
+                if (decodedClaims && decodedClaims.uid) {
+                    const uid = decodedClaims.uid
+                    const userRecord = await authService.getUserById(uid)
+                    const isAdmin = await authService.isUserAdmin(uid)
+
+                    sessionInfo = {
+                        valid: true,
+                        uid: uid,
+                        email: userRecord?.email || "",
+                        isAdmin: isAdmin,
+                        expiresAt: new Date(decodedClaims.exp * 1000).toISOString(),
+                        claims: decodedClaims,
+                    }
+                } else {
+                    sessionInfo = {
+                        valid: false,
+                        error: "Invalid session token",
+                    }
                 }
             } catch (error: any) {
                 sessionInfo = {
                     valid: false,
-                    error: error.message,
+                    error: error.message || "Unknown error",
                     errorCode: error.code,
                 }
             }
@@ -67,11 +61,11 @@ export async function GET() {
         })
     } catch (error: any) {
         return NextResponse.json(
-            {
-                error: error.message,
-                stack: error.stack,
-            },
-            { status: 500 },
+          {
+              error: error.message || "Unknown error",
+              stack: error.stack,
+          },
+          { status: 500 },
         )
     }
 }

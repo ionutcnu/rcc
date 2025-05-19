@@ -1,45 +1,37 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { getAuth } from "firebase-admin/auth"
-import { initializeApp, getApps, cert } from "firebase-admin/app"
-
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-    try {
-        const serviceAccount = {
-            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-        }
-
-        initializeApp({
-            credential: cert(serviceAccount as any),
-        })
-    } catch (error) {
-        console.error("Firebase admin initialization error:", error)
-    }
-}
+import { authService } from "@/lib/server/authService"
 
 export async function POST(request: Request) {
     try {
-        const { idToken } = await request.json()
+        const body = await request.json().catch(() => ({}))
+        const { idToken } = body
 
         if (!idToken) {
             return NextResponse.json({ success: false, error: "No ID token provided" }, { status: 400 })
         }
 
         // Verify the ID token
-        const decodedToken = await getAuth().verifyIdToken(idToken)
+        const decodedToken = await authService.verifyIdToken(idToken)
+
+        if (!decodedToken || !decodedToken.uid) {
+            return NextResponse.json({ success: false, error: "Invalid token" }, { status: 401 })
+        }
+
         const uid = decodedToken.uid
 
         // Create a session cookie
         const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
-        const sessionCookie = await getAuth().createSessionCookie(idToken, { expiresIn })
+        const sessionCookie = await authService.createSessionCookie(idToken, expiresIn)
+
+        if (!sessionCookie) {
+            return NextResponse.json({ success: false, error: "Failed to create session" }, { status: 500 })
+        }
 
         // Create response
         const response = NextResponse.json({ success: true })
 
-        // Get the cookie store - UPDATED FOR NEXT.JS 15
+        // Get the cookie store
         const cookieStore = await cookies()
 
         // Set cookie with explicit path
@@ -58,6 +50,6 @@ export async function POST(request: Request) {
         return response
     } catch (error: any) {
         console.error("Session creation error:", error.message)
-        return NextResponse.json({ success: false, error: error.message }, { status: 401 })
+        return NextResponse.json({ success: false, error: error.message || "Authentication failed" }, { status: 401 })
     }
 }

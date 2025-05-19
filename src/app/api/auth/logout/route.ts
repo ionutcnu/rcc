@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { admin } from "@/lib/firebase/admin"
+import { authService } from "@/lib/server/authService"
 
 export async function POST(): Promise<NextResponse<{ success: boolean }>> {
     try {
-        // Get the session cookie - with await to resolve the Promise
+        // Get the session cookie
         const cookieStore = await cookies()
         const sessionCookie = cookieStore.get("session")?.value
 
         if (sessionCookie) {
             try {
-                // Verify the session cookie directly with Firebase Admin
-                const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie)
+                // Verify the session cookie
+                const decodedClaims = await authService.verifySessionToken(sessionCookie)
 
-                // Revoke all refresh tokens for the user
-                await admin.auth.revokeRefreshTokens(decodedClaims.sub)
+                if (decodedClaims && decodedClaims.uid) {
+                    // Revoke all refresh tokens for the user
+                    await authService.revokeUserTokens(decodedClaims.uid)
+                }
             } catch (error) {
                 console.error("Error during token revocation:", error)
                 // Continue with logout even if token revocation fails
@@ -24,7 +26,7 @@ export async function POST(): Promise<NextResponse<{ success: boolean }>> {
         // Create response
         const response = NextResponse.json({ success: true })
 
-        // Clear the session cookie - need to await cookies() here
+        // Clear the session cookie
         const cookieStore2 = await cookies()
         cookieStore2.set({
             name: "session",
