@@ -87,6 +87,12 @@ export async function incrementCatViews(id: string): Promise<void> {
         views: currentViews + 1,
         lastViewed: Timestamp.now(),
       })
+
+      // Log the view activity
+      await logActivity("view", "cat", id, {
+        name: catData.name,
+        views: currentViews + 1,
+      })
     }
   } catch (error) {
     console.error(`Error incrementing views for cat ${id}:`, error)
@@ -118,7 +124,13 @@ export async function addCat(
     console.log("Cat added successfully with ID:", docRef.id)
 
     // Log the activity with cleaned details
-    await logActivity("add", catData.name, docRef.id, cleanCat)
+    await logActivity("add", "cat", docRef.id, {
+      name: catData.name,
+      breed: catData.breed,
+      gender: catData.gender,
+      yearOfBirth: catData.yearOfBirth,
+      actionType: "cat-add", // Add explicit actionType
+    })
 
     return docRef.id // Returns Firestore-generated unique ID
   } catch (error: any) {
@@ -149,9 +161,10 @@ export async function updateCat(id: string, catData: Partial<Omit<CatProfile, "i
       await docRef.update(payload)
 
       // Log the activity with cleaned details and field changes
-      await logActivity("update", currentCat?.name || "Unknown cat", id, {
-        ...cleanCat,
+      await logActivity("update", "cat", id, {
+        name: currentCat?.name || "Unknown cat",
         changedFields: Object.keys(cleanCat),
+        actionType: "cat-update", // Add explicit actionType
       })
     }
   } catch (error: any) {
@@ -204,12 +217,14 @@ export async function deleteCat(id: string, permanent = false): Promise<void> {
       await docRef.delete()
 
       // Log the activity with minimal details to avoid undefined values
-      await logActivity("delete", cat.name, id, {
+      await logActivity("delete", "cat", id, {
         deleted: true,
         permanent: true,
+        name: cat.name,
         breed: cat.breed,
         gender: cat.gender,
         yearOfBirth: cat.yearOfBirth,
+        actionType: "cat-delete-permanent", // Add explicit actionType
       })
 
       console.log(`Cat with ID ${id} and all associated media permanently deleted`)
@@ -223,12 +238,14 @@ export async function deleteCat(id: string, permanent = false): Promise<void> {
       })
 
       // Log the activity with more cat details
-      await logActivity("delete", cat.name, id, {
+      await logActivity("delete", "cat", id, {
         deleted: true,
         permanent: false,
+        name: cat.name,
         breed: cat.breed,
         gender: cat.gender,
         yearOfBirth: cat.yearOfBirth,
+        actionType: "cat-delete-soft", // Add explicit actionType
       })
 
       console.log(`Cat with ID ${id} moved to trash`)
@@ -262,11 +279,13 @@ export async function restoreCat(id: string): Promise<void> {
     })
 
     // Log the activity
-    await logActivity("restore", catData.name || "Unknown cat", id, {
+    await logActivity("restore", "cat", id, {
       restored: true,
+      name: catData.name,
       breed: catData.breed,
       gender: catData.gender,
       yearOfBirth: catData.yearOfBirth,
+      actionType: "cat-restore", // Add explicit actionType
     })
 
     console.log(`Cat with ID ${id} restored from trash`)
@@ -310,11 +329,13 @@ export async function archiveCat(id: string): Promise<void> {
     const cat = await getCatById(id)
     if (cat) {
       await updateCat(id, { isDeleted: true })
-      await logActivity("archive", cat.name, id, {
+      await logActivity("archive", "cat", id, {
         archived: true,
+        name: cat.name,
         breed: cat.breed,
         gender: cat.gender,
         yearOfBirth: cat.yearOfBirth,
+        actionType: "cat-archive", // Add explicit actionType
       })
     }
   } catch (error: any) {

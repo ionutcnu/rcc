@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
-import { redis } from "@/lib/redis"
+import { serverLogger } from "@/lib/utils/server-logger"
+import { logsService } from "@/lib/server/logsService"
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,35 +19,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing operationId parameter" }, { status: 400 })
     }
 
-    console.log(`Checking final result for archive operation: ${operationId}`)
+    serverLogger.debug(`Checking final result for archive operation: ${operationId}`)
 
-    // Get progress data from Redis
-    const progressKey = `archive_progress:${operationId}`
-    const progressData = await redis.get(progressKey)
-
-    console.log(`Final result data for ${operationId}:`, progressData)
-
-    if (!progressData) {
-      return NextResponse.json({ error: "No progress data found for this operation" }, { status: 404 })
-    }
-
-    // Parse progress data
-    try {
-      // Check if progressData is a string before parsing
-      const progress = typeof progressData === "string" ? JSON.parse(progressData) : progressData
-      return NextResponse.json(progress)
-    } catch (error) {
-      console.error(`Error parsing progress data: ${error}`)
-      return NextResponse.json(
-        {
-          inProgress: false,
-          error: "Invalid progress data",
-        },
-        { status: 500 },
-      )
-    }
+    // Get final result using the logs service
+    const result = await logsService.getArchiveFinalResult(operationId)
+    return NextResponse.json(result)
   } catch (error: any) {
-    console.error(`Error checking archive final result: ${error}`)
+    serverLogger.error(`Error checking archive final result: ${error}`)
     return NextResponse.json(
       {
         error: "Failed to check archive final result",

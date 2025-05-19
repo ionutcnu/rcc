@@ -150,6 +150,7 @@ export default function LogsPage() {
                 filter,
                 pageSize: PAGE_SIZE.toString(),
                 skipCache: (!useCache).toString(),
+                tab: activeTab, // Add the active tab to the request
             })
 
             if (cursor) params.append("cursor", cursor)
@@ -438,6 +439,11 @@ export default function LogsPage() {
     // Handle tab change
     const handleTabChange = (value: string) => {
         setActiveTab(value)
+
+        // If switching to Cat Activity tab, set filter to cat-activity
+        if (value === "catActivity") {
+            setFilter("cat-activity")
+        }
 
         // Reset logs when changing tabs
         setLogs([])
