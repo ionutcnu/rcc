@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
 import type { NextRequest } from "next/server"
-import { admin } from "@/lib/firebase/admin"
-import { getTranslationSettings } from "@/lib/firebase/translationService"
-
-// Reference to the settings document
-const SETTINGS_DOC_PATH = "settings/translation_settings"
+import { getTranslationSettings, updateTranslationSettings } from "@/lib/server/translationService"
 
 // GET endpoint to fetch translation settings
 export async function GET() {
@@ -33,10 +29,9 @@ export async function POST(request: NextRequest) {
     const settings = await request.json()
     console.log("Received settings update:", settings)
 
-    // Use the admin SDK to update the settings
-    // This bypasses security rules since the admin SDK has full access
-    await admin.db.doc(SETTINGS_DOC_PATH).set(settings, { merge: true })
-    console.log("Settings updated successfully via admin SDK")
+    // Update settings using the server-side service
+    await updateTranslationSettings(settings)
+    console.log("Settings updated successfully")
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

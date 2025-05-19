@@ -150,7 +150,7 @@ export default function TranslationsPage() {
 
         try {
             setTestLoading(true)
-            const testText = "Hello, this is a test translation. The quick brown fox jumps over the lazy dog."
+            const testText = "Hello, this is a test translation."
             const targetLang = settings.availableLanguages.find((lang) => lang !== settings.defaultLanguage) || "fr"
 
             const result = await testTranslation(testText, targetLang)

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { getDeepLUsage } from "@/lib/i18n/deepl-service"
-import { getTranslationSettings } from "@/lib/firebase/translationService"
+import { getDeepLUsage, getTranslationSettings } from "@/lib/server/translationService"
 
 export async function GET() {
     try {

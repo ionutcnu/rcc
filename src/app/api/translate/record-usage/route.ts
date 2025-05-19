@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server"
 import { adminCheck } from "@/lib/auth/admin-check"
-import { adminDb } from "@/lib/firebase/admin"
-import { format } from "date-fns"
 import type { NextRequest } from "next/server"
-import { FieldValue } from "firebase-admin/firestore"
-
-const USAGE_HISTORY_COLLECTION = "translation_usage_history"
+import { recordTranslationUsage } from "@/lib/server/translationService"
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,28 +18,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid character count" }, { status: 400 })
     }
 
-    // Get today's date in YYYY-MM-DD format
-    const today = format(new Date(), "yyyy-MM-dd")
+    // Record usage using the server-side service
+    const success = await recordTranslationUsage(characterCount)
 
-    // Check if we already have an entry for today
-    const docRef = adminDb.collection(USAGE_HISTORY_COLLECTION).doc(today)
-    const docSnap = await docRef.get()
-
-    if (docSnap.exists) {
-      // Update the existing entry
-      await docRef.update({
-        characterCount,
-        updatedAt: FieldValue.serverTimestamp(),
-      })
-    } else {
-      // Create a new entry for today
-      await docRef.set({
-        date: today,
-        characterCount,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      })
+    if (!success) {
+      return NextResponse.json({ error: "Failed to record usage" }, { status: 500 })
     }
+
+    // Get today's date in YYYY-MM-DD format for the response
+    const today = new Date().toISOString().split("T")[0]
 
     return NextResponse.json({ success: true, date: today, characterCount })
   } catch (error) {

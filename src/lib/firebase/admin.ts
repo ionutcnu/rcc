@@ -5,7 +5,7 @@ if (!isServer()) {
 }
 
 import { initializeApp, getApps, cert } from "firebase-admin/app"
-import { getFirestore } from "firebase-admin/firestore"
+import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore"
 import { getStorage } from "firebase-admin/storage"
 import { getAuth } from "firebase-admin/auth"
 
@@ -36,4 +36,8 @@ export const admin = {
     db: adminDb,
     auth: adminAuth,
     storage: adminStorage,
+    firestore: {
+        Timestamp,
+        FieldValue,
+    },
 }

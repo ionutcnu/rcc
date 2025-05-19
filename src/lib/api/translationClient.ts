@@ -1,4 +1,6 @@
 import { deduplicateRequest } from "./requestDeduplicator"
+import type { Language } from "@/lib/i18n/types"
+import { updateLocalUsage } from "@/lib/i18n/usageTracker"
 
 // Translation client functions
 export async function fetchTranslationSettings() {
@@ -84,6 +86,9 @@ export async function fetchTranslationUsage() {
 
       const data = await response.json()
 
+      // Update local usage for client-side access
+      updateLocalUsage(data)
+
       // Record the usage for history tracking
       if (data && typeof data.characterCount === "number") {
         recordTranslationUsage(data.characterCount).catch((err) => {
@@ -96,6 +101,17 @@ export async function fetchTranslationUsage() {
   } catch (error) {
     console.error("Error fetching translation usage:", error)
     return null
+  }
+}
+
+// Add this function to export getDeepLUsage
+export async function getDeepLUsage() {
+  try {
+    const usageData = await fetchTranslationUsage()
+    return usageData
+  } catch (error) {
+    console.error("Error getting DeepL usage:", error)
+    throw error
   }
 }
 
@@ -139,7 +155,8 @@ export async function clearTranslationCache() {
   }
 }
 
-export async function testTranslation(text: string, targetLang: string) {
+// Add the missing testTranslation function
+export async function testTranslation(text: string, targetLang: Language, sourceLang?: Language) {
   try {
     const response = await fetch("/api/translate", {
       method: "POST",
@@ -150,6 +167,8 @@ export async function testTranslation(text: string, targetLang: string) {
       body: JSON.stringify({
         text,
         targetLanguage: targetLang,
+        sourceLanguage: sourceLang,
+        isTest: true, // Flag to indicate this is a test translation
       }),
     })
 
@@ -157,9 +176,67 @@ export async function testTranslation(text: string, targetLang: string) {
       throw new Error(`Failed to test translation: ${response.status}`)
     }
 
-    return await response.json()
+    const result = await response.json()
+    return {
+      translatedText: result.translatedText || text,
+      success: true,
+    }
   } catch (error) {
     console.error("Error testing translation:", error)
     throw error
+  }
+}
+
+export async function translateText(text: string, targetLang: Language, sourceLang?: Language) {
+  try {
+    const response = await fetch("/api/translate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        text,
+        targetLanguage: targetLang,
+        sourceLanguage: sourceLang,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to translate text: ${response.status}`)
+    }
+
+    const result = await response.json()
+    return result.translatedText || text
+  } catch (error) {
+    console.error("Error translating text:", error)
+    return text // Return original text on error
+  }
+}
+
+export async function translateTexts(texts: string[], targetLang: Language, sourceLang?: Language) {
+  try {
+    const response = await fetch("/api/translate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        texts,
+        targetLanguage: targetLang,
+        sourceLanguage: sourceLang,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to translate texts: ${response.status}`)
+    }
+
+    const result = await response.json()
+    return result.translatedTexts || texts
+  } catch (error) {
+    console.error("Error translating texts:", error)
+    return texts // Return original texts on error
   }
 }

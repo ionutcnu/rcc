@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { clearTranslationCache } from "@/lib/i18n/cache-service"
+import { clearTranslationCache } from "@/lib/server/translationService"
 import { adminAuth } from "@/lib/firebase/admin"
 
 export async function POST(request: Request) {
