@@ -1,80 +1,46 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { admin } from "@/lib/firebase/admin"
-import { getCurrentUserForApi } from "@/lib/auth/session"
-import { mediaLogger } from "@/lib/utils/media-logger"
-import { Timestamp } from "firebase-admin/firestore"
+import { verifySessionCookie } from "@/lib/auth/session"
+import { isUserAdmin } from "@/lib/auth/admin-check"
+import { restoreMediaFromTrash } from "@/lib/server/mediaService"
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user - use the correct pattern
-    const { userId, userEmail } = await getCurrentUserForApi()
-
-    // Check if user is authenticated - use the correct properties
-    if (!userId) {
+    // Verify authentication
+    const session = await verifySessionCookie()
+    if (!session.authenticated || !session.uid) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    // Parse the request body
-    const { mediaId } = await request.json()
+    // Check if user is admin
+    const admin = await isUserAdmin(session.uid)
+    if (!admin) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
 
-    // Validate mediaId
+    // Get request body
+    const body = await request.json()
+    const { mediaId } = body
+
+    // Validate required fields
     if (!mediaId) {
       return NextResponse.json({ error: "Media ID is required" }, { status: 400 })
     }
 
-    console.log(`Attempting to restore media: ${mediaId}`)
+    // Restore the media from trash
+    const result = await restoreMediaFromTrash(mediaId, session.uid)
 
-    // Get a reference to the media document
-    const mediaRef = admin.db.collection("media").doc(mediaId)
-    const mediaDoc = await mediaRef.get()
-
-    // Check if the media exists
-    if (!mediaDoc.exists) {
-      return NextResponse.json({ error: "Media not found" }, { status: 404 })
+    if (!result.success) {
+      return NextResponse.json({ error: result.message, details: result.error }, { status: 400 })
     }
 
-    const mediaData = mediaDoc.data()
-
-    // Check if the media is actually in trash
-    if (!mediaData?.deleted) {
-      return NextResponse.json({ error: "Media is not in trash" }, { status: 400 })
-    }
-
-    // Restore the media by updating the document - use the correct Timestamp
-    await mediaRef.update({
-      deleted: false,
-      deletedAt: null,
-      deletedBy: null,
-      updatedAt: Timestamp.now(),
-    })
-
-    // Log the restoration
-    mediaLogger.info(
-      `Media restored: ${mediaId}`,
-      {
-        id: mediaId,
-        name: mediaData.name,
-        userEmail: userEmail || "unknown",
-      },
-      userId,
-    )
-
-    // Return success response
-    return NextResponse.json({
-      success: true,
-      message: "Media restored successfully",
-      media: {
-        id: mediaId,
-        ...mediaData,
-        deleted: false,
-        deletedAt: null,
-        deletedBy: null,
-      },
-    })
+    return NextResponse.json(result)
   } catch (error) {
-    console.error("Error restoring media:", error)
+    console.error("Error in restore from trash API:", error)
     return NextResponse.json(
-      { error: "Failed to restore media", details: error instanceof Error ? error.message : "Unknown error" },
+      {
+        error: "Failed to restore media from trash",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     )
   }

@@ -1,102 +1,53 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { adminCheck } from "@/lib/auth/admin-check"
-import { admin } from "@/lib/firebase/admin"
-import { mediaLogger } from "@/lib/utils/media-logger"
+import { verifySessionCookie } from "@/lib/auth/session"
+import { isUserAdmin } from "@/lib/auth/admin-check"
+import { uploadMedia } from "@/lib/server/mediaService"
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const session = await verifySessionCookie()
+    if (!session.authenticated || !session.uid) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+
     // Check if user is admin
-    const isAdmin = await adminCheck(request)
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: "Unauthorized", message: "Admin privileges required to upload media" },
-        { status: 403 },
-      )
+    const admin = await isUserAdmin(session.uid)
+    if (!admin) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
-    // Handle file upload
+    // Parse the form data
     const formData = await request.formData()
-    const file = formData.get("file") as File
-    const folder = (formData.get("folder") as string) || "general"
-    const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "other"
 
-    // Validate required fields
+    // Get the file from the form data
+    const file = formData.get("file") as File | null
     if (!file) {
-      return NextResponse.json({ error: "File is required" }, { status: 400 })
+      return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    console.log(`Uploading ${type} to folder ${folder}`)
+    // Get additional options
+    const folder = (formData.get("folder") as string) || "general"
+    const generateUniqueName = formData.get("generateUniqueName") !== "false" // Default to true
 
-    // Convert file to buffer
-    const buffer = await file.arrayBuffer()
-    const fileBuffer = Buffer.from(buffer)
-
-    // Generate a unique filename
-    const timestamp = Date.now()
-    const fileExtension = file.name.split(".").pop() || (type === "image" ? "jpg" : "mp4")
-    const fileName = `${timestamp}-${file.name.replace(/\s+/g, "-")}`
-
-    // Define the storage path
-    const storagePath = `media/${folder}/${fileName}`
-
-    // Upload to Firebase Storage
-    const bucket = admin.storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET)
-    const fileRef = bucket.file(storagePath)
+    // Convert File to Buffer
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     // Upload the file
-    await fileRef.save(fileBuffer, {
-      metadata: {
-        contentType: file.type,
-      },
-    })
-
-    // Generate a download URL
-    const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || ""
-    const encodedPath = encodeURIComponent(storagePath)
-
-    // Make the file publicly accessible
-    await fileRef.makePublic()
-
-    // Generate a download URL in the same format as the client-side SDK
-    const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`
-
-    console.log("Generated download URL:", downloadUrl)
-
-    // Create a media document in Firestore
-    const mediaDoc = {
-      name: file.name,
-      type,
-      url: downloadUrl,
-      path: storagePath,
+    const mediaItem = await uploadMedia(buffer, file.name, file.type, session.uid, {
       folder,
-      size: file.size,
-      contentType: file.type,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deleted: false,
-      locked: false,
-    }
-
-    // Add to Firestore
-    const mediaRef = await admin.db.collection("media").add(mediaDoc)
-
-    // Log the upload
-    mediaLogger.info(`Uploaded media: ${file.name}`, { mediaId: mediaRef.id, type, size: file.size }, "SYSTEM")
+      generateUniqueName,
+    })
 
     return NextResponse.json({
       success: true,
-      message: "Media uploaded successfully",
-      mediaId: mediaRef.id,
-      mediaUrl: downloadUrl,
-      mediaDoc,
+      media: mediaItem,
     })
-  } catch (error: any) {
-    console.error("Error in media/upload API:", error)
+  } catch (error) {
+    console.error("Error in upload media API:", error)
     return NextResponse.json(
-      {
-        error: error.message || "Internal server error",
-        stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
-      },
+      { error: "Failed to upload media", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },
     )
   }

@@ -1,33 +1,31 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { validateAllMedia } from "@/lib/utils/media-validator"
 import { verifySessionCookie } from "@/lib/auth/session"
-import { checkIsAdmin } from "@/lib/auth/admin-check"
-import { serverLogger } from "@/lib/utils/server-logger"
+import { isUserAdmin } from "@/lib/auth/admin-check"
+import { validateMediaUrls } from "@/lib/server/mediaService"
 
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const session = await verifySessionCookie(request)
+    const session = await verifySessionCookie()
     if (!session.authenticated || !session.uid) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    // Verify admin status
-    const isAdmin = await checkIsAdmin(session.uid)
-    if (!isAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // Check if user is admin
+    const admin = await isUserAdmin(session.uid)
+    if (!admin) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
-    // Log the API access
-    await serverLogger.info(`API: Validating media`, { userId: session.uid })
+    // Validate media URLs
+    const result = await validateMediaUrls()
 
-    // Validate all media
-    const results = await validateAllMedia()
-
-    return NextResponse.json(results)
+    return NextResponse.json(result)
   } catch (error) {
-    console.error("Error validating media:", error)
-    await serverLogger.error(`Error validating media`, { error })
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    console.error("Error in validate media API:", error)
+    return NextResponse.json(
+      { error: "Failed to validate media URLs", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }

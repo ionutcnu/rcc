@@ -18,4 +18,6 @@ export interface MediaItem {
   lockedReason?: string
   lockedAt?: Date
   lockedBy?: string
+  folder?: string
+  contentType?: string
 }

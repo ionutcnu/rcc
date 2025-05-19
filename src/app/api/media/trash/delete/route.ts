@@ -1,101 +1,52 @@
-import { NextResponse } from "next/server"
-import { admin } from "@/lib/firebase/admin"
-import { mediaLogger } from "@/lib/utils/media-logger"
-import { getCurrentUserForApi } from "@/lib/auth/session"
-import { deleteFileFromStorage } from "@/lib/firebase/storageService"
+import { type NextRequest, NextResponse } from "next/server"
+import { verifySessionCookie } from "@/lib/auth/session"
+import { isUserAdmin } from "@/lib/auth/admin-check"
+import { deleteMediaPermanently } from "@/lib/server/mediaService"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Get the current user
-    const { userId, userEmail } = await getCurrentUserForApi()
-
-    // Check if user is authenticated
-    if (!userId) {
+    // Verify authentication
+    const session = await verifySessionCookie()
+    if (!session.authenticated || !session.uid) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    // Parse the request body
-    const { mediaId } = await request.json()
+    // Check if user is admin
+    const admin = await isUserAdmin(session.uid)
+    if (!admin) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
 
-    // Validate mediaId
+    // Get request body
+    const body = await request.json()
+    const { mediaId } = body
+
+    // Validate required fields
     if (!mediaId) {
       return NextResponse.json({ error: "Media ID is required" }, { status: 400 })
     }
 
-    console.log(`Attempting to permanently delete media: ${mediaId}`)
+    // Delete the media permanently
+    const result = await deleteMediaPermanently(mediaId, session.uid)
 
-    // Get a reference to the media document
-    const mediaRef = admin.db.collection("media").doc(mediaId)
-    const mediaDoc = await mediaRef.get()
-
-    // Check if the media exists
-    if (!mediaDoc.exists) {
-      return NextResponse.json({ error: "Media not found" }, { status: 404 })
-    }
-
-    const mediaData = mediaDoc.data()
-
-    // Check if the media is in trash (should be deleted first)
-    if (!mediaData?.deleted) {
-      return NextResponse.json({ error: "Media must be in trash before permanent deletion" }, { status: 400 })
-    }
-
-    // Check if the media is locked
-    if (mediaData?.locked) {
-      return NextResponse.json(
-        {
-          error: "Cannot delete locked media",
-          locked: true,
-          lockedReason: mediaData.lockedReason || "Unknown reason",
-        },
-        { status: 403 },
-      )
-    }
-
-    // Log the deletion attempt
-    mediaLogger.mediaDelete(
-      mediaId,
-      mediaData.path || mediaData.url || "",
-      userId,
-      false, // permanent delete (isSoftDelete = false)
-    )
-
-    // Delete the file from Firebase Storage
-    let storageDeleteSuccess = false
-    if (mediaData.path) {
-      try {
-        // Create a reference to the file in storage
-        const fileRef = admin.storage.bucket().file(mediaData.path)
-
-        // Delete the file
-        await fileRef.delete()
-        console.log(`Successfully deleted file from storage: ${mediaData.path}`)
-        storageDeleteSuccess = true
-      } catch (storageError) {
-        console.error(`Error deleting file from storage: ${mediaData.path}`, storageError)
-        // Continue with Firestore deletion even if Storage deletion fails
+    if (!result.success) {
+      // If media is locked, return a specific error
+      if (result.locked) {
+        return NextResponse.json(
+          { error: result.message, locked: true, lockedReason: result.lockedReason },
+          { status: 403 },
+        )
       }
-    } else if (mediaData.url) {
-      try {
-        // If we only have the URL, try to delete using the URL
-        storageDeleteSuccess = await deleteFileFromStorage(mediaData.url)
-      } catch (urlError) {
-        console.error(`Error deleting file from URL: ${mediaData.url}`, urlError)
-        // Continue with Firestore deletion even if Storage deletion fails
-      }
+
+      return NextResponse.json({ error: result.message, details: result.error }, { status: 400 })
     }
 
-    // Delete the media document from Firestore
-    await mediaRef.delete()
-
-    // Return success response
-    return NextResponse.json({
-      success: true,
-      message: "Media permanently deleted",
-      storageDeleted: storageDeleteSuccess,
-    })
+    return NextResponse.json(result)
   } catch (error) {
-    console.error("Error permanently deleting media:", error)
-    return NextResponse.json({ error: "Failed to permanently delete media" }, { status: 500 })
+    console.error("Error in delete media API:", error)
+    return NextResponse.json(
+      { error: "Failed to delete media", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }

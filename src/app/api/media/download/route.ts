@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { adminAuth } from "@/lib/firebase/admin"
+import { verifySessionCookie } from "@/lib/auth/session"
 import { mediaLogger } from "@/lib/utils/media-logger"
-import { getMediaById } from "@/lib/firebase/storageService"
+import { getMediaById } from "@/lib/server/mediaService"
+import { getStorage } from "firebase-admin/storage"
 
 /**
  * API route for downloading media files
@@ -21,40 +22,54 @@ export async function GET(request: NextRequest) {
     console.log(`Download request for media ID: ${mediaId}`)
 
     // Verify authentication
-    const sessionCookie = request.cookies.get("session")?.value
-
-    if (!sessionCookie) {
+    const session = await verifySessionCookie()
+    if (!session.authenticated || !session.uid) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
+    // Get the media item
+    const mediaItem = await getMediaById(mediaId)
+
+    if (!mediaItem) {
+      return NextResponse.json({ error: "Media not found" }, { status: 404 })
+    }
+
+    // Check if the media has a URL
+    if (!mediaItem.url) {
+      return NextResponse.json({ error: "Media URL not available" }, { status: 404 })
+    }
+
+    console.log(`Fetching media from URL: ${mediaItem.url}`)
+
+    // Log the download
+    mediaLogger.info(`Media download: ${mediaItem.name}`, {
+      mediaId: mediaItem.id,
+      userId: session.uid,
+      mediaType: mediaItem.type,
+    })
+
+    // Fetch the file from Firebase Storage
     try {
-      // Verify the session cookie
-      const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie)
-      const userId = decodedClaims.uid
+      // If we have a path, download directly from Firebase Storage
+      if (mediaItem.path) {
+        const storage = getStorage()
+        const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "")
+        const fileRef = bucket.file(mediaItem.path)
 
-      // Get the media item
-      const mediaItem = await getMediaById(mediaId)
+        const [fileBuffer] = await fileRef.download()
 
-      if (!mediaItem) {
-        return NextResponse.json({ error: "Media not found" }, { status: 404 })
-      }
+        // Create a new response with the file content
+        const response = new NextResponse(fileBuffer)
 
-      // Check if the media has a URL
-      if (!mediaItem.url) {
-        return NextResponse.json({ error: "Media URL not available" }, { status: 404 })
-      }
+        // Set headers to force download
+        response.headers.set("Content-Disposition", `attachment; filename="${mediaItem.name}"`)
+        response.headers.set("Content-Type", mediaItem.contentType || "application/octet-stream")
+        response.headers.set("Content-Length", String(fileBuffer.byteLength))
 
-      console.log(`Fetching media from URL: ${mediaItem.url}`)
-
-      // Log the download
-      mediaLogger.info(`Media download: ${mediaItem.name}`, {
-        mediaId: mediaItem.id,
-        userId,
-        mediaType: mediaItem.type,
-      })
-
-      // Fetch the file from Firebase Storage
-      try {
+        console.log(`Successfully prepared download for: ${mediaItem.name}`)
+        return response
+      } else {
+        // Fallback to URL if path is not available
         const response = await fetch(mediaItem.url)
 
         if (!response.ok) {
@@ -69,23 +84,17 @@ export async function GET(request: NextRequest) {
 
         // Set headers to force download
         newResponse.headers.set("Content-Disposition", `attachment; filename="${mediaItem.name}"`)
-        newResponse.headers.set("Content-Type", response.headers.get("Content-Type") || "application/octet-stream")
-        newResponse.headers.set(
-          "Content-Length",
-          response.headers.get("Content-Length") || String(fileBuffer.byteLength),
-        )
+        newResponse.headers.set("Content-Type", mediaItem.contentType || "application/octet-stream")
+        newResponse.headers.set("Content-Length", String(fileBuffer.byteLength))
 
         console.log(`Successfully prepared download for: ${mediaItem.name}`)
         return newResponse
-      } catch (fetchError) {
-        console.error("Error fetching file:", fetchError)
-
-        // If fetch fails, redirect to the URL
-        return NextResponse.redirect(mediaItem.url)
       }
-    } catch (authError) {
-      console.error("Authentication error:", authError)
-      return NextResponse.json({ error: "Invalid authentication" }, { status: 401 })
+    } catch (fetchError) {
+      console.error("Error fetching file:", fetchError)
+
+      // If fetch fails, redirect to the URL
+      return NextResponse.redirect(mediaItem.url)
     }
   } catch (error) {
     console.error("Error in download API:", error)
