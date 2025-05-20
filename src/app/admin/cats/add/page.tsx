@@ -6,9 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Trash2, Upload, X } from "lucide-react"
-import { getAllCats } from "@/lib/firebase/catService"
-import CatPopup from "@/components/elements/CatsRelated/CatPopup"
 import type { CatProfile } from "@/lib/types/cat"
+// Replace direct Firebase import with client API utility
+import { fetchAllCats } from "@/lib/api/catClient"
+import CatPopup from "@/components/elements/CatsRelated/CatPopup"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -75,10 +76,11 @@ export default function CatEntryForm() {
     })
 
     useEffect(() => {
-        const fetchAllCats = async () => {
+        const fetchCats = async () => {
             try {
                 setIsLoadingCats(true)
-                const fetchedCats = await getAllCats()
+                // Use the client API utility instead of direct Firebase call
+                const fetchedCats = await fetchAllCats()
                 console.log("Fetched cats:", fetchedCats)
                 setAllCats(fetchedCats)
             } catch (error) {
@@ -90,9 +92,10 @@ export default function CatEntryForm() {
             }
         }
 
-        fetchAllCats()
+        fetchCats()
     }, [])
 
+    // Rest of the component remains the same...
     // Create options for mother and father dropdowns
     const motherOptions = allCats
       .filter((cat) => {

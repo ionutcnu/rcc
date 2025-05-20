@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import { SimpleConfirmDialog } from "@/components/ui/simple-confirm-dialog"
-import { type MediaItem, unlockMedia } from "@/lib/firebase/storageService"
+import type { MediaItem } from "@/lib/firebase/storageService"
 import { mediaLogger } from "@/lib/utils/media-logger"
 import { auth } from "@/lib/firebase/firebaseConfig"
 import { getCurrentUserInfo } from "@/lib/utils/user-info"
@@ -44,6 +44,7 @@ import {
     moveMediaToTrash,
     restoreMediaFromTrash,
     deleteMediaPermanently,
+    unlockMediaItem,
 } from "@/lib/api/mediaClient"
 
 export default function MediaManager() {
@@ -315,14 +316,16 @@ export default function MediaManager() {
             )
             if (!confirmed) return
 
-            const success = await unlockMedia(item)
-            if (success) {
+            // Replace with API client function
+            const result = await unlockMediaItem(item.id)
+
+            if (result.success) {
                 // Update the state
                 setLockedMediaItems(lockedMediaItems.filter((media) => media.id !== item.id))
                 setMediaItems([...mediaItems, { ...item, locked: false, lockedReason: undefined }])
                 showPopup(`Media "${item.name}" unlocked. It can now be deleted.`)
             } else {
-                showPopup("Failed to unlock media")
+                showPopup(`Failed to unlock media: ${result.error || "Unknown error"}`)
             }
         } catch (err) {
             console.error("Error unlocking media:", err)

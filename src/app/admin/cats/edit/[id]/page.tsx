@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { ArrowLeft, Trash2, Upload, X, Loader2 } from "lucide-react"
-import { getCatById, getAllCats } from "@/lib/firebase/catService"
+// Replace Firebase imports with API client imports
+import { fetchCatById, fetchAllCats } from "@/lib/api/catClient"
 import CatPopup from "@/components/elements/CatsRelated/CatPopup"
 import type { CatProfile } from "@/lib/types/cat"
 import Link from "next/link"
@@ -85,7 +86,8 @@ export default function EditCatPage() {
         const fetchCat = async () => {
             try {
                 setIsLoading(true)
-                const cat = await getCatById(catId)
+                // Replace getCatById with fetchCatById from API client
+                const cat = await fetchCatById(catId)
                 if (cat) {
                     // Update form with cat data
                     form.reset({
@@ -136,10 +138,11 @@ export default function EditCatPage() {
     }, [catId, router, form])
 
     useEffect(() => {
-        const fetchAllCats = async () => {
+        const fetchCats = async () => {
             try {
                 setIsLoadingCats(true)
-                const fetchedCats = await getAllCats()
+                // Replace getAllCats with fetchAllCats from API client
+                const fetchedCats = await fetchAllCats()
                 console.log("Fetched cats:", fetchedCats)
                 setAllCats(fetchedCats)
             } catch (error) {
@@ -151,7 +154,7 @@ export default function EditCatPage() {
             }
         }
 
-        fetchAllCats()
+        fetchCats()
     }, [])
 
     // Create options for mother and father dropdowns

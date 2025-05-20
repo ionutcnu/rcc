@@ -1,9 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getSettings } from "@/lib/firebase/settingsService"
-import { getStorage, ref, getDownloadURL } from "firebase/storage"
-import { app } from "@/lib/firebase/firebaseConfig"
 
 export default function TestImagePage() {
     const [ogImage, setOgImage] = useState("")
@@ -15,16 +12,28 @@ export default function TestImagePage() {
         async function loadImage() {
             try {
                 setLoading(true)
-                // Get the OG image URL from settings
-                const settings = await getSettings()
 
-                if (settings.seo?.ogImage) {
-                    setOgImage(settings.seo.ogImage)
+                // Get the settings from the API
+                const settingsResponse = await fetch("/api/settings?type=seo", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                })
+
+                if (!settingsResponse.ok) {
+                    throw new Error(`Failed to fetch settings: ${settingsResponse.status}`)
+                }
+
+                const settings = await settingsResponse.json()
+
+                if (settings.ogImage) {
+                    setOgImage(settings.ogImage)
 
                     // Create proxy URL
-                    if (settings.seo.ogImage.includes("firebasestorage.googleapis.com")) {
+                    if (settings.ogImage.includes("firebasestorage.googleapis.com")) {
                         try {
-                            const urlObj = new URL(settings.seo.ogImage)
+                            const urlObj = new URL(settings.ogImage)
                             const pathStartIndex = urlObj.pathname.indexOf("/o/") + 3
                             if (pathStartIndex > 3) {
                                 let filePath = urlObj.pathname.substring(pathStartIndex)
@@ -38,20 +47,30 @@ export default function TestImagePage() {
                         }
                     }
                 } else {
-                    // If no OG image is set, get a test image from Firebase
-                    const storage = getStorage(app)
-                    // Replace with a path to an actual image in your storage
-                    const imageRef = ref(storage, "cats/sample.jpg")
-                    const url = await getDownloadURL(imageRef)
+                    // If no OG image is set, get a test image from the API
+                    const testImageResponse = await fetch("/api/media/test-image", {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    })
+
+                    if (!testImageResponse.ok) {
+                        throw new Error(`Failed to fetch test image: ${testImageResponse.status}`)
+                    }
+
+                    const { url } = await testImageResponse.json()
                     setOgImage(url)
 
                     // Create proxy URL for this test image
-                    const urlObj = new URL(url)
-                    const pathStartIndex = urlObj.pathname.indexOf("/o/") + 3
-                    if (pathStartIndex > 3) {
-                        let filePath = urlObj.pathname.substring(pathStartIndex)
-                        filePath = decodeURIComponent(filePath)
-                        setProxyUrl(`/api/image/${encodeURIComponent(filePath)}`)
+                    if (url.includes("firebasestorage.googleapis.com")) {
+                        const urlObj = new URL(url)
+                        const pathStartIndex = urlObj.pathname.indexOf("/o/") + 3
+                        if (pathStartIndex > 3) {
+                            let filePath = urlObj.pathname.substring(pathStartIndex)
+                            filePath = decodeURIComponent(filePath)
+                            setProxyUrl(`/api/image/${encodeURIComponent(filePath)}`)
+                        }
                     }
                 }
             } catch (err) {

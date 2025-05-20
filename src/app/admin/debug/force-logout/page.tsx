@@ -2,26 +2,29 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { auth } from "@/lib/firebase/firebaseConfig"
+import { useAuth } from "@/lib/contexts/auth-context"
 
 export default function ForceLogoutPage() {
     const router = useRouter()
+    const { logout } = useAuth()
 
     useEffect(() => {
-        const logout = async () => {
+        const performLogout = async () => {
             try {
-                // Sign out from Firebase client
-                await auth.signOut()
-
-                // Call server action to revoke session cookie
-                await fetch("/api/auth/logout", {
-                    method: "POST",
-                    credentials: "include",
-                    cache: "no-store",
-                    headers: {
-                        "Cache-Control": "no-cache",
-                    },
-                })
+                // Call the logout method from auth context
+                if (logout) {
+                    await logout()
+                } else {
+                    // Fallback to direct API call if logout function is not available
+                    await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include",
+                        cache: "no-store",
+                        headers: {
+                            "Cache-Control": "no-cache",
+                        },
+                    })
+                }
 
                 // Clear any client-side storage
                 localStorage.clear()
@@ -47,15 +50,15 @@ export default function ForceLogoutPage() {
             }
         }
 
-        logout()
-    }, [router])
+        performLogout()
+    }, [router, logout])
 
     return (
-        <div className="flex min-h-screen items-center justify-center">
-            <div className="text-center">
-                <h1 className="text-2xl font-bold mb-4">Logging you out...</h1>
-                <p>Please wait while we clear your session.</p>
-            </div>
-        </div>
+      <div className="flex min-h-screen items-center justify-center">
+          <div className="text-center">
+              <h1 className="text-2xl font-bold mb-4">Logging you out...</h1>
+              <p>Please wait while we clear your session.</p>
+          </div>
+      </div>
     )
 }
