@@ -2,11 +2,15 @@ import { admin } from "@/lib/firebase/admin"
 import type { Language } from "@/lib/i18n/types"
 import { FieldValue } from "firebase-admin/firestore"
 import { format } from "date-fns"
+import { redis } from "@/lib/redis"
 
 // Collection names
 const SETTINGS_DOC_PATH = "settings/translation_settings"
-const CACHE_COLLECTION = "translation_cache"
 const USAGE_HISTORY_COLLECTION = "translation_usage_history"
+
+// Redis key prefixes
+const TRANSLATION_KEY_PREFIX = "translation:"
+const LANGUAGE_PAIR_PREFIX = "lang_pair:"
 
 // DeepL API base URL
 const DEEPL_API_URL = "https://api-free.deepl.com/v2"
@@ -31,6 +35,7 @@ export interface TranslationSettings {
   availableLanguages: Language[]
   cacheEnabled: boolean
   cacheTTL: number // hours
+  useGroupedCache: boolean // New setting for grouped cache
 }
 
 // Default settings
@@ -43,6 +48,7 @@ export const defaultTranslationSettings: TranslationSettings = {
   availableLanguages: ["en", "fr", "de", "it", "ro"],
   cacheEnabled: true,
   cacheTTL: 24, // 1 day
+  useGroupedCache: true, // Enable grouped cache by default
 }
 
 // DeepL usage interface
@@ -52,6 +58,23 @@ export interface DeepLUsage {
   percentUsed: number
   limitReached: boolean
   lastChecked: Date
+}
+
+// Interface for cached translation
+interface CachedTranslation {
+  sourceText: string
+  targetLanguage: Language
+  sourceLanguage: string
+  translatedText: string
+  timestamp: string
+  expiresAt: string
+}
+
+// Interface for grouped cache
+interface GroupedCache {
+  translations: Record<string, CachedTranslation>
+  updatedAt: string
+  expiresAt: string
 }
 
 /**
@@ -96,7 +119,12 @@ export async function getTranslationSettings(): Promise<TranslationSettings> {
     const settingsSnap = await settingsRef.get()
 
     if (settingsSnap.exists) {
-      return settingsSnap.data() as TranslationSettings
+      const settings = settingsSnap.data() as TranslationSettings
+      // Ensure the useGroupedCache property exists (for backward compatibility)
+      if (settings.useGroupedCache === undefined) {
+        settings.useGroupedCache = defaultTranslationSettings.useGroupedCache
+      }
+      return settings
     }
 
     // If no settings exist, initialize with defaults and return
@@ -533,6 +561,8 @@ export async function translateTexts(texts: string[], targetLang: Language, sour
     })
 
     // Cache the translations and update the results array
+    const translationsToCache: Record<string, CachedTranslation> = {}
+
     for (let i = 0; i < translatedTexts.length; i++) {
       const originalIndex = originalIndices[i]
       const originalText = texts[originalIndex]
@@ -540,10 +570,32 @@ export async function translateTexts(texts: string[], targetLang: Language, sour
 
       results[originalIndex] = translatedText
 
-      // Cache the translation if enabled
+      // Prepare for caching if enabled
       if (settings.cacheEnabled && translatedText !== originalText) {
-        await cacheTranslation(originalText, targetLang, sourceLang, translatedText, settings.cacheTTL)
+        const now = new Date()
+        const expiresAt = new Date(now.getTime() + settings.cacheTTL * 60 * 60 * 1000)
+
+        if (settings.useGroupedCache) {
+          // Add to grouped cache object
+          const cacheKey = createCacheKey(originalText, targetLang, sourceLang || "auto")
+          translationsToCache[cacheKey] = {
+            sourceText: originalText,
+            targetLanguage: targetLang,
+            sourceLanguage: sourceLang || "auto",
+            translatedText,
+            timestamp: now.toISOString(),
+            expiresAt: expiresAt.toISOString(),
+          }
+        } else {
+          // Cache individually
+          await cacheTranslation(originalText, targetLang, sourceLang, translatedText, settings.cacheTTL)
+        }
       }
+    }
+
+    // If using grouped cache and we have translations to cache, store them all at once
+    if (settings.useGroupedCache && settings.cacheEnabled && Object.keys(translationsToCache).length > 0) {
+      await cacheTranslationsGroup(translationsToCache, targetLang, sourceLang || "auto", settings.cacheTTL)
     }
 
     // Fill in any missing results with original texts
@@ -574,7 +626,8 @@ export async function translateTexts(texts: string[], targetLang: Language, sour
 }
 
 /**
- * Get a cached translation
+ * Get a cached translation from Redis
+ * Supports both individual and grouped caching strategies
  */
 export async function getCachedTranslation(
   sourceText: string,
@@ -582,43 +635,43 @@ export async function getCachedTranslation(
   sourceLanguage?: Language,
 ): Promise<string | null> {
   try {
-    // Create a hash of the source text to use as document ID
-    const cacheKey = createCacheKey(sourceText, targetLanguage, sourceLanguage || "auto")
+    const settings = await getTranslationSettings()
+    const sourceLanguageKey = sourceLanguage || "auto"
 
-    // Get the document from Firestore
-    const docRef = admin.db.collection(CACHE_COLLECTION).doc(cacheKey)
-    const docSnap = await docRef.get()
+    // Try individual cache first
+    const cacheKey = `${TRANSLATION_KEY_PREFIX}${createCacheKey(sourceText, targetLanguage, sourceLanguageKey)}`
+    const cachedData = await redis.get(cacheKey)
 
-    if (docSnap.exists) {
-      const data = docSnap.data() as {
-        sourceText: string
-        targetLanguage: Language
-        sourceLanguage: string
-        translatedText: string
-        timestamp: any
-        expiresAt: any
-      }
-
-      // Check if the cache has expired
-      if (new Date() > data.expiresAt.toDate()) {
-        // Cache has expired, delete it
-        await docRef.delete()
-        return null
-      }
-
-      // Clean up the cached translation before returning
+    if (cachedData) {
+      const data = JSON.parse(cachedData as string) as CachedTranslation
       return cleanTranslatedText(data.translatedText)
+    }
+
+    // If individual cache miss and grouped cache is enabled, try grouped cache
+    if (settings.useGroupedCache) {
+      const groupKey = `${LANGUAGE_PAIR_PREFIX}${sourceLanguageKey}_${targetLanguage}`
+      const groupData = await redis.get(groupKey)
+
+      if (groupData) {
+        const groupCache = JSON.parse(groupData as string) as GroupedCache
+
+        // Check if this text exists in the group
+        const textHash = createCacheKey(sourceText, targetLanguage, sourceLanguageKey)
+        if (groupCache.translations[textHash]) {
+          return cleanTranslatedText(groupCache.translations[textHash].translatedText)
+        }
+      }
     }
 
     return null
   } catch (error) {
-    console.error("Error getting cached translation:", error)
+    console.error("Error getting cached translation from Redis:", error)
     return null
   }
 }
 
 /**
- * Cache a translation
+ * Cache a translation in Redis
  */
 export async function cacheTranslation(
   sourceText: string,
@@ -628,8 +681,16 @@ export async function cacheTranslation(
   ttlHours = 24,
 ): Promise<boolean> {
   try {
-    // Create a hash of the source text to use as document ID
-    const cacheKey = createCacheKey(sourceText, targetLanguage, sourceLanguage || "auto")
+    const settings = await getTranslationSettings()
+    const sourceLanguageKey = sourceLanguage || "auto"
+
+    // If using grouped cache, add to the language pair group
+    if (settings.useGroupedCache) {
+      return await addToGroupCache(sourceText, targetLanguage, sourceLanguageKey, translatedText, ttlHours)
+    }
+
+    // Otherwise use individual caching
+    const cacheKey = `${TRANSLATION_KEY_PREFIX}${createCacheKey(sourceText, targetLanguage, sourceLanguageKey)}`
 
     // Calculate expiration time
     const now = new Date()
@@ -638,53 +699,167 @@ export async function cacheTranslation(
     // Clean up the translated text before caching
     const cleanedText = cleanTranslatedText(translatedText)
 
-    // Save to Firestore
-    const docRef = admin.db.collection(CACHE_COLLECTION).doc(cacheKey)
-    await docRef.set({
+    // Prepare data for Redis
+    const data = JSON.stringify({
       sourceText,
       targetLanguage,
-      sourceLanguage: sourceLanguage || "auto",
+      sourceLanguage: sourceLanguageKey,
       translatedText: cleanedText,
-      timestamp: admin.firestore.Timestamp.fromDate(now),
-      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      timestamp: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
     })
+
+    // Save to Redis with expiration
+    await redis.set(cacheKey, data, { ex: ttlHours * 60 * 60 })
 
     return true
   } catch (error) {
-    console.error("Error caching translation:", error)
+    console.error("Error caching translation in Redis:", error)
     return false
   }
 }
 
 /**
- * Clear all translation cache
+ * Add a translation to a grouped cache by language pair
  */
-export async function clearTranslationCache(): Promise<boolean> {
+async function addToGroupCache(
+  sourceText: string,
+  targetLanguage: Language,
+  sourceLanguage: string,
+  translatedText: string,
+  ttlHours = 24,
+): Promise<boolean> {
   try {
-    const cacheRef = admin.db.collection(CACHE_COLLECTION)
-    const snapshot = await cacheRef.limit(500).get()
+    const groupKey = `${LANGUAGE_PAIR_PREFIX}${sourceLanguage}_${targetLanguage}`
+    const textHash = createCacheKey(sourceText, targetLanguage, sourceLanguage)
 
-    // Delete documents in batches
-    const batchSize = snapshot.size
-    if (batchSize === 0) {
+    // Calculate expiration time
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000)
+
+    // Clean up the translated text
+    const cleanedText = cleanTranslatedText(translatedText)
+
+    // Get existing group or create new one
+    const existingGroup = await redis.get(groupKey)
+    let groupCache: GroupedCache
+
+    if (existingGroup) {
+      groupCache = JSON.parse(existingGroup as string) as GroupedCache
+
+      // Update the expiration time if needed
+      if (new Date(groupCache.expiresAt) < expiresAt) {
+        groupCache.expiresAt = expiresAt.toISOString()
+      }
+    } else {
+      groupCache = {
+        translations: {},
+        updatedAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      }
+    }
+
+    // Add or update the translation in the group
+    groupCache.translations[textHash] = {
+      sourceText,
+      targetLanguage,
+      sourceLanguage,
+      translatedText: cleanedText,
+      timestamp: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    }
+
+    groupCache.updatedAt = now.toISOString()
+
+    // Save the updated group to Redis
+    await redis.set(groupKey, JSON.stringify(groupCache), { ex: ttlHours * 60 * 60 })
+
+    return true
+  } catch (error) {
+    console.error("Error adding to group cache:", error)
+    return false
+  }
+}
+
+/**
+ * Cache multiple translations at once in a grouped format
+ */
+async function cacheTranslationsGroup(
+  translations: Record<string, CachedTranslation>,
+  targetLanguage: Language,
+  sourceLanguage: string,
+  ttlHours = 24,
+): Promise<boolean> {
+  try {
+    if (Object.keys(translations).length === 0) {
       return true
     }
 
-    // Delete in batches of 500
-    const batch = admin.db.batch()
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref)
-    })
-    await batch.commit()
+    const groupKey = `${LANGUAGE_PAIR_PREFIX}${sourceLanguage}_${targetLanguage}`
 
-    // If we hit the limit, recursively delete more
-    if (batchSize >= 500) {
-      return clearTranslationCache()
+    // Calculate expiration time
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000)
+
+    // Get existing group or create new one
+    const existingGroup = await redis.get(groupKey)
+    let groupCache: GroupedCache
+
+    if (existingGroup) {
+      groupCache = JSON.parse(existingGroup as string) as GroupedCache
+
+      // Update the expiration time if needed
+      if (new Date(groupCache.expiresAt) < expiresAt) {
+        groupCache.expiresAt = expiresAt.toISOString()
+      }
+
+      // Merge the translations
+      groupCache.translations = {
+        ...groupCache.translations,
+        ...translations,
+      }
+    } else {
+      groupCache = {
+        translations,
+        updatedAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      }
+    }
+
+    groupCache.updatedAt = now.toISOString()
+
+    // Save the updated group to Redis
+    await redis.set(groupKey, JSON.stringify(groupCache), { ex: ttlHours * 60 * 60 })
+
+    console.log(`Cached ${Object.keys(translations).length} translations in group ${groupKey}`)
+    return true
+  } catch (error) {
+    console.error("Error caching translations group:", error)
+    return false
+  }
+}
+
+/**
+ * Clear all translation cache from Redis
+ */
+export async function clearTranslationCache(): Promise<boolean> {
+  try {
+    // Get all keys with the translation and language pair prefixes
+    const translationKeys = await redis.keys(`${TRANSLATION_KEY_PREFIX}*`)
+    const langPairKeys = await redis.keys(`${LANGUAGE_PAIR_PREFIX}*`)
+    const allKeys = [...translationKeys, ...langPairKeys]
+
+    if (allKeys.length > 0) {
+      // Delete all matching keys
+      await redis.del(...allKeys)
+      console.log(`Cleared ${allKeys.length} translation cache entries from Redis`)
+    } else {
+      console.log("No translation cache entries to clear")
     }
 
     return true
   } catch (error) {
-    console.error("Error clearing translation cache:", error)
+    console.error("Error clearing translation cache from Redis:", error)
     return false
   }
 }
@@ -748,6 +923,60 @@ export async function recordTranslationUsage(characterCount: number): Promise<bo
   } catch (error) {
     console.error("Error recording translation usage:", error)
     return false
+  }
+}
+
+/**
+ * Get cache statistics for a language pair
+ */
+export async function getCacheStats(
+  targetLanguage: Language,
+  sourceLanguage?: Language,
+): Promise<{
+  individualCount: number
+  groupedCount: number
+  totalSize: number
+}> {
+  try {
+    const sourceLanguageKey = sourceLanguage || "auto"
+
+    // Get individual cache entries
+    const individualKeys = await redis.keys(`${TRANSLATION_KEY_PREFIX}*_${sourceLanguageKey}_${targetLanguage}`)
+
+    // Get grouped cache
+    const groupKey = `${LANGUAGE_PAIR_PREFIX}${sourceLanguageKey}_${targetLanguage}`
+    const groupData = await redis.get(groupKey)
+
+    let groupedCount = 0
+    let totalSize = 0
+
+    // Calculate size of individual entries
+    for (const key of individualKeys) {
+      const data = await redis.get(key)
+      if (data) {
+        totalSize += (data as string).length
+      }
+    }
+
+    // Calculate size and count of grouped entries
+    if (groupData) {
+      const groupCache = JSON.parse(groupData as string) as GroupedCache
+      groupedCount = Object.keys(groupCache.translations).length
+      totalSize += (groupData as string).length
+    }
+
+    return {
+      individualCount: individualKeys.length,
+      groupedCount,
+      totalSize,
+    }
+  } catch (error) {
+    console.error("Error getting cache stats:", error)
+    return {
+      individualCount: 0,
+      groupedCount: 0,
+      totalSize: 0,
+    }
   }
 }
 

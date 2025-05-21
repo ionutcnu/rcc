@@ -695,6 +695,7 @@ export default function LanguageSwitcher() {
             const usage = getLocalUsage()
             setUsagePercent(usage.percentUsed)
 
+            // Update warning thresholds - only show warning if usage is above 80%
             const isWarning = usage.percentUsed > (settings.warningThreshold || 80)
             const isCritical = usage.percentUsed > (settings.criticalThreshold || 95)
 

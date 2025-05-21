@@ -15,3 +15,21 @@ export const languageOptions = [
     { code: "it" as Language, name: "Italian", flag: "🇮🇹" },
     { code: "ro" as Language, name: "Romanian", flag: "🇷🇴" },
 ]
+
+// Define interfaces used for translation caching
+export interface CachedTranslation {
+    sourceText: string
+    targetLanguage: Language
+    sourceLanguage: SourceLanguage
+    translatedText: string
+    timestamp: string
+    expiresAt: string
+}
+
+export type SourceLanguage = Language | "auto"
+
+export interface GroupedCache {
+    translations: Record<string, CachedTranslation>
+    updatedAt: string
+    expiresAt: string
+}
