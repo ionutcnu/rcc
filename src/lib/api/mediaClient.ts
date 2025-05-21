@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import type { MediaItem } from "@/lib/firebase/storageService"
+import type { MediaItem } from "@/lib/types/media"
 
 // Define the response type
 export interface MediaApiResponse {

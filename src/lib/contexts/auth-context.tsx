@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/services/authService"
 import { safeErrorLog, sanitizeError } from "@/lib/utils/security"
 
 // Define types
@@ -46,7 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const checkSession = async () => {
             setLoading(true)
             try {
-                const sessionData = await authService.checkSession()
+                // Use fetch to call the API endpoint instead of authService
+                const response = await fetch("/api/auth/check-session", {
+                    method: "GET",
+                    credentials: "include",
+                })
+
+                if (!response.ok) {
+                    throw new Error(`Session check failed: ${response.status}`)
+                }
+
+                const sessionData = await response.json()
 
                 if (sessionData.authenticated) {
                     setUser({
@@ -85,14 +94,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null)
 
         try {
-            const result = await authService.login(email, password)
+            // Use fetch to call the API endpoint instead of authService
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, password }),
+                credentials: "include",
+            })
+
+            const result = await response.json()
 
             if (result.success) {
                 // Fetch the session data after successful login
-                const sessionData = await authService.checkSession()
+                const sessionResponse = await fetch("/api/auth/check-session", {
+                    method: "GET",
+                    credentials: "include",
+                })
+
+                const sessionData = await sessionResponse.json()
 
                 if (!sessionData.isAdmin) {
-                    await authService.logout()
+                    // Logout if not admin
+                    await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include",
+                    })
+
                     setError("You don't have permission to access the admin area")
                     setLoading(false)
                     return { success: false, message: "You don't have permission to access the admin area" }
@@ -125,7 +154,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = async () => {
         setLoading(true)
         try {
-            await authService.logout()
+            // Use fetch to call the API endpoint instead of authService
+            await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "include",
+            })
+
             setUser(null)
             setIsAdmin(false)
             router.push("/login")

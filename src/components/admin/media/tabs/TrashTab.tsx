@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Pagination } from "@/components/ui/pagination"
-import type { MediaItem } from "@/lib/firebase/storageService"
+import type { MediaItem } from "@/lib/types/media" // Updated import
 
 interface TrashTabProps {
     deletedMediaItems: MediaItem[]
@@ -75,7 +75,7 @@ export default function TrashTab({
             result = result.filter((item) => {
                 if (!item.size) return false
 
-                const sizeInMB = Number.parseFloat(item.size.replace(/[^0-9.]/g, ""))
+                const sizeInMB = Number.parseFloat(item.size.toString().replace(/[^0-9.]/g, ""))
 
                 switch (sizeFilter) {
                     case "small":
@@ -129,7 +129,7 @@ export default function TrashTab({
     }, [currentPage, itemsPerPage, filteredItems])
 
     // Format date helper function
-    const formatDate = (date: Date | undefined | null): string => {
+    const formatDate = (date: Date | string | undefined | null): string => {
         if (!date) return "Unknown date"
         try {
             return new Date(date).toLocaleDateString()

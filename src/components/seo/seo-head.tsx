@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from "react"
 import Script from "next/script"
-import { getSettings } from "@/lib/firebase/settingsService"
 import { getProxiedImageUrl } from "@/lib/utils/image-utils"
+
+interface SeoSettings {
+  metaTitle?: string
+  metaDescription?: string
+  ogImage?: string
+  googleAnalyticsId?: string
+}
 
 interface SeoHeadProps {
   title?: string
@@ -13,8 +19,9 @@ interface SeoHeadProps {
 }
 
 export default function SeoHead({ title, description, ogImage, path = "" }: SeoHeadProps) {
-  const [settings, setSettings] = useState<any | null>(null)
+  const [settings, setSettings] = useState<SeoSettings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Default placeholder image for social media
   const defaultOgImage = "/placeholder-vc3r6.png"
@@ -22,10 +29,24 @@ export default function SeoHead({ title, description, ogImage, path = "" }: SeoH
   useEffect(() => {
     async function loadSeoSettings() {
       try {
-        const appSettings = await getSettings()
-        setSettings(appSettings.seo || {})
+        setLoading(true)
+        const response = await fetch("/api/settings?type=seo", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch SEO settings: ${response.status}`)
+        }
+
+        const data = await response.json()
+        setSettings(data.seo || {})
       } catch (error) {
         console.error("Error loading SEO settings:", error)
+        setError(error instanceof Error ? error.message : "Unknown error")
       } finally {
         setLoading(false)
       }
@@ -34,16 +55,16 @@ export default function SeoHead({ title, description, ogImage, path = "" }: SeoH
     loadSeoSettings()
   }, [])
 
-  if (loading || !settings) {
+  if (loading && !settings) {
     return null
   }
 
   // Use provided values or fall back to global settings
-  const pageTitle = title || settings.metaTitle
-  const pageDescription = description || settings.metaDescription
+  const pageTitle = title || settings?.metaTitle || "RCC"
+  const pageDescription = description || settings?.metaDescription || "Russian Cat Club"
 
   // Determine which OG image to use (with fallback)
-  let pageOgImage = ogImage || settings.ogImage
+  let pageOgImage = ogImage || settings?.ogImage
 
   // If no image is provided, use the default placeholder
   if (!pageOgImage || pageOgImage.trim() === "") {
@@ -76,7 +97,7 @@ export default function SeoHead({ title, description, ogImage, path = "" }: SeoH
       <meta name="twitter:image" content={pageOgImage} />
 
       {/* Google Analytics */}
-      {settings.googleAnalyticsId && (
+      {settings?.googleAnalyticsId && (
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${settings.googleAnalyticsId}`}

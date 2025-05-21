@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import { SimpleConfirmDialog } from "@/components/ui/simple-confirm-dialog"
-import type { MediaItem } from "@/lib/firebase/storageService"
+import type { MediaItem } from "@/lib/types/media"
 import { mediaLogger } from "@/lib/utils/media-logger"
-import { auth } from "@/lib/firebase/firebaseConfig"
+import { useAuth } from "@/lib/auth/auth-context"
 import { getCurrentUserInfo } from "@/lib/utils/user-info"
 import { Progress } from "@/components/ui/progress"
 
@@ -48,6 +48,7 @@ import {
 } from "@/lib/api/mediaClient"
 
 export default function MediaManager() {
+    const { user } = useAuth()
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
     const [lockedMediaItems, setLockedMediaItems] = useState<MediaItem[]>([])
     const [deletedMediaItems, setDeletedMediaItems] = useState<MediaItem[]>([])
@@ -193,7 +194,7 @@ export default function MediaManager() {
     const handleBulkLock = async (items: MediaItem[], reason: string) => {
         if (items.length === 0) return
 
-        const userId = auth.currentUser?.uid || "unknown"
+        const userId = user?.uid || "unknown"
 
         try {
             setIsBulkProcessing(true)
@@ -426,7 +427,7 @@ export default function MediaManager() {
         if (!bulkAction) return
 
         const { type, items } = bulkAction
-        const userId = auth.currentUser?.uid || "unknown"
+        const userId = user?.uid || "unknown"
 
         try {
             setIsBulkProcessing(true)
@@ -824,7 +825,7 @@ export default function MediaManager() {
             mediaLogger.error(
               "Bulk download operation failed",
               { error: error instanceof Error ? error.message : "Unknown error" },
-              auth.currentUser?.uid || "unknown",
+              user?.uid || "unknown",
             )
         } finally {
             setIsDownloading(false)
