@@ -28,26 +28,34 @@ export default function SeoHead({ title, description, ogImage, path = "" }: SeoH
 
   useEffect(() => {
     async function loadSeoSettings() {
-      try {
-        setLoading(true)
-        const response = await fetch("/api/settings?type=seo", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-        })
+      // Check if we're in the admin area by looking at the URL path
+      const isAdminPage = window.location.pathname.startsWith("/admin")
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch SEO settings: ${response.status}`)
+      if (isAdminPage) {
+        try {
+          setLoading(true)
+          const response = await fetch("/api/settings?type=seo", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch SEO settings: ${response.status}`)
+          }
+
+          const data = await response.json()
+          setSettings(data.seo || {})
+        } catch (error) {
+          console.error("Error loading SEO settings:", error)
+          setError(error instanceof Error ? error.message : "Unknown error")
+        } finally {
+          setLoading(false)
         }
-
-        const data = await response.json()
-        setSettings(data.seo || {})
-      } catch (error) {
-        console.error("Error loading SEO settings:", error)
-        setError(error instanceof Error ? error.message : "Unknown error")
-      } finally {
+      } else {
+        // For public pages, just set loading to false without making the API call
         setLoading(false)
       }
     }

@@ -54,3 +54,26 @@ export async function resetUsageTracking(): Promise<void> {
         console.error("Error resetting usage tracking:", error)
     }
 }
+
+// Record translation usage (server-side)
+export async function recordTranslationUsage(characterCount: number): Promise<void> {
+    if (!characterCount || characterCount <= 0) return
+
+    try {
+        // Call the API endpoint to record usage
+        const response = await fetch("/api/translate/record-usage", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ characterCount }),
+        })
+
+        if (!response.ok) {
+            throw new Error(`Failed to record usage: ${response.status} ${response.statusText}`)
+        }
+    } catch (error) {
+        console.error("Error recording translation usage:", error)
+        // Continue execution even if recording fails
+    }
+}

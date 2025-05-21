@@ -329,3 +329,74 @@ function isValidGAID(gaId: string): boolean {
   // Accept G-XXXXXXXX format
   return /^G-[A-Z0-9]+$/.test(gaId)
 }
+
+/**
+ * Get translation settings
+ */
+export interface TranslationSettings {
+  enabled: boolean
+  availableLanguages: string[]
+  defaultLanguage: string
+  cacheEnabled: boolean
+  cacheTTL: number // in hours
+}
+
+export async function getTranslationSettings(): Promise<TranslationSettings> {
+  try {
+    const settingsRef = adminDb.collection("settings").doc("translation_settings")
+    const settingsSnap = await settingsRef.get()
+
+    if (settingsSnap.exists) {
+      const data = settingsSnap.data() as TranslationSettings
+      return {
+        enabled: data.enabled ?? true,
+        availableLanguages: data.availableLanguages ?? ["en", "es", "fr", "de", "it", "ro"],
+        defaultLanguage: data.defaultLanguage ?? "en",
+        cacheEnabled: data.cacheEnabled ?? true,
+        cacheTTL: data.cacheTTL ?? 24, // Default 24 hours
+      }
+    }
+
+    // If no settings exist, initialize with defaults and return
+    const defaultSettings: TranslationSettings = {
+      enabled: true,
+      availableLanguages: ["en", "es", "fr", "de", "it", "ro"],
+      defaultLanguage: "en",
+      cacheEnabled: true,
+      cacheTTL: 24,
+    }
+
+    await settingsRef.set(defaultSettings)
+    serverLogger.info("Translation settings initialized with defaults")
+
+    return defaultSettings
+  } catch (error) {
+    serverLogger.error("Error fetching translation settings:", error)
+    // Return defaults if there's an error
+    return {
+      enabled: true,
+      availableLanguages: ["en", "es", "fr", "de", "it", "ro"],
+      defaultLanguage: "en",
+      cacheEnabled: true,
+      cacheTTL: 24,
+    }
+  }
+}
+
+/**
+ * Update translation settings
+ */
+export async function updateTranslationSettings(settings: TranslationSettings): Promise<boolean> {
+  try {
+    serverLogger.info("Updating translation settings")
+
+    const settingsRef = adminDb.collection("settings").doc("translation_settings")
+    await settingsRef.set(settings, { merge: true })
+
+    serverLogger.info("Translation settings updated successfully")
+    return true
+  } catch (error) {
+    serverLogger.error("Error updating translation settings:", error)
+    throw error
+  }
+}

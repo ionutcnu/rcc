@@ -34,12 +34,22 @@ export default function AdminProtected({ children }: { children: React.ReactNode
                     return
                 }
 
-                if (!data.isAdmin) {
+                // Check if user is admin
+                const adminResponse = await fetch("/api/auth/check-admin", {
+                    method: "GET",
+                    credentials: "include",
+                })
+
+                if (!adminResponse.ok) {
+                    throw new Error(`Admin check failed: ${adminResponse.status}`)
+                }
+
+                const adminData = await adminResponse.json()
+
+                if (!adminData.isAdmin) {
                     // User is not an admin, redirect to home
                     router.push("/")
-                    if (process.env.NODE_ENV !== "production") {
-                        console.error("Authentication verification failed: Not admin")
-                    }
+                    console.error("Authentication verification failed: Not admin")
                     return
                 }
 

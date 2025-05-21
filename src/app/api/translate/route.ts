@@ -37,16 +37,34 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Translation is disabled" }, { status: 403 })
         }
 
+        // Check if target language is supported
+        if (!settings.availableLanguages.includes(targetLanguage as Language)) {
+            console.error(`Target language ${targetLanguage} is not supported`)
+            return NextResponse.json({ error: `Language '${targetLanguage}' is not supported` }, { status: 400 })
+        }
+
         // Process each text
         let translatedTexts: string[]
 
-        if (text) {
-            // Single text translation
-            const translatedText = await translateText(text, targetLanguage as Language, sourceLanguage as Language)
-            translatedTexts = [translatedText]
-        } else {
-            // Multiple texts translation
-            translatedTexts = await translateTexts(texts, targetLanguage as Language, sourceLanguage as Language)
+        try {
+            if (text) {
+                // Single text translation
+                const translatedText = await translateText(text, targetLanguage as Language, sourceLanguage as Language)
+                translatedTexts = [translatedText]
+            } else {
+                // Multiple texts translation
+                translatedTexts = await translateTexts(texts, targetLanguage as Language, sourceLanguage as Language)
+            }
+        } catch (error) {
+            console.error("Translation error:", error)
+
+            // If we get a 429 error, return a specific error message
+            if (error instanceof Error && error.message.includes("429")) {
+                return NextResponse.json({ error: "Translation limit reached. Please try again later." }, { status: 429 })
+            }
+
+            // For other errors, return the original texts
+            translatedTexts = texts
         }
 
         // Calculate total character count for usage tracking
