@@ -471,6 +471,85 @@ function fixTranslationMarkers(): number {
     return fixedCount
 }
 
+// NEW: Function to detect mixed language content
+function detectMixedLanguageContent(targetLang: Language): string[] {
+    const mixedContentElements: string[] = []
+    const textNodes = getTextNodes(document.body)
+
+    // Language detection patterns (simplified)
+    const patterns: Record<Language, RegExp> = {
+        en: /\b(the|and|is|are|with|for|this|that|have|from)\b/i,
+        fr: /\b(le|la|les|et|est|sont|avec|pour|ce|cette|ces|avoir|de)\b/i,
+        de: /\b(der|die|das|und|ist|sind|mit|für|dies|das|haben|von)\b/i,
+        it: /\b(il|la|le|e|è|sono|con|per|questo|quella|hanno|da)\b/i,
+        ro: /\b(și|este|sunt|cu|pentru|acest|acea|au|de la)\b/i,
+    }
+
+    // Check each text node for language patterns that don't match target language
+    for (const node of textNodes) {
+        const text = node.nodeValue || ""
+        if (text.length < 10) continue // Skip very short texts
+
+        // Skip if text matches target language pattern
+        if (patterns[targetLang] && patterns[targetLang].test(text)) continue
+
+        // Check if text matches patterns of other languages
+        for (const [lang, pattern] of Object.entries(patterns)) {
+            if (lang !== targetLang && pattern.test(text)) {
+                // Found text that matches a different language pattern
+                const parentElement = node.parentElement
+                if (parentElement) {
+                    const elementInfo = `${parentElement.tagName.toLowerCase()}${parentElement.id ? "#" + parentElement.id : ""}`
+                    mixedContentElements.push(elementInfo)
+
+                    // Mark element for visual identification
+                    parentElement.setAttribute("data-mixed-language", "true")
+                }
+                break
+            }
+        }
+    }
+
+    return [...new Set(mixedContentElements)] // Remove duplicates
+}
+
+// NEW: Function to force retranslation of all content
+async function forceRetranslateAll(targetLang: Language, sourceLang: Language): Promise<TranslationStats> {
+    // Clear existing translations from cache for this language pair
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.includes(`_${targetLang}_`)) {
+            keysToRemove.push(key)
+        }
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key))
+    console.log(`[FORCE RETRANSLATE] Removed ${keysToRemove.length} cached translations for ${targetLang}`)
+
+    // Add CSS to highlight mixed language content
+    const style = document.createElement("style")
+    style.textContent = `
+        [data-mixed-language="true"] {
+            outline: 2px dashed #ff6b6b !important;
+            background-color: rgba(255, 107, 107, 0.1) !important;
+        }
+    `
+    document.head.appendChild(style)
+
+    // Translate all content
+    const stats = await translatePage(targetLang, sourceLang)
+
+    // Remove mixed language markers
+    document.querySelectorAll('[data-mixed-language="true"]').forEach((el) => {
+        el.removeAttribute("data-mixed-language")
+    })
+
+    // Remove the style
+    document.head.removeChild(style)
+
+    return stats
+}
+
 export default function LanguageSwitcher() {
     const [currentLanguage, setCurrentLanguage] = useState<Language>(DEFAULT_LANGUAGE)
     const [isOpen, setIsOpen] = useState(false)
@@ -485,6 +564,9 @@ export default function LanguageSwitcher() {
     const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(true)
     const [pageLanguageMatches, setPageLanguageMatches] = useState(true)
     const [hasMarkers, setHasMarkers] = useState(false)
+    // NEW: State for mixed language detection
+    const [hasMixedLanguage, setHasMixedLanguage] = useState(false)
+    const [mixedLanguageElements, setMixedLanguageElements] = useState<string[]>([])
 
     // Load saved language preference on mount and set up navigation translation
     useEffect(() => {
@@ -514,8 +596,13 @@ export default function LanguageSwitcher() {
                 const matches = checkPageLanguage(savedLanguage)
                 setPageLanguageMatches(matches)
 
+                // NEW: Check for mixed language content
+                const mixedElements = detectMixedLanguageContent(savedLanguage)
+                setHasMixedLanguage(mixedElements.length > 0)
+                setMixedLanguageElements(mixedElements)
+
                 // If content doesn't match and auto-translate is enabled, translate the page
-                if (!matches && (savedAutoTranslate === null || savedAutoTranslate === "true")) {
+                if ((!matches || mixedElements.length > 0) && (savedAutoTranslate === null || savedAutoTranslate === "true")) {
                     console.log("[LANGUAGE CHECK] Page content doesn't match selected language, translating...")
                     translateCurrentPage(savedLanguage, DEFAULT_LANGUAGE)
                 }
@@ -545,6 +632,7 @@ export default function LanguageSwitcher() {
         try {
             setIsTranslating(true)
             setPageLanguageMatches(true) // Assume we're going to fix it
+            setHasMixedLanguage(false) // Assume we're going to fix mixed language issues
 
             // First, check for and fix any translation markers
             const fixedCount = fixTranslationMarkers()
@@ -557,12 +645,25 @@ export default function LanguageSwitcher() {
             const canTranslate = await checkTranslationStatus()
 
             if (canTranslate) {
-                const stats = await translatePage(targetLang, sourceLang)
+                // NEW: Use force retranslation to ensure all content is translated
+                const stats = await forceRetranslateAll(targetLang, sourceLang)
                 setCacheStats(stats)
 
                 // Check again for any remaining markers
                 const remainingMarkers = fixTranslationMarkers()
                 setHasMarkers(remainingMarkers > 0)
+
+                // NEW: Check for mixed language content after translation
+                const mixedElements = detectMixedLanguageContent(targetLang)
+                setHasMixedLanguage(mixedElements.length > 0)
+                setMixedLanguageElements(mixedElements)
+
+                if (mixedElements.length > 0) {
+                    console.warn(
+                      `[MIXED LANGUAGE] Detected ${mixedElements.length} elements with mixed language content:`,
+                      mixedElements,
+                    )
+                }
             }
         } catch (error) {
             console.error("Error translating current page:", error)
@@ -598,7 +699,12 @@ export default function LanguageSwitcher() {
                 const matches = checkPageLanguage(targetLang)
                 setPageLanguageMatches(matches)
 
-                if (!matches) {
+                // NEW: Check for mixed language content
+                const mixedElements = detectMixedLanguageContent(targetLang)
+                setHasMixedLanguage(mixedElements.length > 0)
+                setMixedLanguageElements(mixedElements)
+
+                if (!matches || mixedElements.length > 0) {
                     translateCurrentPage(targetLang, DEFAULT_LANGUAGE)
                 }
             }
@@ -630,7 +736,12 @@ export default function LanguageSwitcher() {
                         const matches = checkPageLanguage(targetLang)
                         setPageLanguageMatches(matches)
 
-                        if (!matches) {
+                        // NEW: Check for mixed language content
+                        const mixedElements = detectMixedLanguageContent(targetLang)
+                        setHasMixedLanguage(mixedElements.length > 0)
+                        setMixedLanguageElements(mixedElements)
+
+                        if (!matches || mixedElements.length > 0) {
                             translateCurrentPage(targetLang, DEFAULT_LANGUAGE)
                         }
                     }, 500)
@@ -763,15 +874,19 @@ export default function LanguageSwitcher() {
                 return
             }
 
-            // Translate the page content - make sure we're passing the correct source language
-            // Always use DEFAULT_LANGUAGE as source when translating to ensure proper translation
-            const stats = await translatePage(language, DEFAULT_LANGUAGE)
+            // NEW: Force retranslation to ensure clean translation
+            const stats = await forceRetranslateAll(language, DEFAULT_LANGUAGE)
             setCacheStats(stats)
             setPageLanguageMatches(true) // Mark that page now matches language
 
             // Check for any remaining markers
             const remainingMarkers = fixTranslationMarkers()
             setHasMarkers(remainingMarkers > 0)
+
+            // NEW: Check for mixed language content after translation
+            const mixedElements = detectMixedLanguageContent(language)
+            setHasMixedLanguage(mixedElements.length > 0)
+            setMixedLanguageElements(mixedElements)
 
             // Set up navigation translation for future page changes
             setupNavigationTranslation(language)
@@ -863,11 +978,13 @@ export default function LanguageSwitcher() {
             className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors ${
               hasMarkers
                 ? "bg-red-100 hover:bg-red-200"
-                : !pageLanguageMatches
-                  ? "bg-amber-100 hover:bg-amber-200"
-                  : usageWarning
+                : hasMixedLanguage
+                  ? "bg-purple-100 hover:bg-purple-200"
+                  : !pageLanguageMatches
                     ? "bg-amber-100 hover:bg-amber-200"
-                    : "bg-amber-50 hover:bg-amber-100"
+                    : usageWarning
+                      ? "bg-amber-100 hover:bg-amber-200"
+                      : "bg-amber-50 hover:bg-amber-100"
             }`}
             aria-expanded={isOpen}
             aria-haspopup="true"
@@ -879,6 +996,8 @@ export default function LanguageSwitcher() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : hasMarkers ? (
                 <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+              ) : hasMixedLanguage ? (
+                <AlertCircle className="h-3.5 w-3.5 text-purple-600" />
               ) : !pageLanguageMatches ? (
                 <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
               ) : usageWarning ? (
@@ -899,6 +1018,20 @@ export default function LanguageSwitcher() {
                         disabled={isTranslating}
                       >
                           <Trash2 className="h-3 w-3" />
+                          <span>Fix</span>
+                      </button>
+                  </div>
+                )}
+
+                {hasMixedLanguage && (
+                  <div className="px-3 py-2 text-xs text-purple-800 bg-purple-50 border-b border-purple-100 flex justify-between items-center">
+                      <span>Mixed language content detected</span>
+                      <button
+                        onClick={handleForceTranslate}
+                        className="flex items-center gap-1 text-purple-700 hover:text-purple-900"
+                        disabled={isTranslating}
+                      >
+                          <RefreshCw className="h-3 w-3" />
                           <span>Fix</span>
                       </button>
                   </div>

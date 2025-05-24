@@ -36,6 +36,7 @@ export interface TranslationSettings {
   cacheEnabled: boolean
   cacheTTL: number // hours
   useGroupedCache: boolean // New setting for grouped cache
+  storeUsageInRedis: boolean // New setting for storing usage in Redis
 }
 
 // Default settings
@@ -49,6 +50,7 @@ export const defaultTranslationSettings: TranslationSettings = {
   cacheEnabled: true,
   cacheTTL: 24, // 1 day
   useGroupedCache: true, // Enable grouped cache by default
+  storeUsageInRedis: false, // Default to Firebase storage for backward compatibility
 }
 
 // DeepL usage interface
@@ -643,8 +645,24 @@ export async function getCachedTranslation(
     const cachedData = await redis.get(cacheKey)
 
     if (cachedData) {
-      const data = JSON.parse(cachedData as string) as CachedTranslation
-      return cleanTranslatedText(data.translatedText)
+      // Handle different types of Redis responses
+      let translationData: CachedTranslation | null = null
+
+      if (typeof cachedData === "string") {
+        try {
+          translationData = JSON.parse(cachedData) as CachedTranslation
+        } catch (parseError) {
+          console.error("Error parsing cached translation:", parseError)
+          return null
+        }
+      } else if (typeof cachedData === "object" && cachedData !== null) {
+        // If Redis returns an object directly
+        translationData = cachedData as unknown as CachedTranslation
+      }
+
+      if (translationData && translationData.translatedText) {
+        return cleanTranslatedText(translationData.translatedText)
+      }
     }
 
     // If individual cache miss and grouped cache is enabled, try grouped cache
@@ -653,12 +671,29 @@ export async function getCachedTranslation(
       const groupData = await redis.get(groupKey)
 
       if (groupData) {
-        const groupCache = JSON.parse(groupData as string) as GroupedCache
+        // Handle different types of Redis responses
+        let groupCache: GroupedCache | null = null
 
-        // Check if this text exists in the group
-        const textHash = createCacheKey(sourceText, targetLanguage, sourceLanguageKey)
-        if (groupCache.translations[textHash]) {
-          return cleanTranslatedText(groupCache.translations[textHash].translatedText)
+        if (typeof groupData === "string") {
+          try {
+            groupCache = JSON.parse(groupData) as GroupedCache
+          } catch (parseError) {
+            console.error("Error parsing grouped cache:", parseError)
+            return null
+          }
+        } else if (typeof groupData === "object" && groupData !== null) {
+          // If Redis returns an object directly
+          groupCache = groupData as unknown as GroupedCache
+        }
+
+        if (groupCache && groupCache.translations) {
+          // Check if this text exists in the group
+          const textHash = createCacheKey(sourceText, targetLanguage, sourceLanguageKey)
+          const translation = groupCache.translations[textHash]
+
+          if (translation && translation.translatedText) {
+            return cleanTranslatedText(translation.translatedText)
+          }
         }
       }
     }
@@ -700,17 +735,17 @@ export async function cacheTranslation(
     const cleanedText = cleanTranslatedText(translatedText)
 
     // Prepare data for Redis
-    const data = JSON.stringify({
+    const data = {
       sourceText,
       targetLanguage,
       sourceLanguage: sourceLanguageKey,
       translatedText: cleanedText,
       timestamp: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
-    })
+    }
 
     // Save to Redis with expiration
-    await redis.set(cacheKey, data, { ex: ttlHours * 60 * 60 })
+    await redis.set(cacheKey, JSON.stringify(data), { ex: ttlHours * 60 * 60 })
 
     return true
   } catch (error) {
@@ -741,22 +776,41 @@ async function addToGroupCache(
     const cleanedText = cleanTranslatedText(translatedText)
 
     // Get existing group or create new one
+    let groupCache: GroupedCache = {
+      translations: {},
+      updatedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    }
+
+    // Get existing group data
     const existingGroup = await redis.get(groupKey)
-    let groupCache: GroupedCache
 
     if (existingGroup) {
-      groupCache = JSON.parse(existingGroup as string) as GroupedCache
+      // Handle different types of Redis responses
+      if (typeof existingGroup === "string") {
+        try {
+          const parsedGroup = JSON.parse(existingGroup)
+          if (parsedGroup && typeof parsedGroup === "object") {
+            groupCache = parsedGroup as GroupedCache
+          }
+        } catch (parseError) {
+          console.error("Error parsing existing group cache:", parseError)
+          // Continue with new group cache
+        }
+      } else if (typeof existingGroup === "object" && existingGroup !== null) {
+        // If Redis returns an object directly
+        groupCache = existingGroup as unknown as GroupedCache
+      }
 
       // Update the expiration time if needed
-      if (new Date(groupCache.expiresAt) < expiresAt) {
+      if (groupCache.expiresAt && new Date(groupCache.expiresAt) < expiresAt) {
         groupCache.expiresAt = expiresAt.toISOString()
       }
-    } else {
-      groupCache = {
-        translations: {},
-        updatedAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-      }
+    }
+
+    // Ensure translations object exists
+    if (!groupCache.translations) {
+      groupCache.translations = {}
     }
 
     // Add or update the translation in the group
@@ -801,29 +855,48 @@ async function cacheTranslationsGroup(
     const now = new Date()
     const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000)
 
-    // Get existing group or create new one
+    // Initialize new group cache
+    let groupCache: GroupedCache = {
+      translations: {},
+      updatedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    }
+
+    // Get existing group data
     const existingGroup = await redis.get(groupKey)
-    let groupCache: GroupedCache
 
     if (existingGroup) {
-      groupCache = JSON.parse(existingGroup as string) as GroupedCache
+      // Handle different types of Redis responses
+      if (typeof existingGroup === "string") {
+        try {
+          const parsedGroup = JSON.parse(existingGroup)
+          if (parsedGroup && typeof parsedGroup === "object") {
+            groupCache = parsedGroup as GroupedCache
+          }
+        } catch (parseError) {
+          console.error("Error parsing existing group cache in cacheTranslationsGroup:", parseError)
+          // Continue with new group cache
+        }
+      } else if (typeof existingGroup === "object" && existingGroup !== null) {
+        // If Redis returns an object directly
+        groupCache = existingGroup as unknown as GroupedCache
+      }
 
       // Update the expiration time if needed
-      if (new Date(groupCache.expiresAt) < expiresAt) {
+      if (groupCache.expiresAt && new Date(groupCache.expiresAt) < expiresAt) {
         groupCache.expiresAt = expiresAt.toISOString()
       }
+    }
 
-      // Merge the translations
-      groupCache.translations = {
-        ...groupCache.translations,
-        ...translations,
-      }
-    } else {
-      groupCache = {
-        translations,
-        updatedAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-      }
+    // Ensure translations object exists
+    if (!groupCache.translations) {
+      groupCache.translations = {}
+    }
+
+    // Merge the translations
+    groupCache.translations = {
+      ...groupCache.translations,
+      ...translations,
     }
 
     groupCache.updatedAt = now.toISOString()
@@ -888,6 +961,20 @@ export async function getTranslationUsageHistory(limit = 30): Promise<any[]> {
 }
 
 /**
+ * Check if Redis is available
+ */
+export async function isRedisAvailable(): Promise<boolean> {
+  try {
+    // Try a simple ping operation
+    await redis.ping()
+    return true
+  } catch (error) {
+    console.error("Redis connection check failed:", error)
+    return false
+  }
+}
+
+/**
  * Record translation usage
  */
 export async function recordTranslationUsage(characterCount: number): Promise<boolean> {
@@ -896,32 +983,185 @@ export async function recordTranslationUsage(characterCount: number): Promise<bo
       throw new Error("Invalid character count")
     }
 
+    // Get translation settings
+    const settings = await getTranslationSettings()
+
+    // Check if Redis is available when storeUsageInRedis is true
+    if (settings.storeUsageInRedis) {
+      const redisAvailable = await isRedisAvailable()
+      if (!redisAvailable) {
+        console.warn("Redis is not available, falling back to Firebase storage")
+        return recordTranslationUsageInFirebase(characterCount)
+      }
+      return recordTranslationUsageInRedis(characterCount)
+    } else {
+      return recordTranslationUsageInFirebase(characterCount)
+    }
+  } catch (error) {
+    console.error("Error recording translation usage:", error)
+    return false
+  }
+}
+
+/**
+ * Record translation usage in Firebase
+ */
+async function recordTranslationUsageInFirebase(characterCount: number): Promise<boolean> {
+  try {
+    if (typeof characterCount !== "number" || characterCount < 0) {
+      throw new Error("Invalid character count")
+    }
+
+    // Get today's date in YYYY-MM-dd format
+    const today = format(new Date(), "yyyy-MM-dd")
+
+    // Create the Redis key
+    const redisKey = `translation_usage:${today}`
+
+    // Initialize new data
+    let existingData = {
+      date: today,
+      characterCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    // Get existing data
+    const existingDataJson = await redis.get(redisKey)
+
+    if (existingDataJson) {
+      // Handle different types of Redis responses
+      if (typeof existingDataJson === "string") {
+        try {
+          const parsedData = JSON.parse(existingDataJson)
+          if (parsedData && typeof parsedData === "object") {
+            existingData = parsedData
+          }
+        } catch (parseError) {
+          console.error("Error parsing existing usage data:", parseError)
+          // Continue with new data
+        }
+      } else if (typeof existingDataJson === "object" && existingDataJson !== null) {
+        // If Redis returns an object directly
+        existingData = existingDataJson as any
+      }
+    }
+
+    // Update the character count
+    existingData.characterCount += characterCount
+    existingData.updatedAt = new Date().toISOString()
+
+    // Save to Redis with expiration
+    await redis.set(redisKey, JSON.stringify(existingData), { ex: 60 * 60 * 24 * 365 * 2 }) // 2 years
+
+    return true
+  } catch (error) {
+    console.error("Error recording translation usage in Redis:", error)
+    return false
+  }
+}
+
+/**
+ * Record translation usage in Redis
+ */
+async function recordTranslationUsageInRedis(characterCount: number): Promise<boolean> {
+  try {
+    if (typeof characterCount !== "number" || characterCount < 0) {
+      throw new Error("Invalid character count")
+    }
+
     // Get today's date in YYYY-MM-DD format
     const today = format(new Date(), "yyyy-MM-dd")
 
-    // Check if we already have an entry for today
-    const docRef = admin.db.collection(USAGE_HISTORY_COLLECTION).doc(today)
-    const docSnap = await docRef.get()
+    // Create the Redis key
+    const redisKey = `translation_usage:${today}`
 
-    if (docSnap.exists) {
-      // Update the existing entry
-      await docRef.update({
-        characterCount: FieldValue.increment(characterCount),
-        updatedAt: FieldValue.serverTimestamp(),
-      })
-    } else {
-      // Create a new entry for today
-      await docRef.set({
-        date: today,
-        characterCount,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      })
+    // Get existing data
+    const existingDataJson = await redis.get(redisKey)
+
+    let existingData: {
+      date: string
+      characterCount: number
+      createdAt: string
+      updatedAt: string
+    } = {
+      date: today,
+      characterCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    if (existingDataJson) {
+      // Handle different types of Redis responses
+      if (typeof existingDataJson === "string") {
+        try {
+          const parsedData = JSON.parse(existingDataJson)
+          if (parsedData && typeof parsedData === "object") {
+            existingData = parsedData
+          }
+        } catch (parseError) {
+          console.error("Error parsing existing usage data:", parseError)
+          // Continue with new data
+        }
+      } else if (typeof existingDataJson === "object" && existingDataJson !== null) {
+        // If Redis returns an object directly
+        existingData = existingDataJson as any
+      }
+    }
+
+    // Update the character count
+    existingData.characterCount += characterCount
+    existingData.updatedAt = new Date().toISOString()
+
+    // Save to Redis with expiration
+    await redis.set(redisKey, JSON.stringify(existingData), { ex: 60 * 60 * 24 * 365 * 2 }) // 2 years
+
+    // Add the date to the list of migrated dates
+    await addMigratedDate(today)
+
+    return true
+  } catch (error) {
+    console.error("Error recording translation usage in Redis:", error)
+    return false
+  }
+}
+
+/**
+ * Add a date to the list of migrated dates
+ */
+async function addMigratedDate(date: string): Promise<boolean> {
+  try {
+    // Get the list of migrated dates
+    const migratedDatesJson = await redis.get("translation_usage:migrated_dates")
+    let migratedDates: string[] = []
+
+    if (migratedDatesJson) {
+      // Handle different types of Redis responses
+      if (typeof migratedDatesJson === "string") {
+        try {
+          migratedDates = JSON.parse(migratedDatesJson) as string[]
+        } catch (parseError) {
+          console.error("Error parsing migrated dates:", parseError)
+          return false
+        }
+      } else if (Array.isArray(migratedDatesJson)) {
+        // If Redis returns an array directly
+        migratedDates = migratedDatesJson as string[]
+      } else {
+        console.log("Unexpected format for migrated dates in Redis")
+        return false
+      }
+    }
+
+    // Add the date if it's not already in the list
+    if (!migratedDates.includes(date)) {
+      migratedDates.push(date)
+      await redis.set("translation_usage:migrated_dates", JSON.stringify(migratedDates))
     }
 
     return true
   } catch (error) {
-    console.error("Error recording translation usage:", error)
+    console.error("Error adding migrated date:", error)
     return false
   }
 }
@@ -954,15 +1194,34 @@ export async function getCacheStats(
     for (const key of individualKeys) {
       const data = await redis.get(key)
       if (data) {
-        totalSize += (data as string).length
+        if (typeof data === "string") {
+          totalSize += data.length
+        } else if (typeof data === "object" && data !== null) {
+          totalSize += JSON.stringify(data).length
+        }
       }
     }
 
     // Calculate size and count of grouped entries
     if (groupData) {
-      const groupCache = JSON.parse(groupData as string) as GroupedCache
-      groupedCount = Object.keys(groupCache.translations).length
-      totalSize += (groupData as string).length
+      let groupCache: GroupedCache | null = null
+
+      if (typeof groupData === "string") {
+        try {
+          groupCache = JSON.parse(groupData) as GroupedCache
+          totalSize += groupData.length
+        } catch (parseError) {
+          console.error("Error parsing group data in getCacheStats:", parseError)
+        }
+      } else if (typeof groupData === "object" && groupData !== null) {
+        // If Redis returns an object directly
+        groupCache = groupData as unknown as GroupedCache
+        totalSize += JSON.stringify(groupData).length
+      }
+
+      if (groupCache && groupCache.translations) {
+        groupedCount = Object.keys(groupCache.translations).length
+      }
     }
 
     return {
@@ -977,6 +1236,86 @@ export async function getCacheStats(
       groupedCount: 0,
       totalSize: 0,
     }
+  }
+}
+
+/**
+ * Get translation usage history from Redis
+ */
+export async function getTranslationUsageHistoryFromRedis(limit = 30): Promise<any[]> {
+  try {
+    // Get the list of migrated dates
+    const migratedDatesJson = await redis.get("translation_usage:migrated_dates")
+    let migratedDates: string[] = []
+
+    if (migratedDatesJson) {
+      // Handle different types of Redis responses
+      if (typeof migratedDatesJson === "string") {
+        try {
+          migratedDates = JSON.parse(migratedDatesJson) as string[]
+        } catch (parseError) {
+          console.error("Error parsing migrated dates:", parseError)
+          // Fall back to Firebase
+          return getTranslationUsageHistory(limit)
+        }
+      } else if (Array.isArray(migratedDatesJson)) {
+        // If Redis returns an array directly
+        migratedDates = migratedDatesJson as string[]
+      } else {
+        console.log("Unexpected format for migrated dates in Redis")
+        // Fall back to Firebase
+        return getTranslationUsageHistory(limit)
+      }
+    } else {
+      console.log("No migrated dates found in Redis")
+      // Fall back to Firebase
+      return getTranslationUsageHistory(limit)
+    }
+
+    // Sort dates in descending order and limit
+    const sortedDates = migratedDates.sort((a, b) => b.localeCompare(a)).slice(0, limit)
+
+    // Get data for each date
+    const history: any[] = []
+
+    for (const date of sortedDates) {
+      const redisKey = `translation_usage:${date}`
+      const dataJson = await redis.get(redisKey)
+
+      if (dataJson) {
+        let data: any = null
+
+        // Handle different types of Redis responses
+        if (typeof dataJson === "string") {
+          try {
+            data = JSON.parse(dataJson)
+          } catch (parseError) {
+            console.error(`Error parsing usage data for date ${date}:`, parseError)
+            // Skip this date
+            continue
+          }
+        } else if (typeof dataJson === "object" && dataJson !== null) {
+          // If Redis returns an object directly
+          data = dataJson
+        } else {
+          // Skip invalid data
+          continue
+        }
+
+        if (data && data.date && data.characterCount !== undefined) {
+          history.push({
+            date: data.date,
+            count: data.characterCount || 0,
+          })
+        }
+      }
+    }
+
+    return history
+  } catch (error) {
+    console.error("Error getting translation usage history from Redis:", error)
+    // Fall back to Firebase
+    return getTranslationUsageHistory(limit)
   }
 }
 
