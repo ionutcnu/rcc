@@ -35,8 +35,12 @@ export interface TranslationSettings {
   availableLanguages: Language[]
   cacheEnabled: boolean
   cacheTTL: number // hours
-  useGroupedCache: boolean // New setting for grouped cache
-  storeUsageInRedis: boolean // New setting for storing usage in Redis
+  useGroupedCache: boolean
+  storeUsageInRedis: boolean
+  // New rate limiter settings
+  rateLimiterEnabled: boolean
+  maxRequestsPerMinute: number
+  rateLimitWindow: number // in milliseconds
 }
 
 // Default settings
@@ -50,7 +54,11 @@ export const defaultTranslationSettings: TranslationSettings = {
   cacheEnabled: true,
   cacheTTL: 24, // 1 day
   useGroupedCache: true, // Enable grouped cache by default
-  storeUsageInRedis: false, // Default to Firebase storage for backward compatibility
+  storeUsageInRedis: false, // Default to Firebase for backward compatibility
+  // Rate limiter defaults
+  rateLimiterEnabled: false, // Disabled by default
+  maxRequestsPerMinute: 10, // 10 requests per minute by default
+  rateLimitWindow: 60000, // 1 minute in milliseconds
 }
 
 // DeepL usage interface
@@ -81,35 +89,62 @@ interface GroupedCache {
 
 /**
  * Check if we're currently rate limited
+ * This is a synchronous wrapper for the async rate limiting logic
  */
 function checkRateLimit(): boolean {
-  const now = Date.now()
-
-  // If we're in a rate limited state, check if it's time to reset
-  if (isRateLimited) {
-    if (now >= rateLimitResetTime) {
-      console.log("Rate limit period expired, resetting rate limiter")
-      isRateLimited = false
-      requestTimestamps = []
-    } else {
-      return true // Still rate limited
-    }
-  }
-
-  // Remove timestamps older than the window
-  requestTimestamps = requestTimestamps.filter((time) => now - time < RATE_LIMIT_WINDOW)
-
-  // Check if we've hit the limit
-  if (requestTimestamps.length >= MAX_REQUESTS_PER_MINUTE) {
-    console.log(`Rate limit reached: ${requestTimestamps.length} requests in the last minute`)
-    isRateLimited = true
-    rateLimitResetTime = now + RATE_LIMIT_WINDOW
-    return true
-  }
-
-  // Not rate limited, add current timestamp
-  requestTimestamps.push(now)
+  // For synchronous contexts, default to not rate limited
   return false
+}
+
+/**
+ * Async version of checkRateLimit that properly awaits settings
+ */
+async function checkRateLimitAsync(): Promise<boolean> {
+  try {
+    // Get settings to check if rate limiting is enabled
+    const settings = await getTranslationSettings()
+
+    // If rate limiting is disabled in settings, always return false
+    if (!settings.rateLimiterEnabled) {
+      return false
+    }
+
+    const now = Date.now()
+
+    // If we're in a rate limited state, check if it's time to reset
+    if (isRateLimited) {
+      if (now >= rateLimitResetTime) {
+        console.log("Rate limit period expired, resetting rate limiter")
+        isRateLimited = false
+        requestTimestamps = []
+        return false
+      } else {
+        return true // Still rate limited
+      }
+    }
+
+    // Use settings for window and max requests
+    const window = settings.rateLimitWindow || RATE_LIMIT_WINDOW
+    const maxRequests = settings.maxRequestsPerMinute || MAX_REQUESTS_PER_MINUTE
+
+    // Remove timestamps older than the window
+    requestTimestamps = requestTimestamps.filter((time) => now - time < window)
+
+    // Check if we've hit the limit
+    if (requestTimestamps.length >= maxRequests) {
+      console.log(`Rate limit reached: ${requestTimestamps.length} requests in the last minute`)
+      isRateLimited = true
+      rateLimitResetTime = now + window
+      return true
+    }
+
+    // Not rate limited, add current timestamp
+    requestTimestamps.push(now)
+    return false
+  } catch (error) {
+    console.error("Error checking rate limit settings:", error)
+    return false // Default to no rate limiting on error
+  }
 }
 
 /**
@@ -983,19 +1018,94 @@ export async function recordTranslationUsage(characterCount: number): Promise<bo
       throw new Error("Invalid character count")
     }
 
-    // Get translation settings
-    const settings = await getTranslationSettings()
+    // Get today's date in YYYY-MM-dd format
+    const today = format(new Date(), "yyyy-MM-dd")
 
-    // Check if Redis is available when storeUsageInRedis is true
-    if (settings.storeUsageInRedis) {
-      const redisAvailable = await isRedisAvailable()
-      if (!redisAvailable) {
-        console.warn("Redis is not available, falling back to Firebase storage")
-        return recordTranslationUsageInFirebase(characterCount)
+    try {
+      // Add to Firestore directly
+      const usageRef = admin.db.collection(USAGE_HISTORY_COLLECTION).doc(today)
+
+      // Use a transaction to safely update the counter
+      await admin.db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(usageRef)
+
+        if (doc.exists) {
+          // Update existing document
+          const currentCount = doc.data()?.characterCount || 0
+          transaction.update(usageRef, {
+            characterCount: currentCount + characterCount,
+            updatedAt: FieldValue.serverTimestamp(),
+          })
+        } else {
+          // Create new document
+          transaction.set(usageRef, {
+            date: today,
+            characterCount: characterCount,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          })
+        }
+      })
+
+      console.log(`Successfully recorded ${characterCount} characters of translation usage for ${today}`)
+      return true
+    } catch (firestoreError) {
+      console.error("Error recording usage in Firestore:", firestoreError)
+
+      // Try Redis as fallback
+      try {
+        // Create the Redis key
+        const redisKey = `translation_usage:${today}`
+
+        // Initialize new data
+        let existingData = {
+          date: today,
+          characterCount: characterCount,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+
+        // Get existing data
+        const existingDataJson = await redis.get(redisKey)
+
+        if (existingDataJson) {
+          // Handle different types of Redis responses
+          let parsedData: any = null
+
+          if (typeof existingDataJson === "string") {
+            try {
+              parsedData = JSON.parse(existingDataJson)
+            } catch (parseError) {
+              console.error("Error parsing existing usage data:", parseError)
+              // Continue with new data
+            }
+          } else if (typeof existingDataJson === "object" && existingDataJson !== null) {
+            // If Redis returns an object directly
+            parsedData = existingDataJson
+          }
+
+          if (parsedData && typeof parsedData === "object") {
+            // Update the character count
+            existingData = {
+              ...parsedData,
+              characterCount: (parsedData.characterCount || 0) + characterCount,
+              updatedAt: new Date().toISOString(),
+            }
+          }
+        }
+
+        // Save to Redis with expiration
+        await redis.set(redisKey, JSON.stringify(existingData), { ex: 60 * 60 * 24 * 365 * 2 }) // 2 years
+
+        // Add the date to the list of migrated dates
+        await addMigratedDate(today)
+
+        console.log(`Fallback: Recorded ${characterCount} characters in Redis for ${today}`)
+        return true
+      } catch (redisError) {
+        console.error("Error recording usage in Redis:", redisError)
+        return false
       }
-      return recordTranslationUsageInRedis(characterCount)
-    } else {
-      return recordTranslationUsageInFirebase(characterCount)
     }
   } catch (error) {
     console.error("Error recording translation usage:", error)
@@ -1004,332 +1114,23 @@ export async function recordTranslationUsage(characterCount: number): Promise<bo
 }
 
 /**
- * Record translation usage in Firebase
+ * Create a cache key
  */
-async function recordTranslationUsageInFirebase(characterCount: number): Promise<boolean> {
-  try {
-    if (typeof characterCount !== "number" || characterCount < 0) {
-      throw new Error("Invalid character count")
-    }
-
-    // Get today's date in YYYY-MM-dd format
-    const today = format(new Date(), "yyyy-MM-dd")
-
-    // Create the Redis key
-    const redisKey = `translation_usage:${today}`
-
-    // Initialize new data
-    let existingData = {
-      date: today,
-      characterCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    // Get existing data
-    const existingDataJson = await redis.get(redisKey)
-
-    if (existingDataJson) {
-      // Handle different types of Redis responses
-      if (typeof existingDataJson === "string") {
-        try {
-          const parsedData = JSON.parse(existingDataJson)
-          if (parsedData && typeof parsedData === "object") {
-            existingData = parsedData
-          }
-        } catch (parseError) {
-          console.error("Error parsing existing usage data:", parseError)
-          // Continue with new data
-        }
-      } else if (typeof existingDataJson === "object" && existingDataJson !== null) {
-        // If Redis returns an object directly
-        existingData = existingDataJson as any
-      }
-    }
-
-    // Update the character count
-    existingData.characterCount += characterCount
-    existingData.updatedAt = new Date().toISOString()
-
-    // Save to Redis with expiration
-    await redis.set(redisKey, JSON.stringify(existingData), { ex: 60 * 60 * 24 * 365 * 2 }) // 2 years
-
-    return true
-  } catch (error) {
-    console.error("Error recording translation usage in Redis:", error)
-    return false
-  }
+function createCacheKey(text: string, targetLanguage: Language, sourceLanguage: string): string {
+  const key = `${sourceLanguage}_${targetLanguage}_${text}`
+  return key
 }
 
 /**
- * Record translation usage in Redis
- */
-async function recordTranslationUsageInRedis(characterCount: number): Promise<boolean> {
-  try {
-    if (typeof characterCount !== "number" || characterCount < 0) {
-      throw new Error("Invalid character count")
-    }
-
-    // Get today's date in YYYY-MM-DD format
-    const today = format(new Date(), "yyyy-MM-dd")
-
-    // Create the Redis key
-    const redisKey = `translation_usage:${today}`
-
-    // Get existing data
-    const existingDataJson = await redis.get(redisKey)
-
-    let existingData: {
-      date: string
-      characterCount: number
-      createdAt: string
-      updatedAt: string
-    } = {
-      date: today,
-      characterCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    if (existingDataJson) {
-      // Handle different types of Redis responses
-      if (typeof existingDataJson === "string") {
-        try {
-          const parsedData = JSON.parse(existingDataJson)
-          if (parsedData && typeof parsedData === "object") {
-            existingData = parsedData
-          }
-        } catch (parseError) {
-          console.error("Error parsing existing usage data:", parseError)
-          // Continue with new data
-        }
-      } else if (typeof existingDataJson === "object" && existingDataJson !== null) {
-        // If Redis returns an object directly
-        existingData = existingDataJson as any
-      }
-    }
-
-    // Update the character count
-    existingData.characterCount += characterCount
-    existingData.updatedAt = new Date().toISOString()
-
-    // Save to Redis with expiration
-    await redis.set(redisKey, JSON.stringify(existingData), { ex: 60 * 60 * 24 * 365 * 2 }) // 2 years
-
-    // Add the date to the list of migrated dates
-    await addMigratedDate(today)
-
-    return true
-  } catch (error) {
-    console.error("Error recording translation usage in Redis:", error)
-    return false
-  }
-}
-
-/**
- * Add a date to the list of migrated dates
+ * Add a migrated date to Redis
  */
 async function addMigratedDate(date: string): Promise<boolean> {
   try {
-    // Get the list of migrated dates
-    const migratedDatesJson = await redis.get("translation_usage:migrated_dates")
-    let migratedDates: string[] = []
-
-    if (migratedDatesJson) {
-      // Handle different types of Redis responses
-      if (typeof migratedDatesJson === "string") {
-        try {
-          migratedDates = JSON.parse(migratedDatesJson) as string[]
-        } catch (parseError) {
-          console.error("Error parsing migrated dates:", parseError)
-          return false
-        }
-      } else if (Array.isArray(migratedDatesJson)) {
-        // If Redis returns an array directly
-        migratedDates = migratedDatesJson as string[]
-      } else {
-        console.log("Unexpected format for migrated dates in Redis")
-        return false
-      }
-    }
-
-    // Add the date if it's not already in the list
-    if (!migratedDates.includes(date)) {
-      migratedDates.push(date)
-      await redis.set("translation_usage:migrated_dates", JSON.stringify(migratedDates))
-    }
-
+    const key = `migrated_dates`
+    await redis.sadd(key, date)
     return true
   } catch (error) {
-    console.error("Error adding migrated date:", error)
+    console.error("Error adding migrated date to Redis:", error)
     return false
   }
-}
-
-/**
- * Get cache statistics for a language pair
- */
-export async function getCacheStats(
-  targetLanguage: Language,
-  sourceLanguage?: Language,
-): Promise<{
-  individualCount: number
-  groupedCount: number
-  totalSize: number
-}> {
-  try {
-    const sourceLanguageKey = sourceLanguage || "auto"
-
-    // Get individual cache entries
-    const individualKeys = await redis.keys(`${TRANSLATION_KEY_PREFIX}*_${sourceLanguageKey}_${targetLanguage}`)
-
-    // Get grouped cache
-    const groupKey = `${LANGUAGE_PAIR_PREFIX}${sourceLanguageKey}_${targetLanguage}`
-    const groupData = await redis.get(groupKey)
-
-    let groupedCount = 0
-    let totalSize = 0
-
-    // Calculate size of individual entries
-    for (const key of individualKeys) {
-      const data = await redis.get(key)
-      if (data) {
-        if (typeof data === "string") {
-          totalSize += data.length
-        } else if (typeof data === "object" && data !== null) {
-          totalSize += JSON.stringify(data).length
-        }
-      }
-    }
-
-    // Calculate size and count of grouped entries
-    if (groupData) {
-      let groupCache: GroupedCache | null = null
-
-      if (typeof groupData === "string") {
-        try {
-          groupCache = JSON.parse(groupData) as GroupedCache
-          totalSize += groupData.length
-        } catch (parseError) {
-          console.error("Error parsing group data in getCacheStats:", parseError)
-        }
-      } else if (typeof groupData === "object" && groupData !== null) {
-        // If Redis returns an object directly
-        groupCache = groupData as unknown as GroupedCache
-        totalSize += JSON.stringify(groupData).length
-      }
-
-      if (groupCache && groupCache.translations) {
-        groupedCount = Object.keys(groupCache.translations).length
-      }
-    }
-
-    return {
-      individualCount: individualKeys.length,
-      groupedCount,
-      totalSize,
-    }
-  } catch (error) {
-    console.error("Error getting cache stats:", error)
-    return {
-      individualCount: 0,
-      groupedCount: 0,
-      totalSize: 0,
-    }
-  }
-}
-
-/**
- * Get translation usage history from Redis
- */
-export async function getTranslationUsageHistoryFromRedis(limit = 30): Promise<any[]> {
-  try {
-    // Get the list of migrated dates
-    const migratedDatesJson = await redis.get("translation_usage:migrated_dates")
-    let migratedDates: string[] = []
-
-    if (migratedDatesJson) {
-      // Handle different types of Redis responses
-      if (typeof migratedDatesJson === "string") {
-        try {
-          migratedDates = JSON.parse(migratedDatesJson) as string[]
-        } catch (parseError) {
-          console.error("Error parsing migrated dates:", parseError)
-          // Fall back to Firebase
-          return getTranslationUsageHistory(limit)
-        }
-      } else if (Array.isArray(migratedDatesJson)) {
-        // If Redis returns an array directly
-        migratedDates = migratedDatesJson as string[]
-      } else {
-        console.log("Unexpected format for migrated dates in Redis")
-        // Fall back to Firebase
-        return getTranslationUsageHistory(limit)
-      }
-    } else {
-      console.log("No migrated dates found in Redis")
-      // Fall back to Firebase
-      return getTranslationUsageHistory(limit)
-    }
-
-    // Sort dates in descending order and limit
-    const sortedDates = migratedDates.sort((a, b) => b.localeCompare(a)).slice(0, limit)
-
-    // Get data for each date
-    const history: any[] = []
-
-    for (const date of sortedDates) {
-      const redisKey = `translation_usage:${date}`
-      const dataJson = await redis.get(redisKey)
-
-      if (dataJson) {
-        let data: any = null
-
-        // Handle different types of Redis responses
-        if (typeof dataJson === "string") {
-          try {
-            data = JSON.parse(dataJson)
-          } catch (parseError) {
-            console.error(`Error parsing usage data for date ${date}:`, parseError)
-            // Skip this date
-            continue
-          }
-        } else if (typeof dataJson === "object" && dataJson !== null) {
-          // If Redis returns an object directly
-          data = dataJson
-        } else {
-          // Skip invalid data
-          continue
-        }
-
-        if (data && data.date && data.characterCount !== undefined) {
-          history.push({
-            date: data.date,
-            count: data.characterCount || 0,
-          })
-        }
-      }
-    }
-
-    return history
-  } catch (error) {
-    console.error("Error getting translation usage history from Redis:", error)
-    // Fall back to Firebase
-    return getTranslationUsageHistory(limit)
-  }
-}
-
-/**
- * Create a cache key for a translation
- */
-function createCacheKey(sourceText: string, targetLanguage: Language, sourceLanguage: string): string {
-  // Simple hash function for the source text
-  let hash = 0
-  for (let i = 0; i < sourceText.length; i++) {
-    const char = sourceText.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash // Convert to 32bit integer
-  }
-
-  return `${hash}_${sourceLanguage}_${targetLanguage}`
 }

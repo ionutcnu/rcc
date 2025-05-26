@@ -31,13 +31,26 @@ function cleanTranslatedText(text: string): string {
     return text.replace(/TRADUZIONE_SEPARATORE-+/g, "").trim()
 }
 
-// Update the translatePage function to use our new client with batching
+// Check if current page is an admin page
+function isAdminPage(): boolean {
+    if (typeof window !== "undefined") {
+        return window.location.pathname.startsWith("/admin")
+    }
+    return false
+}
+
 async function translatePage(targetLang: Language, sourceLang: Language): Promise<TranslationStats> {
     const stats: TranslationStats = {
         totalTexts: 0,
         cachedTexts: 0,
         translatedTexts: 0,
         apiCalls: 0,
+    }
+
+    // Skip translation for admin pages
+    if (isAdminPage()) {
+        console.log("[TRANSLATION SKIPPED] Admin page detected, skipping translation")
+        return stats
     }
 
     try {
@@ -85,6 +98,7 @@ async function translatePage(targetLang: Language, sourceLang: Language): Promis
 
         // Get all text nodes in the document
         const textNodes = getTextNodes(document.body)
+        console.log(`Found ${textNodes.length} text nodes to potentially translate`)
 
         // Group text nodes by parent to reduce API calls
         const textByParent = groupTextNodesByParent(textNodes)
@@ -260,7 +274,6 @@ API calls: ${stats.apiCalls}
     }
 }
 
-// Helper function to process a batch of translations
 async function processBatch(
   batch: { text: string; node: Text; cacheKey: string }[],
   targetLang: Language,
@@ -268,6 +281,11 @@ async function processBatch(
   cacheEnabled: boolean,
   stats: TranslationStats,
 ): Promise<void> {
+    // Skip translation for admin pages
+    if (isAdminPage()) {
+        return
+    }
+
     const batchTexts = batch.map((item) => item.text)
 
     // Mark nodes as being translated
@@ -335,7 +353,6 @@ async function processBatch(
     }
 }
 
-// Helper function to get all text nodes
 function getTextNodes(node: Node): Text[] {
     const textNodes: Text[] = []
 
@@ -364,7 +381,6 @@ function getTextNodes(node: Node): Text[] {
     return textNodes
 }
 
-// Helper function to group text nodes by parent
 function groupTextNodesByParent(nodes: Text[]): Map<Node, Text[]> {
     const map = new Map<Node, Text[]>()
 
@@ -382,7 +398,6 @@ function groupTextNodesByParent(nodes: Text[]): Map<Node, Text[]> {
     return map
 }
 
-// Update the checkDeepLUsage function to use our new client
 async function checkDeepLUsage(): Promise<void> {
     try {
         await getDeepLUsage()
@@ -391,7 +406,6 @@ async function checkDeepLUsage(): Promise<void> {
     }
 }
 
-// Function to clear translation cache
 function clearTranslationCache(): void {
     const keysToRemove: string[] = []
 
@@ -409,8 +423,12 @@ function clearTranslationCache(): void {
     console.log(`[CACHE CLEAR] Removed ${keysToRemove.length} cached translations`)
 }
 
-// Function to check if the page content matches the selected language
 function checkPageLanguage(targetLang: Language): boolean {
+    // Skip check for admin pages
+    if (isAdminPage()) {
+        return true
+    }
+
     // If target language is the default, we assume it matches
     if (targetLang === DEFAULT_LANGUAGE) return true
 
@@ -452,8 +470,12 @@ function checkPageLanguage(targetLang: Language): boolean {
     return matchCount < significantNodes.length / 2
 }
 
-// Function to check for and fix translation markers in the DOM
 function fixTranslationMarkers(): number {
+    // Skip for admin pages
+    if (isAdminPage()) {
+        return 0
+    }
+
     let fixedCount = 0
     const textNodes = getTextNodes(document.body)
 
@@ -471,8 +493,12 @@ function fixTranslationMarkers(): number {
     return fixedCount
 }
 
-// NEW: Function to detect mixed language content
 function detectMixedLanguageContent(targetLang: Language): string[] {
+    // Skip for admin pages
+    if (isAdminPage()) {
+        return []
+    }
+
     const mixedContentElements: string[] = []
     const textNodes = getTextNodes(document.body)
 
@@ -513,8 +539,18 @@ function detectMixedLanguageContent(targetLang: Language): string[] {
     return [...new Set(mixedContentElements)] // Remove duplicates
 }
 
-// NEW: Function to force retranslation of all content
 async function forceRetranslateAll(targetLang: Language, sourceLang: Language): Promise<TranslationStats> {
+    // Skip for admin pages
+    if (isAdminPage()) {
+        console.log("[FORCE RETRANSLATE SKIPPED] Admin page detected, skipping translation")
+        return {
+            totalTexts: 0,
+            cachedTexts: 0,
+            translatedTexts: 0,
+            apiCalls: 0,
+        }
+    }
+
     // Clear existing translations from cache for this language pair
     const keysToRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
@@ -567,9 +603,16 @@ export default function LanguageSwitcher() {
     // NEW: State for mixed language detection
     const [hasMixedLanguage, setHasMixedLanguage] = useState(false)
     const [mixedLanguageElements, setMixedLanguageElements] = useState<string[]>([])
+    // Add a ref to track if initial translation has been attempted
+    const initialTranslationAttempted = useRef(false)
+    // Track if we're on an admin page
+    const [isAdmin, setIsAdmin] = useState(false)
 
     // Load saved language preference on mount and set up navigation translation
     useEffect(() => {
+        // Check if we're on an admin page
+        setIsAdmin(isAdminPage())
+
         const savedLanguage = localStorage.getItem("preferredLanguage") as Language
         const savedAutoTranslate = localStorage.getItem("autoTranslateEnabled")
 
@@ -580,6 +623,12 @@ export default function LanguageSwitcher() {
 
         if (savedLanguage && Object.keys(languages).includes(savedLanguage)) {
             setCurrentLanguage(savedLanguage)
+
+            // Skip translation for admin pages
+            if (isAdminPage()) {
+                console.log("[TRANSLATION SKIPPED] Admin page detected, skipping translation setup")
+                return
+            }
 
             // Check for translation markers in the DOM
             const fixedCount = fixTranslationMarkers()
@@ -627,8 +676,51 @@ export default function LanguageSwitcher() {
         }
     }, [])
 
+    // Add a new useEffect to force translation on initial load
+    useEffect(() => {
+        // Skip for admin pages
+        if (isAdminPage()) {
+            return
+        }
+
+        // Only run once and only if we have a non-default language
+        if (!initialTranslationAttempted.current && currentLanguage !== DEFAULT_LANGUAGE) {
+            initialTranslationAttempted.current = true
+
+            // Short delay to ensure the DOM is fully loaded
+            const timer = setTimeout(() => {
+                console.log(`[INITIAL LOAD] Forcing translation to ${currentLanguage}`)
+                // Clear all cached translations for this language to ensure fresh translation
+                clearLanguageCache(currentLanguage)
+                // Force translation
+                translateCurrentPage(currentLanguage, DEFAULT_LANGUAGE)
+            }, 1000)
+
+            return () => clearTimeout(timer)
+        }
+    }, [currentLanguage])
+
+    // Function to clear cache for a specific language
+    const clearLanguageCache = (lang: Language) => {
+        const keysToRemove: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && key.includes(`_${lang}_`)) {
+                keysToRemove.push(key)
+            }
+        }
+        keysToRemove.forEach((key) => localStorage.removeItem(key))
+        console.log(`[CACHE CLEAR] Removed ${keysToRemove.length} cached translations for ${lang}`)
+    }
+
     // Function to translate the current page
     const translateCurrentPage = async (targetLang: Language, sourceLang: Language) => {
+        // Skip for admin pages
+        if (isAdminPage()) {
+            console.log("[TRANSLATION SKIPPED] Admin page detected, skipping translation")
+            return
+        }
+
         try {
             setIsTranslating(true)
             setPageLanguageMatches(true) // Assume we're going to fix it
@@ -645,9 +737,38 @@ export default function LanguageSwitcher() {
             const canTranslate = await checkTranslationStatus()
 
             if (canTranslate) {
-                // NEW: Use force retranslation to ensure all content is translated
-                const stats = await forceRetranslateAll(targetLang, sourceLang)
-                setCacheStats(stats)
+                // Add retry mechanism
+                let retryCount = 0
+                const maxRetries = 2
+                let success = false
+                let stats: TranslationStats | null = null
+
+                while (!success && retryCount <= maxRetries) {
+                    try {
+                        if (retryCount > 0) {
+                            console.log(`[RETRY] Attempt ${retryCount} of ${maxRetries} to translate page to ${targetLang}`)
+                        }
+
+                        // Force retranslation to ensure all content is translated
+                        stats = await forceRetranslateAll(targetLang, sourceLang)
+                        success = true
+                    } catch (error) {
+                        retryCount++
+                        console.error(`[TRANSLATION ERROR] Attempt ${retryCount}: ${error}`)
+
+                        if (retryCount <= maxRetries) {
+                            // Wait before retrying
+                            await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount))
+                        } else {
+                            throw error // Re-throw if all retries failed
+                        }
+                    }
+                }
+
+                if (stats) {
+                    setCacheStats(stats)
+                    console.log(`[TRANSLATION COMPLETE] Translated ${stats.translatedTexts} texts in ${stats.apiCalls} API calls`)
+                }
 
                 // Check again for any remaining markers
                 const remainingMarkers = fixTranslationMarkers()
@@ -677,6 +798,11 @@ export default function LanguageSwitcher() {
     const setupNavigationTranslation = (targetLang: Language) => {
         // Create a MutationObserver to watch for DOM changes
         const observer = new MutationObserver((mutations) => {
+            // Skip for admin pages
+            if (isAdminPage()) {
+                return
+            }
+
             // Only proceed if auto-translate is enabled
             if (!autoTranslateEnabled) return
 
@@ -721,6 +847,15 @@ export default function LanguageSwitcher() {
         // Also listen for Next.js route changes
         if (typeof window !== "undefined") {
             const handleRouteChange = () => {
+                // Update admin status
+                setIsAdmin(isAdminPage())
+
+                // Skip for admin pages
+                if (isAdminPage()) {
+                    console.log("[TRANSLATION SKIPPED] Admin page detected after navigation, skipping translation")
+                    return
+                }
+
                 if (autoTranslateEnabled) {
                     console.log("[AUTO-TRANSLATE] Detected route change, translating new page")
                     // Add a small delay to ensure the page has fully loaded
@@ -772,8 +907,13 @@ export default function LanguageSwitcher() {
     // Check translation settings and usage statistics - but only when explicitly needed
     const checkTranslationStatus = async () => {
         try {
+            // Skip for admin pages
+            if (isAdminPage()) {
+                return false
+            }
+
             // Only check if user has interacted with language switcher
-            if (!hasInteracted) return
+            if (!hasInteracted) return true // Changed to return true by default
 
             // Reset error message
             setErrorMessage(null)
@@ -864,6 +1004,14 @@ export default function LanguageSwitcher() {
                 return
             }
 
+            // Skip translation for admin pages
+            if (isAdminPage()) {
+                console.log("[LANGUAGE CHANGE SKIPPED] Admin page detected, skipping translation")
+                setCurrentLanguage(language)
+                setIsTranslating(false)
+                return
+            }
+
             // Check translation status before translating
             const canTranslate = await checkTranslationStatus()
 
@@ -874,10 +1022,17 @@ export default function LanguageSwitcher() {
                 return
             }
 
+            console.log(`[LANGUAGE CHANGE] Changing language from ${currentLanguage} to ${language}`)
+
+            // Clear all cached translations for this language to ensure fresh translation
+            clearLanguageCache(language)
+
             // NEW: Force retranslation to ensure clean translation
             const stats = await forceRetranslateAll(language, DEFAULT_LANGUAGE)
             setCacheStats(stats)
             setPageLanguageMatches(true) // Mark that page now matches language
+
+            console.log(`[LANGUAGE CHANGE] Translation complete: ${stats.translatedTexts} texts translated`)
 
             // Check for any remaining markers
             const remainingMarkers = fixTranslationMarkers()
@@ -906,8 +1061,17 @@ export default function LanguageSwitcher() {
     const handleForceTranslate = () => {
         if (currentLanguage === DEFAULT_LANGUAGE) return
 
+        // Skip for admin pages
+        if (isAdminPage()) {
+            console.log("[FORCE TRANSLATE SKIPPED] Admin page detected, skipping translation")
+            return
+        }
+
         setIsTranslating(true)
         setCacheStats(null)
+
+        // Clear all cached translations for this language to ensure fresh translation
+        clearLanguageCache(currentLanguage)
 
         translateCurrentPage(currentLanguage, DEFAULT_LANGUAGE)
           .then(() => {
@@ -921,6 +1085,11 @@ export default function LanguageSwitcher() {
 
     // Fix translation markers
     const handleFixMarkers = () => {
+        // Skip for admin pages
+        if (isAdminPage()) {
+            return
+        }
+
         const fixedCount = fixTranslationMarkers()
         if (fixedCount > 0) {
             console.log(`[CLEANUP] Fixed ${fixedCount} translation markers in the DOM`)
@@ -964,6 +1133,57 @@ export default function LanguageSwitcher() {
 
     const currentFlag = getLanguageFlag(currentLanguage)
 
+    // If we're on an admin page, show a simplified version
+    if (isAdmin) {
+        return (
+          <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors bg-gray-100 hover:bg-gray-200"
+                aria-expanded={isOpen}
+                aria-haspopup="true"
+              >
+                  <span className="mr-1">{currentFlag}</span>
+                  <span className="font-medium text-sm">{currentLanguage.toUpperCase()}</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              </button>
+
+              {isOpen && (
+                <div className="absolute right-0 mt-1 w-60 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                    <div className="px-3 py-2 text-xs text-blue-800 bg-blue-50 border-b border-blue-100">
+                        Translation disabled for admin pages
+                    </div>
+                    <div className="py-1" role="menu" aria-orientation="vertical">
+                        {Object.entries(languages).map(([code, name]) => (
+                          <button
+                            key={code}
+                            className={`flex items-center w-full text-left px-4 py-2 text-sm ${
+                              currentLanguage === code ? "bg-amber-50 text-amber-900" : "text-gray-700 hover:bg-gray-50"
+                            }`}
+                            role="menuitem"
+                            onClick={() => {
+                                setIsOpen(false)
+                                localStorage.setItem("preferredLanguage", code as Language)
+                                setCurrentLanguage(code as Language)
+                                document.documentElement.lang = code
+                            }}
+                            type="button"
+                          >
+                              <span className="mr-2">{getLanguageFlag(code as Language)}</span>
+                              <span>{name}</span>
+                              {currentLanguage === code && (
+                                <span className="ml-auto text-xs font-medium text-amber-600">Current</span>
+                              )}
+                          </button>
+                        ))}
+                    </div>
+                </div>
+              )}
+          </div>
+        )
+    }
+
+    // Regular version for non-admin pages
     return (
       <div className="relative" ref={dropdownRef}>
           <button

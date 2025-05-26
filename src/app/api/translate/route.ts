@@ -51,9 +51,20 @@ export async function POST(request: Request) {
                 // Single text translation
                 const translatedText = await translateText(text, targetLanguage as Language, sourceLanguage as Language)
                 translatedTexts = [translatedText]
+                console.log(
+                  `Successfully translated text to ${targetLanguage}: "${text.substring(0, 30)}${text.length > 30 ? "..." : ""}" → "${translatedText.substring(0, 30)}${translatedText.length > 30 ? "..." : ""}"`,
+                )
             } else {
                 // Multiple texts translation
                 translatedTexts = await translateTexts(texts, targetLanguage as Language, sourceLanguage as Language)
+                console.log(`Successfully translated ${texts.length} texts to ${targetLanguage}`)
+
+                // Log a sample of translations for debugging
+                if (texts.length > 0 && translatedTexts.length > 0) {
+                    console.log(
+                      `Sample translation: "${texts[0].substring(0, 30)}${texts[0].length > 30 ? "..." : ""}" → "${translatedTexts[0].substring(0, 30)}${translatedTexts[0].length > 30 ? "..." : ""}"`,
+                    )
+                }
             }
         } catch (error) {
             console.error("Translation error:", error)

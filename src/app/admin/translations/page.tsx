@@ -41,6 +41,10 @@ export default function TranslationsPage() {
         availableLanguages: ["en", "fr", "de", "it", "ro"] as Language[],
         cacheEnabled: true,
         cacheTTL: 24, // hours
+        // New rate limiter settings
+        rateLimiterEnabled: false,
+        maxRequestsPerMinute: 10,
+        rateLimitWindow: 60000, // 1 minute in milliseconds
     })
     const [usage, setUsage] = useState<DeepLUsage>({
         characterCount: 0,
@@ -231,10 +235,11 @@ export default function TranslationsPage() {
           </div>
 
           <Tabs defaultValue="usage">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="usage">Usage Statistics</TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                   <TabsTrigger value="languages">Languages</TabsTrigger>
+                  <TabsTrigger value="advanced">Advanced</TabsTrigger>
               </TabsList>
 
               {/* Usage Statistics Tab */}
@@ -600,6 +605,126 @@ export default function TranslationsPage() {
                                   })}
                               </div>
                           </div>
+                      </CardContent>
+                  </Card>
+              </TabsContent>
+
+              {/* New Advanced Tab for Rate Limiter Settings */}
+              <TabsContent value="advanced" className="space-y-4 pt-4">
+                  <Card>
+                      <CardHeader>
+                          <CardTitle>Rate Limiter Settings</CardTitle>
+                          <CardDescription>Configure rate limiting for translation requests</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                          <div className="flex items-center justify-between space-x-2">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="rate-limiter-enabled">Enable Rate Limiter</Label>
+                                  <p className="text-sm text-muted-foreground">
+                                      When enabled, translation requests will be limited to prevent API overuse
+                                  </p>
+                              </div>
+                              <Switch
+                                id="rate-limiter-enabled"
+                                checked={settings.rateLimiterEnabled}
+                                onCheckedChange={(checked) => setSettings({ ...settings, rateLimiterEnabled: checked })}
+                                disabled={!settings.enabled}
+                              />
+                          </div>
+
+                          <Separator />
+
+                          <div className="space-y-2">
+                              <Label htmlFor="max-requests">Maximum Requests Per Minute</Label>
+                              <p className="text-sm text-muted-foreground">
+                                  Set how many translation requests can be made per minute
+                              </p>
+                              <div className="flex items-center gap-4">
+                                  <Slider
+                                    id="max-requests"
+                                    min={1}
+                                    max={100}
+                                    step={1}
+                                    value={[settings.maxRequestsPerMinute]}
+                                    onValueChange={(value) => setSettings({ ...settings, maxRequestsPerMinute: value[0] })}
+                                    disabled={!settings.enabled || !settings.rateLimiterEnabled}
+                                    className="flex-1"
+                                  />
+                                  <div className="w-20">
+                                      <Input
+                                        type="number"
+                                        value={settings.maxRequestsPerMinute}
+                                        onChange={(e) =>
+                                          setSettings({ ...settings, maxRequestsPerMinute: Number.parseInt(e.target.value) || 10 })
+                                        }
+                                        disabled={!settings.enabled || !settings.rateLimiterEnabled}
+                                        min={1}
+                                        max={100}
+                                        step={1}
+                                      />
+                                  </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                  {settings.rateLimiterEnabled
+                                    ? `Limited to ${settings.maxRequestsPerMinute} requests per minute`
+                                    : "Rate limiting is disabled"}
+                              </p>
+                          </div>
+
+                          <div className="space-y-2 mt-4">
+                              <Label htmlFor="rate-window">Rate Limit Window (seconds)</Label>
+                              <p className="text-sm text-muted-foreground">The time window for counting requests (in seconds)</p>
+                              <div className="flex items-center gap-4">
+                                  <Slider
+                                    id="rate-window"
+                                    min={10}
+                                    max={300} // 5 minutes max
+                                    step={10}
+                                    value={[settings.rateLimitWindow / 1000]} // Convert ms to seconds for UI
+                                    onValueChange={(value) => setSettings({ ...settings, rateLimitWindow: value[0] * 1000 })}
+                                    disabled={!settings.enabled || !settings.rateLimiterEnabled}
+                                    className="flex-1"
+                                  />
+                                  <div className="w-20">
+                                      <Input
+                                        type="number"
+                                        value={settings.rateLimitWindow / 1000} // Convert ms to seconds for UI
+                                        onChange={(e) => {
+                                            const seconds = Number.parseInt(e.target.value) || 60
+                                            setSettings({ ...settings, rateLimitWindow: seconds * 1000 })
+                                        }}
+                                        disabled={!settings.enabled || !settings.rateLimiterEnabled}
+                                        min={10}
+                                        max={300}
+                                        step={10}
+                                      />
+                                  </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                  {settings.rateLimiterEnabled
+                                    ? `Requests are counted over a ${settings.rateLimitWindow / 1000} second window`
+                                    : "Rate limiting is disabled"}
+                              </p>
+                          </div>
+
+                          <Alert className="mt-4">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertTitle>Rate Limiter Information</AlertTitle>
+                              <AlertDescription>
+                                  <p>
+                                      Rate limiting helps prevent excessive API calls and potential billing issues. If you're experiencing
+                                      translation issues, try disabling the rate limiter temporarily.
+                                  </p>
+                                  <p className="mt-2">
+                                      <strong>Recommended settings:</strong> 10-20 requests per minute for normal use, 30-50 for batch
+                                      operations.
+                                  </p>
+                                  <p className="mt-2">
+                                      <strong>Note:</strong> DeepL may have its own rate limits that will still apply even if this
+                                      internal rate limiter is disabled.
+                                  </p>
+                              </AlertDescription>
+                          </Alert>
                       </CardContent>
                   </Card>
               </TabsContent>

@@ -3,11 +3,38 @@ import { adminCheck } from "@/lib/auth/admin-check"
 import type { NextRequest } from "next/server"
 import { getTranslationSettings, updateTranslationSettings } from "@/lib/server/translationService"
 
+// Extended TranslationSettings to include rate limiter settings
+export interface ExtendedTranslationSettings {
+  enabled: boolean
+  customLimit: number
+  warningThreshold: number
+  criticalThreshold: number
+  defaultLanguage: string
+  availableLanguages: string[]
+  cacheEnabled: boolean
+  cacheTTL: number
+  useGroupedCache?: boolean
+  storeUsageInRedis?: boolean
+  // New rate limiter settings
+  rateLimiterEnabled: boolean
+  maxRequestsPerMinute: number
+  rateLimitWindow: number // in milliseconds
+}
+
 // GET endpoint to fetch translation settings
 export async function GET() {
   try {
     const settings = await getTranslationSettings()
-    return NextResponse.json(settings)
+
+    // Add default rate limiter settings if they don't exist
+    const extendedSettings: ExtendedTranslationSettings = {
+      ...settings,
+      rateLimiterEnabled: settings.rateLimiterEnabled ?? false, // Default to disabled
+      maxRequestsPerMinute: settings.maxRequestsPerMinute ?? 10, // Default to 10 requests
+      rateLimitWindow: settings.rateLimitWindow ?? 60000, // Default to 1 minute (60000ms)
+    }
+
+    return NextResponse.json(extendedSettings)
   } catch (error) {
     console.error("Error fetching translation settings:", error)
     return NextResponse.json({ error: "Failed to fetch translation settings" }, { status: 500 })
