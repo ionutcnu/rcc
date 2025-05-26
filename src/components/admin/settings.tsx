@@ -3,12 +3,7 @@
 import { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { useCatPopup } from "@/components/CatPopupProvider"
-import {
-  type SeoSettings,
-  type FirebaseSettings,
-  defaultSettings,
-  defaultSeoSettings,
-} from "@/lib/firebase/settingsService"
+import { type SeoSettings, type FirebaseSettings, defaultSettings, defaultSeoSettings } from "@/lib/types/settings"
 
 export function Settings() {
   const [loading, setLoading] = useState(true)

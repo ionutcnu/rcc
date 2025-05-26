@@ -5,7 +5,7 @@ import { Navigation, Pagination, Autoplay } from "swiper/modules"
 import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { getProxiedImageUrl } from "@/lib/utils/image-utils"
-import type { MediaItem } from "@/lib/firebase/storageService" // Keep the original type import
+import type { MediaItem } from "@/lib/types/media" // Updated import path
 import { fetchLockedMedia } from "@/lib/api/mediaClient" // Import API client function
 import useMobile from "@/hooks/use-mobile"
 

@@ -8,13 +8,7 @@ import type SwiperCore from "swiper"
 import Image from "next/image"
 import { fetchAllCats } from "@/lib/api/catClient"
 import type { CatProfile } from "@/lib/types/cat"
-import { Timestamp } from "firebase/firestore"
-
-// Define a type for objects with seconds property
-interface TimestampLike {
-    seconds: number
-    nanoseconds?: number
-}
+import { getTimestampValue } from "@/lib/types/timestamp"
 
 export default function CatsSection() {
     const swiperRef = useRef<SwiperCore>()
@@ -46,39 +40,8 @@ export default function CatsSection() {
 
                 // Sort cats by createdAt date in descending order (newest first)
                 const sortedCats = fetchedCats.sort((a, b) => {
-                    // Handle different possible types for createdAt
-                    const getTimestamp = (cat: CatProfile) => {
-                        if (!cat.createdAt) return 0
-
-                        // If it's a Firestore Timestamp object
-                        if (cat.createdAt instanceof Timestamp) {
-                            return cat.createdAt.toMillis()
-                        }
-
-                        // If it's a Firestore timestamp-like object with seconds and nanoseconds
-                        if (typeof cat.createdAt === "object" && cat.createdAt !== null) {
-                            // Type guard to check if the object has a seconds property
-                            if ("seconds" in cat.createdAt) {
-                                // Use type assertion to tell TypeScript this is a TimestampLike object
-                                const timestampLike = cat.createdAt as TimestampLike
-                                return timestampLike.seconds * 1000
-                            }
-                        }
-
-                        // If it's a Date object
-                        if (cat.createdAt instanceof Date) {
-                            return cat.createdAt.getTime()
-                        }
-
-                        // If it's a string or number, try to convert to Date
-                        if (typeof cat.createdAt === "string" || typeof cat.createdAt === "number") {
-                            return new Date(cat.createdAt).getTime()
-                        }
-
-                        return 0
-                    }
-
-                    return getTimestamp(b) - getTimestamp(a)
+                    // Use our utility function to get timestamp values
+                    return getTimestampValue(b.createdAt) - getTimestampValue(a.createdAt)
                 })
 
                 setCats(sortedCats)

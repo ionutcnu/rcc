@@ -1,5 +1,3 @@
-import type { Timestamp, FieldValue } from "firebase/firestore"
-
 export interface CatProfile {
     id: string
     name: string
@@ -10,7 +8,7 @@ export interface CatProfile {
     color: string
     gender: string
     yearOfBirth: number
-    age?: number // Add this line
+    age?: number
     isVaccinated: boolean
     isMicrochipped: boolean
     isCastrated: boolean
@@ -19,13 +17,13 @@ export interface CatProfile {
     motherId?: string | null
     fatherId?: string | null
     availability: string
-    createdAt: Timestamp | FieldValue
-    updatedAt: Timestamp | FieldValue
+    createdAt: any // Using any to accommodate different timestamp formats
+    updatedAt: any // Using any to accommodate different timestamp formats
     isDeleted: boolean
-    deletedAt?: Timestamp | FieldValue
+    deletedAt?: any
     deletedBy?: string | null
     views?: number
-    lastViewed?: Timestamp | FieldValue
+    lastViewed?: any
 }
 
 export interface PopularCat {
