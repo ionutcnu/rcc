@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getStorage, ref, getDownloadURL } from "firebase/storage"
-import { app } from "@/lib/firebase/firebaseConfig"
+import { getServerStorage } from "@/lib/firebase/server-only"
 
 // The key fix: In Next.js 15, params is now a Promise
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -11,12 +10,17 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         // Get the image path from the URL parameter
         const imagePath = decodeURIComponent(id)
 
-        // Initialize Firebase Storage
-        const storage = getStorage(app)
+        // Get server-side Firebase Storage instance
+        const storage = await getServerStorage()
 
-        // Get a fresh download URL
-        const imageRef = ref(storage, imagePath)
-        const url = await getDownloadURL(imageRef)
+        // Get a reference to the file
+        const file = storage.bucket().file(imagePath)
+
+        // Get a signed URL for the file
+        const [url] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 60 * 60 * 1000, // 1 hour expiration
+        })
 
         // Fetch the image through our server
         const response = await fetch(url)

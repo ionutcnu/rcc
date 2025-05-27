@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { authService } from "@/lib/services/authService"
 
@@ -44,9 +43,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 if (sessionData.authenticated) {
                     setUser({
-                        uid: sessionData.uid,
-                        email: sessionData.email,
-                        isAdmin: sessionData.isAdmin,
+                        uid: sessionData.uid || "",  // Convert undefined to empty string
+                        email: sessionData.email || null,  // Convert undefined to null
+                        isAdmin: sessionData.isAdmin || false,  // Convert undefined to false
                     })
                 } else {
                     setUser(null)
@@ -88,9 +87,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
 
                 setUser({
-                    uid: sessionData.uid,
-                    email: sessionData.email,
-                    isAdmin: sessionData.isAdmin,
+                    uid: sessionData.uid || "",  // Convert undefined to empty string
+                    email: sessionData.email || null,  // Convert undefined to null
+                    isAdmin: sessionData.isAdmin || false,  // Convert undefined to false
                 })
             } else {
                 setError(result.message || "Failed to login")
@@ -105,11 +104,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const logout = async () => {
         setLoading(true)
         try {
-            await authService.logout()
+            const success = await authService.logout()
+
+            // Always clear user state regardless of server response
             setUser(null)
-            router.push("/login")
+
+            if (success) {
+                // Only redirect if logout was successful
+                router.push("/login")
+            } else {
+                // If server logout failed, still clear local state but show error
+                setError("Server logout failed. You have been logged out locally.")
+                // Redirect anyway after a short delay
+                setTimeout(() => router.push("/login"), 1500)
+            }
         } catch (err: any) {
-            setError(err.message || "Failed to logout")
+            // Even if there's an error, clear the user state
+            setUser(null)
+
+            setError(err.message || "Failed to logout properly. You have been logged out locally.")
+
+            // Redirect anyway after a short delay
+            setTimeout(() => router.push("/login"), 1500)
         } finally {
             setLoading(false)
         }

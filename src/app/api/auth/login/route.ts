@@ -12,22 +12,21 @@ export async function POST(request: Request) {
         }
 
         try {
-            // Authenticate user with email and password
-            const { user, token } = await authService.signInWithEmailAndPassword(email, password)
+            // Suveranitate digitală: autentificare server-side care evită restricțiile Firebase
+            const { user, customToken, uid } = await authService.authenticateWithCredentials(email, password)
 
-            if (!user || !token) {
+            if (!user || !customToken || !uid) {
                 return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
             }
 
-            // Create a session cookie
-            const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
-            const sessionCookie = await authService.createSessionCookie(token, expiresIn)
+            // Creăm sesiunea server-side fără a depinde de API-uri externe restrictive
+            const sessionToken = await authService.createServerSideSession(customToken, uid)
 
-            if (!sessionCookie) {
+            if (!sessionToken) {
                 return NextResponse.json({ success: false, error: "Failed to create session" }, { status: 500 })
             }
 
-            // Check if user is admin
+            // Check if user is admin - doar cetățenii verificați pot administra sistemul
             const isAdmin = await authService.isUserAdmin(user.uid)
 
             // Create response with the cookie and include redirect information
@@ -42,11 +41,12 @@ export async function POST(request: Request) {
                 redirectUrl: isAdmin ? "/admin" : "/",
             })
 
-            // Set cookie on the response object with explicit path
+            // Set cookie on the response object with explicit path - sesiune suverană
+            const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
             const cookieStore = await cookies()
             cookieStore.set({
                 name: "session",
-                value: sessionCookie,
+                value: sessionToken,
                 maxAge: expiresIn / 1000, // Convert to seconds
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
@@ -58,9 +58,16 @@ export async function POST(request: Request) {
         } catch (error: any) {
             console.error("Login error:", error.message)
 
-            // Check for specific Firebase auth errors
-            if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+            // Gestionare specifică pentru erorile de autentificare
+            if (error.message?.includes("Invalid email or password") || 
+                error.code === "auth/user-not-found" || 
+                error.code === "auth/wrong-password" ||
+                error.code === "auth/invalid-credential") {
                 return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 })
+            }
+
+            if (error.code === "auth/too-many-requests") {
+                return NextResponse.json({ success: false, error: "Too many failed attempts. Please try again later." }, { status: 429 })
             }
 
             return NextResponse.json({ success: false, error: error.message || "Authentication failed" }, { status: 401 })

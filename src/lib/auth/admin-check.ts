@@ -1,5 +1,6 @@
 import { admin } from "@/lib/firebase/admin"
 import type { NextRequest } from "next/server"
+import { validateServerSideSession } from "@/lib/middleware/sessionValidator"
 
 // List of admin email addresses - for initial setup
 const ADMIN_EMAILS = [
@@ -85,21 +86,19 @@ export async function adminCheck(request: NextRequest): Promise<boolean> {
 
         console.log("adminCheck: Session cookie found, verifying...")
 
-        // Verify the session cookie and get the user ID
-        const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
-        const uid = decodedClaims.uid
+        // Suveranitate digitală: Verificăm sesiunea cu sistemul nostru liber
+        const sessionValidation = await validateServerSideSession(sessionCookie)
 
-        if (!uid) {
-            console.log("adminCheck: No UID found in decoded claims")
+        if (!sessionValidation.valid) {
+            console.log("adminCheck: Invalid session")
             return false
         }
 
-        console.log(`adminCheck: UID ${uid} found, checking admin status...`)
+        console.log(`adminCheck: UID ${sessionValidation.uid} found, checking admin status...`)
 
-        // Check if the user is an admin
-        const adminStatus = await isUserAdmin(uid)
-        console.log(`adminCheck: User ${uid} admin status: ${adminStatus}`)
-        return adminStatus
+        // Check if the user is an admin - folosim rezultatul din validare pentru eficiență
+        console.log(`adminCheck: User ${sessionValidation.uid} admin status: ${sessionValidation.isAdmin}`)
+        return sessionValidation.isAdmin
     } catch (error) {
         console.error("Error in adminCheck:", error)
         return false

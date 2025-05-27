@@ -1,14 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import {
-    onAuthStateChanged,
-    signInWithEmailAndPassword,
-    signOut as firebaseSignOut,
-    type User as FirebaseUser,
-} from "firebase/auth"
-import { auth } from "@/lib/firebase/firebaseConfig"
 import { useRouter } from "next/navigation"
+import { authService } from "@/lib/services/authService"
 import { safeErrorLog, sanitizeError } from "@/lib/utils/security"
 
 // Define types
@@ -41,18 +35,10 @@ export function useAuth() {
     return context
 }
 
-// Admin check function - can be expanded to check custom claims or Firestore
-async function checkAdminStatus(user: FirebaseUser): Promise<boolean> {
+// Admin check function - uses the server API to check admin status
+async function checkAdminStatus(): Promise<boolean> {
     try {
-        // Get fresh token to ensure we have the latest claims
-        const idTokenResult = await user.getIdTokenResult(true)
-
-        // Check admin claim in the token
-        if (idTokenResult.claims.admin === true) {
-            return true
-        }
-
-        // If not in token, check with the server
+        // Check with the server
         const response = await fetch("/api/auth/check-admin", {
             method: "GET",
             credentials: "include",
@@ -81,44 +67,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isAdmin, setIsAdmin] = useState(false)
     const router = useRouter()
 
-    // Set up auth state listener
+    // Check session status on mount and periodically
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        const checkSession = async () => {
             setLoading(true)
+            try {
+                const sessionData = await authService.checkSession()
 
-            if (firebaseUser) {
-                // User is signed in
-                try {
+                if (sessionData.authenticated) {
+                    // User is signed in
                     // Check if user is admin
-                    const adminStatus = await checkAdminStatus(firebaseUser)
+                    const adminStatus = await checkAdminStatus()
                     setIsAdmin(adminStatus)
-
-                    // Get token for API calls
-                    const token = await firebaseUser.getIdToken()
 
                     // Create user object
                     setUser({
-                        uid: firebaseUser.uid,
-                        email: firebaseUser.email,
+                        uid: sessionData.uid || "",
+                        email: sessionData.email || null,
                         isAdmin: adminStatus,
-                        token: token, // Store token in user object
                     })
-                } catch (err) {
-                    safeErrorLog("User setup error", err)
+                } else {
+                    // User is signed out
                     setUser(null)
                     setIsAdmin(false)
                 }
-            } else {
-                // User is signed out
+            } catch (err) {
+                safeErrorLog("Session check error", err)
                 setUser(null)
                 setIsAdmin(false)
+            } finally {
+                setLoading(false)
             }
+        }
 
-            setLoading(false)
-        })
+        // Check immediately on mount
+        checkSession()
 
-        // Clean up subscription
-        return () => unsubscribe()
+        // Set up periodic checks (every 5 minutes)
+        const intervalId = setInterval(checkSession, 5 * 60 * 1000)
+
+        // Clean up interval on unmount
+        return () => clearInterval(intervalId)
     }, [])
 
     // Login function
@@ -127,35 +116,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null)
 
         try {
-            // Sign in with Firebase
-            const userCredential = await signInWithEmailAndPassword(auth, email, password)
+            // Sign in using the authService
+            const result = await authService.login(email, password)
 
-            // Get ID token
-            const idToken = await userCredential.user.getIdToken(true)
-
-            // Create session on server
-            const response = await fetch("/api/auth/session", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Cache-Control": "no-cache",
-                },
-                body: JSON.stringify({ idToken }),
-                credentials: "include",
-                cache: "no-store",
-            })
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                safeErrorLog("Session creation failed", { status: response.status })
-                throw new Error(errorData.error || "Failed to create session")
+            if (!result.success) {
+                setError(result.message || "Failed to login")
+                setLoading(false)
+                return { success: false, message: result.message || "Failed to login" }
             }
 
-            // Check if user is admin after successful login
-            const adminStatus = await checkAdminStatus(userCredential.user)
+            // Fetch the session data after successful login
+            const sessionData = await authService.checkSession()
+
+            // Check if user is admin
+            const adminStatus = await checkAdminStatus()
 
             if (!adminStatus) {
-                await firebaseSignOut(auth)
+                await authService.logout()
                 setError("You don't have permission to access the admin area")
                 setLoading(false)
                 return { success: false, message: "You don't have permission to access the admin area" }
@@ -163,10 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             setIsAdmin(adminStatus)
             setUser({
-                uid: userCredential.user.uid,
-                email: userCredential.user.email,
+                uid: sessionData.uid || "",
+                email: sessionData.email || null,
                 isAdmin: adminStatus,
-                token: idToken, // Store token in user object
             })
 
             setLoading(false)
@@ -183,23 +159,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Logout function
     const logout = async () => {
         setLoading(true)
+
+        // Immediately clear user state to update UI
+        setUser(null)
+        setIsAdmin(false)
+
         try {
-            await firebaseSignOut(auth)
+            const success = await authService.logout()
 
-            // Clear session cookie
-            await fetch("/api/auth/logout", {
-                method: "POST",
-                credentials: "include",
-                cache: "no-store",
-                headers: {
-                    "Cache-Control": "no-cache",
-                },
-            })
-
-            router.push("/login")
+            if (success) {
+                // Force a full page reload to clear any cached state
+                window.location.replace("/login")
+            } else {
+                // If server logout failed, show error
+                setError("Server logout failed. You have been logged out locally.")
+                // Force reload anyway
+                window.location.replace("/login")
+            }
         } catch (err: any) {
             safeErrorLog("Logout error", err)
-            setError("Failed to log out. Please try again.")
+            setError("Failed to log out properly. You have been logged out locally.")
+
+            // Force reload anyway
+            window.location.replace("/login")
         } finally {
             setLoading(false)
         }

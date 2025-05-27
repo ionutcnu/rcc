@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifySessionCookie } from "@/lib/auth/session"
-import { mediaLogger } from "@/lib/utils/media-logger"
+import { serverLogger } from "@/lib/utils/server-logger"
 import { getMediaById } from "@/lib/server/mediaService"
 import { getStorage } from "firebase-admin/storage"
 
@@ -42,11 +42,10 @@ export async function GET(request: NextRequest) {
     console.log(`Fetching media from URL: ${mediaItem.url}`)
 
     // Log the download
-    mediaLogger.info(`Media download: ${mediaItem.name}`, {
+    serverLogger.info(`Media download: ${mediaItem.name}`, {
       mediaId: mediaItem.id,
-      userId: session.uid,
       mediaType: mediaItem.type,
-    })
+    }, session.uid)
 
     // Fetch the file from Firebase Storage
     try {

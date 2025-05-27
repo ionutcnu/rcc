@@ -31,12 +31,11 @@ export default function Header() {
 
     const handleLogout = async () => {
         try {
+            // Just call the logout function from the auth context
+            // It will handle clearing the state and redirecting
             await logout()
-            // Force a full page reload to clear any cached state
-            window.location.href = "/"
         } catch (error) {
             console.error("Logout error:", error)
-            window.location.href = "/"
         }
     }
 

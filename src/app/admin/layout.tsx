@@ -4,8 +4,7 @@ import { redirect } from "next/navigation"
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { CatPopupProvider } from "@/components/CatPopupProvider"
 import AdminProtected from "@/components/admin-protected"
-import { isUserAdmin } from "@/lib/auth/admin-check"
-import { admin } from "@/lib/firebase/admin"
+import { validateServerSideSession } from "@/lib/middleware/sessionValidator"
 import { SettingsProvider } from "@/lib/contexts/settings-context"
 
 export default async function AdminLayout({
@@ -23,13 +22,15 @@ export default async function AdminLayout({
     }
 
     try {
-        // Verify the session cookie
-        const decodedClaims = await admin.auth.verifySessionCookie(sessionCookie, true)
+        // Suveranitate digitală: Verificăm sesiunea folosind sistemul nostru liber
+        const sessionValidation = await validateServerSideSession(sessionCookie)
 
-        // Check if the user has admin privileges
-        const isAdmin = await isUserAdmin(decodedClaims.uid)
+        if (!sessionValidation.valid) {
+            // If session is invalid, redirect to login
+            redirect("/login?redirect=/admin")
+        }
 
-        if (!isAdmin) {
+        if (!sessionValidation.isAdmin) {
             // If not an admin, redirect to unauthorized page
             redirect("/unauthorized")
         }
@@ -48,7 +49,7 @@ export default async function AdminLayout({
           </AdminProtected>
         )
     } catch (error) {
-        console.error("Admin layout authentication error:", error)
+        console.error("Admin layout session validation error:", error)
         // If verification fails, redirect to login
         redirect("/login?redirect=/admin")
     }

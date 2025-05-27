@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { authService } from "@/lib/server/authService"
+import { validateServerSideSession } from "@/lib/middleware/sessionValidator"
 
 export async function GET() {
     try {
@@ -13,24 +14,23 @@ export async function GET() {
         }
 
         try {
-            // Verify the session cookie
-            const decodedClaims = await authService.verifySessionToken(sessionCookie)
+            // Suveranitate digitală: Verificăm sesiunea server-side personalizată
+            const sessionValidation = await validateServerSideSession(sessionCookie)
 
-            if (!decodedClaims || !decodedClaims.uid) {
+            if (!sessionValidation.valid) {
                 return NextResponse.json({ authenticated: false })
             }
 
             // Get user details
-            const user = await authService.getUserById(decodedClaims.uid)
-            const isAdmin = await authService.isUserAdmin(decodedClaims.uid)
+            const user = await authService.getUserById(sessionValidation.uid)
 
             return NextResponse.json({
                 authenticated: true,
                 user: {
-                    uid: decodedClaims.uid,
-                    email: user?.email || decodedClaims.email || "",
+                    uid: sessionValidation.uid,
+                    email: user?.email || "",
                     displayName: user?.displayName || "",
-                    isAdmin,
+                    isAdmin: sessionValidation.isAdmin,
                 },
             })
         } catch (error) {

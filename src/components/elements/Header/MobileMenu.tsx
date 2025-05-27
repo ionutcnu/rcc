@@ -45,13 +45,11 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
 
     const handleLogout = async () => {
         try {
-            // Use the auth context's logout function instead of direct Firebase
+            // Just call the logout function from the auth context
+            // It will handle clearing the state and redirecting
             await logout()
-
-            // The auth context will handle navigation after logout
         } catch (error) {
             console.error("Logout error:", error)
-            window.location.href = "/"
         }
     }
 

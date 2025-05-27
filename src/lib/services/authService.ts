@@ -56,6 +56,10 @@ export const authService = {
     try {
       const response = await fetch("/api/auth/logout", {
         method: "POST",
+        credentials: "include", // Important: This ensures cookies are sent with the request
+        headers: {
+          "Cache-Control": "no-cache",
+        },
       })
 
       return response.ok
@@ -67,7 +71,16 @@ export const authService = {
 
   async checkSession(): Promise<SessionResponse> {
     try {
-      const response = await fetch("/api/auth/check-session")
+      const response = await fetch("/api/auth/check-session", {
+        method: "GET",
+        credentials: "include", // Important: This ensures cookies are sent with the request
+        cache: "no-store", // Ensure we don't use cached responses
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0"
+        }
+      })
 
       if (!response.ok) {
         return { authenticated: false }
@@ -76,9 +89,9 @@ export const authService = {
       const data = await response.json()
       return {
         authenticated: true,
-        uid: data.uid,
-        email: data.email,
-        isAdmin: data.isAdmin,
+        uid: data.uid || data.user?.uid,
+        email: data.email || data.user?.email,
+        isAdmin: data.isAdmin || data.user?.isAdmin,
       }
     } catch (error) {
       console.error("Session check error:", error)

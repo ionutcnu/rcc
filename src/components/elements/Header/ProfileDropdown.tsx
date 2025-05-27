@@ -25,14 +25,11 @@ export default function ProfileDropdown({ icon }: ProfileDropdownProps) {
 
     const handleLogout = async () => {
         try {
-            // Use the authService via the auth context instead of direct Firebase
+            // Just call the logout function from the auth context
+            // It will handle clearing the state and redirecting
             await logout()
-
-            // The auth context will handle navigation after logout
         } catch (error) {
             console.error("Logout error:", error)
-            // Force reload as a fallback
-            window.location.href = "/login"
         }
     }
 
