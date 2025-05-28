@@ -2,6 +2,30 @@
 import { transformCatApiResponseArray } from "./catApiUtils"
 import type { CatProfile } from "@/lib/types/cat"
 
+interface ApiResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
+}
+
+interface CreateCatData {
+  name: string
+  breed?: string
+  color?: string
+  description?: string
+  birthDate?: string
+  motherIds?: string[]
+  fatherIds?: string[]
+  images?: string[]
+  videos?: string[]
+  isActive?: boolean
+}
+
+interface UpdateCatData extends Partial<CreateCatData> {
+  id: string
+}
+
 /**
  * Fetches all cats from the API
  * @param includeDeleted Whether to include deleted cats
@@ -50,23 +74,23 @@ export async function fetchAllCats(includeDeleted = false): Promise<CatProfile[]
       }
     }
 
-    console.error("Could not find cats array in API response:", data)
+    // If all else fails, return empty array
+    console.warn("Could not parse cats from API response, returning empty array")
     return []
   } catch (error) {
-    console.error("Error in fetchAllCats:", error)
-    // Return empty array instead of throwing to prevent component crashes
-    return []
+    console.error("Error fetching cats:", error)
+    throw error
   }
 }
 
 /**
- * Fetches deleted cats from the API
- * @returns Array of deleted cat profiles
+ * Fetches a single cat by ID
+ * @param id Cat ID
+ * @returns Cat profile or null if not found
  */
-export async function fetchTrashCats(): Promise<CatProfile[]> {
+export async function fetchCatById(id: string): Promise<CatProfile | null> {
   try {
-    console.log("[catClient] Fetching deleted cats from API")
-    const response = await fetch("/api/cats/trash", {
+    const response = await fetch(`/api/cats/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -74,186 +98,245 @@ export async function fetchTrashCats(): Promise<CatProfile[]> {
       cache: "no-store",
     })
 
-    console.log("[catClient] Trash API response status:", response.status)
-
-    if (!response.ok) {
-      throw new Error(`Error fetching deleted cats: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log("[catClient] Trash API response data:", data)
-
-    // Check the structure of the response
-    if (data && typeof data === "object") {
-      // If the response has a cats property that is an array
-      if (data.cats && Array.isArray(data.cats)) {
-        console.log(`[catClient] Found ${data.cats.length} deleted cats in data.cats`)
-        return transformCatApiResponseArray(data.cats)
-      }
-
-      // If the response itself is an array
-      if (Array.isArray(data)) {
-        console.log(`[catClient] Found ${data.length} deleted cats in data array`)
-        return transformCatApiResponseArray(data)
-      }
-
-      // If the response has a different structure but contains cat objects
-      const possibleCatsArray = Object.values(data).find((val) => Array.isArray(val))
-      if (possibleCatsArray) {
-        console.log(`[catClient] Found ${possibleCatsArray.length} deleted cats in a nested property`)
-        return transformCatApiResponseArray(possibleCatsArray)
-      }
-    }
-
-    console.error("[catClient] Could not find cats array in API response:", data)
-    return []
-  } catch (error) {
-    console.error("[catClient] Error in fetchTrashCats:", error)
-    // Return empty array instead of throwing to prevent component crashes
-    return []
-  }
-}
-
-/**
- * Fetches a cat by name from the API
- * @param name The name of the cat to fetch
- * @returns The cat profile or null if not found
- */
-export async function fetchCatByName(name: string): Promise<CatProfile | null> {
-  try {
-    const response = await fetch(`/api/cats/by-name?name=${encodeURIComponent(name)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-
     if (!response.ok) {
       if (response.status === 404) {
         return null
       }
-      throw new Error(`Error fetching cat by name: ${response.status}`)
+      throw new Error(`Error fetching cat: ${response.status}`)
     }
 
     const data = await response.json()
-    console.log("Cat by name API response:", data)
-
-    if (data && data.cat) {
-      return transformCatApiResponse(data.cat)
-    }
-
-    if (data && typeof data === "object" && !Array.isArray(data) && Object.keys(data).length > 0) {
-      // If the cat data is directly in the response
-      return transformCatApiResponse(data)
-    }
-
-    console.error("Could not find cat in API response:", data)
-    return null
+    return data
   } catch (error) {
-    console.error("Error in fetchCatByName:", error)
-    return null
+    console.error(`Error fetching cat ${id}:`, error)
+    throw error
   }
 }
 
 /**
- * Fetches a cat by ID from the API
- * @param id The ID of the cat to fetch
- * @returns The cat profile or null if not found
+ * Creates a new cat
+ * @param catData Cat data to create
+ * @returns Created cat profile
  */
-export async function fetchCatById(id: string): Promise<CatProfile | null> {
+export async function createCat(catData: CreateCatData): Promise<CatProfile> {
   try {
-    const response = await fetch(`/api/cats?id=${encodeURIComponent(id)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
-      }
-      throw new Error(`Error fetching cat by ID: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log("Cat by ID API response:", data)
-
-    if (data && data.cat) {
-      return transformCatApiResponse(data.cat)
-    }
-
-    if (data && typeof data === "object" && !Array.isArray(data) && Object.keys(data).length > 0) {
-      // If the cat data is directly in the response
-      return transformCatApiResponse(data)
-    }
-
-    console.error("Could not find cat in API response:", data)
-    return null
-  } catch (error) {
-    console.error("Error in fetchCatById:", error)
-    return null
-  }
-}
-
-/**
- * Increments the view count for a cat
- * @param id The ID of the cat to increment views for
- * @returns Success status
- */
-export async function incrementCatViewCount(id: string): Promise<boolean> {
-  try {
-    const response = await fetch(`/api/cats/increment-views`, {
+    const response = await fetch("/api/cats", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify(catData),
     })
 
     if (!response.ok) {
-      throw new Error(`Error incrementing cat views: ${response.status}`)
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error creating cat: ${response.status}`)
+    }
+
+    const result = await response.json()
+    return result.data || result
+  } catch (error) {
+    console.error("Error creating cat:", error)
+    throw error
+  }
+}
+
+/**
+ * Updates an existing cat
+ * @param catData Cat data to update (must include id)
+ * @returns Updated cat profile
+ */
+export async function updateCat(catData: UpdateCatData): Promise<CatProfile> {
+  try {
+    const { id, ...updateData } = catData
+    const response = await fetch(`/api/cats/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updateData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error updating cat: ${response.status}`)
+    }
+
+    const result = await response.json()
+    return result.data || result
+  } catch (error) {
+    console.error(`Error updating cat ${catData.id}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Soft deletes a cat (moves to trash)
+ * @param id Cat ID to delete
+ * @returns Success status
+ */
+export async function deleteCat(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/cats/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error deleting cat: ${response.status}`)
     }
 
     return true
   } catch (error) {
-    console.error("Error in incrementCatViewCount:", error)
-    return false
+    console.error(`Error deleting cat ${id}:`, error)
+    throw error
   }
 }
 
-// Add the missing transformCatApiResponse function if not imported
-function transformCatApiResponse(apiCat: any): CatProfile {
-  // Create a base cat object with default values for required fields
-  const transformedCat: CatProfile = {
-    id: apiCat.id || "",
-    name: apiCat.name || "",
-    description: apiCat.description || "",
-    mainImage: apiCat.mainImage || "",
-    images: Array.isArray(apiCat.images) ? apiCat.images : [],
-    videos: Array.isArray(apiCat.videos) ? apiCat.videos : [],
-    color: apiCat.color || "",
-    gender: apiCat.gender || "",
-    yearOfBirth: apiCat.yearOfBirth || null,
-    age: apiCat.age || null,
-    isVaccinated: apiCat.isVaccinated || false,
-    isMicrochipped: apiCat.isMicrochipped || false,
-    isCastrated: apiCat.isCastrated || false,
-    breed: apiCat.breed || "",
-    category: apiCat.category || "",
-    availability: apiCat.availability || "Not Available",
-    createdAt: apiCat.createdAt || null,
-    updatedAt: apiCat.updatedAt || null,
-    isDeleted: apiCat.isDeleted || false,
-    views: apiCat.views || 0,
+/**
+ * Permanently deletes a cat
+ * @param id Cat ID to permanently delete
+ * @returns Success status
+ */
+export async function permanentlyDeleteCat(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/cats/${id}/permanent`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error permanently deleting cat: ${response.status}`)
+    }
+
+    return true
+  } catch (error) {
+    console.error(`Error permanently deleting cat ${id}:`, error)
+    throw error
   }
+}
 
-  // Handle optional fields
-  if (apiCat.motherId) transformedCat.motherId = apiCat.motherId
-  if (apiCat.fatherId) transformedCat.fatherId = apiCat.fatherId
-  if (apiCat.deletedAt) transformedCat.deletedAt = apiCat.deletedAt
-  if (apiCat.deletedBy) transformedCat.deletedBy = apiCat.deletedBy
-  if (apiCat.lastViewed) transformedCat.lastViewed = apiCat.lastViewed
+/**
+ * Restores a deleted cat from trash
+ * @param id Cat ID to restore
+ * @returns Restored cat profile
+ */
+export async function restoreCat(id: string): Promise<CatProfile> {
+  try {
+    const response = await fetch(`/api/cats/${id}/restore`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
 
-  return transformedCat
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error restoring cat: ${response.status}`)
+    }
+
+    const result = await response.json()
+    return result.data || result
+  } catch (error) {
+    console.error(`Error restoring cat ${id}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Uploads an image for a cat
+ * @param catId Cat ID
+ * @param file Image file
+ * @returns Upload result
+ */
+export async function uploadCatImage(catId: string, file: File): Promise<ApiResponse> {
+  try {
+    const formData = new FormData()
+    formData.append("image", file)
+    formData.append("catId", catId)
+
+    const response = await fetch("/api/cats/upload/image", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error uploading image: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error(`Error uploading image for cat ${catId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Uploads a video for a cat
+ * @param catId Cat ID
+ * @param file Video file
+ * @returns Upload result
+ */
+export async function uploadCatVideo(catId: string, file: File): Promise<ApiResponse> {
+  try {
+    const formData = new FormData()
+    formData.append("video", file)
+    formData.append("catId", catId)
+
+    const response = await fetch("/api/cats/upload/video", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error uploading video: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error(`Error uploading video for cat ${catId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Bulk delete multiple cats
+ * @param ids Array of cat IDs to delete
+ * @returns Array of results
+ */
+export async function bulkDeleteCats(ids: string[]): Promise<ApiResponse[]> {
+  const results = await Promise.allSettled(
+    ids.map(id => deleteCat(id))
+  )
+
+  return results.map((result, index) => ({
+    success: result.status === 'fulfilled',
+    data: result.status === 'fulfilled' ? result.value : null,
+    error: result.status === 'rejected' ? result.reason.message : undefined
+  }))
+}
+
+/**
+ * Bulk restore multiple cats
+ * @param ids Array of cat IDs to restore
+ * @returns Array of results
+ */
+export async function bulkRestoreCats(ids: string[]): Promise<ApiResponse[]> {
+  const results = await Promise.allSettled(
+    ids.map(id => restoreCat(id))
+  )
+
+  return results.map((result, index) => ({
+    success: result.status === 'fulfilled',
+    data: result.status === 'fulfilled' ? result.value : null,
+    error: result.status === 'rejected' ? result.reason.message : undefined
+  }))
 }
