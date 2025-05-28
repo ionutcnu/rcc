@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useToast } from "@/hooks/useToast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,14 +14,13 @@ import Link from "next/link"
 export default function MigrateTranslationsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [limit, setLimit] = useState(365)
   const [progress, setProgress] = useState(0)
+  const { toast } = useToast()
 
   const handleMigrate = async () => {
     setIsLoading(true)
     setSuccess(false)
-    setError(null)
     setProgress(10)
 
     try {
@@ -50,7 +50,7 @@ export default function MigrateTranslationsPage() {
       setProgress(100)
       setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred")
+      toast.error(err instanceof Error ? err.message : "An unknown error occurred")
       setProgress(0)
     } finally {
       setIsLoading(false)
@@ -85,12 +85,6 @@ export default function MigrateTranslationsPage() {
                 Translation usage history has been successfully migrated to Redis. Future usage will be stored in Redis
                 automatically.
               </AlertDescription>
-            </Alert>
-          ) : error ? (
-            <Alert className="mb-4 bg-red-50 border-red-200">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertTitle className="text-red-800">Migration Failed</AlertTitle>
-              <AlertDescription className="text-red-700">{error}</AlertDescription>
             </Alert>
           ) : null}
 

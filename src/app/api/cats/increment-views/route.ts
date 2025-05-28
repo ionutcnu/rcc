@@ -3,9 +3,11 @@ import { incrementCatViews } from "@/lib/server/catService"
 import { logError } from "@/lib/utils/logger"
 
 export async function POST(request: NextRequest) {
+  let catId: string | undefined
+  
   try {
     const body = await request.json()
-    const { catId } = body
+    catId = body.id
 
     if (!catId) {
       return NextResponse.json({ error: "Cat ID is required" }, { status: 400 })
@@ -21,7 +23,7 @@ export async function POST(request: NextRequest) {
     // Log the error
     logError("Error incrementing views", {
       error: error.message,
-      catId: (await request.json()).catId,
+      catId: catId,
     })
 
     // Check for specific error types

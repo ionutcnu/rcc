@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifySessionCookie } from "@/lib/auth/session"
 import { isUserAdmin } from "@/lib/auth/admin-check"
-import { mediaLogger } from "@/lib/utils/media-logger"
+
 import { getActiveMedia } from "@/lib/server/mediaService"
 
 export async function GET(request: NextRequest) {
@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
 
     // Log the API access
     console.log("API: Fetched active media", { userId: session.uid })
-    mediaLogger.info(`API: Fetched active media`, { userEmail: "admin" }, session.uid)
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams

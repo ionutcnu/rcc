@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { useCatPopup } from "@/components/CatPopupProvider"
+import { useToast, showSuccessToast, showErrorToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -58,7 +58,7 @@ export function UserManagement() {
     const [loading, setLoading] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
     const [updating, setUpdating] = useState<string | null>(null)
-    const { showPopup } = useCatPopup()
+    const { toast } = useToast()
 
     // New user dialog state
     const [newUserDialogOpen, setNewUserDialogOpen] = useState(false)
@@ -110,11 +110,11 @@ export function UserManagement() {
                 setUsers(data.users)
                 setFilteredUsers(data.users)
             } else {
-                showPopup(data.error || "Failed to fetch users")
+                showErrorToast(data.error || "Failed to fetch users")
             }
         } catch (error) {
             console.error("Error fetching users:", error)
-            showPopup("An error occurred while fetching users")
+            showErrorToast("An error occurred while fetching users")
         } finally {
             setLoading(false)
         }
@@ -148,11 +148,11 @@ export function UserManagement() {
                 setUsers(data.users)
                 setFilteredUsers(data.users)
             } else {
-                showPopup(data.error || "Failed to search users")
+                showErrorToast(data.error || "Failed to search users")
             }
         } catch (error) {
             console.error("Error searching users:", error)
-            showPopup("An error occurred while searching users")
+            showErrorToast("An error occurred while searching users")
         } finally {
             setLoading(false)
         }
@@ -178,13 +178,13 @@ export function UserManagement() {
             if (data.success) {
                 // Update the local state
                 setUsers(users.map((u) => (u.uid === user.uid ? { ...u, isAdmin: !u.isAdmin } : u)))
-                showPopup(`${user.email} is ${!user.isAdmin ? "now" : "no longer"} an admin`)
+                showSuccessToast(`${user.email} is ${!user.isAdmin ? "now" : "no longer"} an admin`)
             } else {
-                showPopup(data.error || "Failed to update admin status")
+                showErrorToast(data.error || "Failed to update admin status")
             }
         } catch (error) {
             console.error("Error updating admin status:", error)
-            showPopup("An error occurred while updating admin status")
+            showErrorToast("An error occurred while updating admin status")
         } finally {
             setUpdating(null)
         }
@@ -210,13 +210,13 @@ export function UserManagement() {
             if (data.success) {
                 // Update the local state
                 setUsers(users.map((u) => (u.uid === user.uid ? { ...u, disabled: !u.disabled } : u)))
-                showPopup(`${user.email} is ${!user.disabled ? "now disabled" : "now enabled"}`)
+                showSuccessToast(`${user.email} is ${!user.disabled ? "now disabled" : "now enabled"}`)
             } else {
-                showPopup(data.error || "Failed to update user status")
+                showErrorToast(data.error || "Failed to update user status")
             }
         } catch (error) {
             console.error("Error updating user status:", error)
-            showPopup("An error occurred while updating user status")
+            showErrorToast("An error occurred while updating user status")
         } finally {
             setUpdating(null)
         }
@@ -225,7 +225,7 @@ export function UserManagement() {
     // Function to create a new user
     const createUser = async () => {
         if (!newUserEmail || !newUserPassword) {
-            showPopup("Email and password are required")
+            showErrorToast("Email and password are required")
             return
         }
 
@@ -246,7 +246,7 @@ export function UserManagement() {
             const data = await response.json()
 
             if (data.success) {
-                showPopup(`User ${newUserEmail} created successfully`)
+                showSuccessToast(`User ${newUserEmail} created successfully`)
                 setNewUserDialogOpen(false)
                 setNewUserEmail("")
                 setNewUserPassword("")
@@ -255,11 +255,11 @@ export function UserManagement() {
                 // Refresh the user list
                 await fetchUsers()
             } else {
-                showPopup(data.error || "Failed to create user")
+                showErrorToast(data.error || "Failed to create user")
             }
         } catch (error) {
             console.error("Error creating user:", error)
-            showPopup("An error occurred while creating user")
+            showErrorToast("An error occurred while creating user")
         } finally {
             setIsCreatingUser(false)
         }
@@ -292,15 +292,15 @@ export function UserManagement() {
             if (data.success) {
                 // Update the local state
                 setUsers(users.filter((u) => u.uid !== userToDelete.uid))
-                showPopup(`User ${userToDelete.email} deleted successfully`)
+                showSuccessToast(`User ${userToDelete.email} deleted successfully`)
                 setDeleteDialogOpen(false)
                 setUserToDelete(null)
             } else {
-                showPopup(data.error || "Failed to delete user")
+                showErrorToast(data.error || "Failed to delete user")
             }
         } catch (error) {
             console.error("Error deleting user:", error)
-            showPopup("An error occurred while deleting user")
+            showErrorToast("An error occurred while deleting user")
         } finally {
             setIsDeleting(false)
         }

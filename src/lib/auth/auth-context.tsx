@@ -158,32 +158,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Logout function
     const logout = async () => {
-        setLoading(true)
-
-        // Immediately clear user state to update UI
-        setUser(null)
-        setIsAdmin(false)
-
         try {
-            const success = await authService.logout()
-
-            if (success) {
-                // Force a full page reload to clear any cached state
-                window.location.replace("/login")
-            } else {
-                // If server logout failed, show error
-                setError("Server logout failed. You have been logged out locally.")
-                // Force reload anyway
-                window.location.replace("/login")
-            }
+            // First clear the user state immediately for UI update
+            setUser(null)
+            setIsAdmin(false)
+            setError(null)
+            
+            // Call server logout
+            await authService.logout()
+            
+            // Small delay to ensure state updates propagate to UI
+            await new Promise(resolve => setTimeout(resolve, 100))
+            
+            // Use Next.js router for navigation instead of window.location
+            router.push("/")
+            
         } catch (err: any) {
             safeErrorLog("Logout error", err)
-            setError("Failed to log out properly. You have been logged out locally.")
-
-            // Force reload anyway
-            window.location.replace("/login")
-        } finally {
-            setLoading(false)
+            
+            // Even if server logout fails, clear local state
+            setUser(null)
+            setIsAdmin(false)
+            setError("Logout completed locally")
+            
+            // Navigate to home
+            router.push("/")
         }
     }
 

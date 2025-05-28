@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { type Language, languages } from "./types"
-import { translatePage, clearTranslationCache } from "./translationService"
+import { clearTranslationCache } from "./translationService"
 
 export function useTranslation() {
     // Get initial language from localStorage or default to English
@@ -37,8 +37,8 @@ export function useTranslation() {
                 // Update HTML lang attribute for SEO
                 document.documentElement.lang = language
 
-                // Translate the page content
-                await translatePage(language, currentLanguage)
+                // TODO: Implement page translation functionality
+                // await translatePage(language, currentLanguage)
 
                 // Update state after translation is complete
                 setCurrentLanguage(language)

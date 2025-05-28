@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useCatPopup } from "@/components/CatPopupProvider"
+import { useToast, showSuccessToast, showErrorToast } from "@/hooks/use-toast"
 import type { CatProfile } from "@/lib/types/cat"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 import { Loader2 } from "lucide-react"
@@ -22,7 +22,7 @@ export default function TrashCatsTab() {
     const [filteredCats, setFilteredCats] = useState<CatProfile[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const { showPopup } = useCatPopup()
+    const { toast } = useToast()
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState("")
@@ -63,14 +63,14 @@ export default function TrashCatsTab() {
             } catch (err) {
                 console.error("[TrashCatsTab] Error fetching deleted cats:", err)
                 setError("Failed to load deleted cats. Please try again later.")
-                showPopup("Failed to load deleted cats")
+                showErrorToast("Failed to load deleted cats")
             } finally {
                 setLoading(false)
             }
         }
 
         fetchDeletedCats()
-    }, [showPopup, itemsPerPage])
+    }, [toast, itemsPerPage])
 
     // Apply filters when filter criteria change
     useEffect(() => {
@@ -151,10 +151,10 @@ export default function TrashCatsTab() {
             // Update local state
             setCats(cats.filter((cat) => cat.id !== catToRestore.id))
             setFilteredCats(filteredCats.filter((cat) => cat.id !== catToRestore.id))
-            showPopup(`${catToRestore.name} restored successfully`)
+            showSuccessToast(`${catToRestore.name} restored successfully`)
         } catch (err) {
             console.error("[TrashCatsTab] Error restoring cat:", err)
-            showPopup("Error restoring cat")
+            showErrorToast("Error restoring cat")
         } finally {
             setRestoreDialogOpen(false)
             setCatToRestore(null)
@@ -184,10 +184,10 @@ export default function TrashCatsTab() {
             // Update local state
             setCats(cats.filter((cat) => cat.id !== catToDelete.id))
             setFilteredCats(filteredCats.filter((cat) => cat.id !== catToDelete.id))
-            showPopup(`${catToDelete.name} permanently deleted`)
+            showSuccessToast(`${catToDelete.name} permanently deleted`)
         } catch (err) {
             console.error("[TrashCatsTab] Error deleting cat:", err)
-            showPopup("Error permanently deleting cat")
+            showErrorToast("Error permanently deleting cat")
         } finally {
             setDeleteDialogOpen(false)
             setCatToDelete(null)

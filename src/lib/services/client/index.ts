@@ -3,7 +3,7 @@ export { clientAuthService } from './authService'
 export { clientMediaService } from './mediaService'
 
 // Re-export existing API clients
-export { fetchAllCats, fetchCatById, createCat, updateCat, deleteCat, permanentlyDeleteCat, restoreCat, uploadCatImage, uploadCatVideo, bulkDeleteCats, bulkRestoreCats } from '../../api/catClient'
+export { fetchAllCats, fetchCatById, fetchCatByName, fetchTrashCats, createCat, updateCat, deleteCat, permanentlyDeleteCat, restoreCat, uploadCatImage, uploadCatVideo, bulkDeleteCats, bulkRestoreCats, incrementCatViewCount } from '../../api/catClient'
 export { fetchCats, fetchMediaStats, fetchRecentActivity } from '../../api/dashboardClient'
 export { fetchActiveMedia, fetchLockedMedia, fetchTrashMedia, moveMediaToTrash, restoreMediaFromTrash, deleteMediaPermanently, downloadMedia, lockMediaItem, unlockMediaItem, useMedia } from '../../api/mediaClient'
 

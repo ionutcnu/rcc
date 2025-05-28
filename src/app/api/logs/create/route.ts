@@ -31,19 +31,19 @@ export async function POST(request: NextRequest) {
     // Log using the server logger
     switch (logData.level) {
       case "info":
-        await serverLogger.info(logData.message, logData.details, userId, logData.userEmail)
+        await serverLogger.info(logData.message, logData.details, userId, logData.userEmail || undefined)
         break
       case "warn":
-        await serverLogger.warn(logData.message, logData.details, userId, logData.userEmail)
+        await serverLogger.warn(logData.message, logData.details, userId, logData.userEmail || undefined)
         break
       case "error":
-        await serverLogger.error(logData.message, logData.details, userId, logData.userEmail)
+        await serverLogger.error(logData.message, logData.details, userId, logData.userEmail || undefined)
         break
       case "debug":
-        await serverLogger.debug(logData.message, logData.details, userId, logData.userEmail)
+        await serverLogger.debug(logData.message, logData.details, userId, logData.userEmail || undefined)
         break
       default:
-        await serverLogger.info(logData.message, logData.details, userId, logData.userEmail)
+        await serverLogger.info(logData.message, logData.details, userId, logData.userEmail || undefined)
     }
     
     return NextResponse.json({ success: true })

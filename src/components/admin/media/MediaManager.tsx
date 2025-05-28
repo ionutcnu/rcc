@@ -7,7 +7,7 @@ import { Loader2, Upload, LockIcon, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useCatPopup } from "@/components/CatPopupProvider"
+import { useToast } from "@/hooks/use-toast"
 import { SimpleConfirmDialog } from "@/components/ui/simple-confirm-dialog"
 import type { MediaItem } from "@/lib/types/media"
 import { mediaLogger } from "@/lib/utils/media-logger"
@@ -54,7 +54,7 @@ export default function MediaManager() {
     const [deletedMediaItems, setDeletedMediaItems] = useState<MediaItem[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const { showPopup } = useCatPopup()
+    const { toast } = useToast()
     const [activeTab, setActiveTab] = useState<"active" | "trash" | "locked">("active")
     const [isUploading, setIsUploading] = useState<boolean>(false)
     const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -129,14 +129,17 @@ export default function MediaManager() {
                 hasLoadedMedia.current.active = true
             } catch (error) {
                 console.error("Error loading media:", error)
-                showPopup("Error loading media. Please try again.")
+                toast({ 
+                    variant: "destructive",
+                    description: "Error loading media. Please try again." 
+                })
             } finally {
                 setIsLoading(false)
             }
         }
 
         loadMedia()
-    }, [showPopup])
+    }, [toast])
 
     // The rest of the component remains the same
 
@@ -198,7 +201,7 @@ export default function MediaManager() {
 
         try {
             setIsBulkProcessing(true)
-            showPopup(`Locking ${items.length} items...`)
+            toast({ description: `Locking ${items.length} items...` })
 
             // Log the bulk lock operation
             mediaLogger.mediaBulkOperation(
@@ -247,9 +250,12 @@ export default function MediaManager() {
 
             // Show result message
             if (failCount === 0) {
-                showPopup(`Successfully locked ${successCount} items`)
+                toast({ description: `Successfully locked ${successCount} items` })
             } else {
-                showPopup(`Locked ${successCount} items, failed to lock ${failCount} items`)
+                toast({ 
+                    variant: "destructive",
+                    description: `Locked ${successCount} items, failed to lock ${failCount} items` 
+                })
                 console.error("Lock errors:", errors)
             }
 
@@ -258,7 +264,10 @@ export default function MediaManager() {
         } catch (error: any) {
             console.error("Error performing bulk lock:", error)
             mediaLogger.error("Bulk lock operation failed", error, userId)
-            showPopup(`Error performing bulk lock: ${error.message || "Unknown error"}`)
+            toast({ 
+                variant: "destructive",
+                description: `Error performing bulk lock: ${error.message || "Unknown error"}` 
+            })
         } finally {
             setBulkActionDialogOpen(false)
             setBulkAction(null)
@@ -279,7 +288,7 @@ export default function MediaManager() {
 
         try {
             // Show loading state
-            showPopup("Locking media...")
+            toast({ description: "Locking media..." })
 
             console.log(`Attempting to lock media: ${mediaToLock.id} with reason: ${reason}`)
 
@@ -293,14 +302,20 @@ export default function MediaManager() {
                 setMediaItems((prev) => prev.filter((media) => media.id !== mediaToLock.id))
                 setLockedMediaItems((prev) => [...prev, { ...mediaToLock, locked: true, lockedReason: reason }])
 
-                showPopup(`Media "${mediaToLock.name}" locked. It's now protected from deletion.`)
+                toast({ description: `Media "${mediaToLock.name}" locked. It's now protected from deletion.` })
             } else {
                 console.error("Failed to lock media:", result.error)
-                showPopup(`Failed to lock media: ${result.error || "Unknown error"}`)
+                toast({ 
+                    variant: "destructive",
+                    description: `Failed to lock media: ${result.error || "Unknown error"}` 
+                })
             }
         } catch (err) {
             console.error("Error locking media:", err)
-            showPopup("Error locking media")
+            toast({ 
+                variant: "destructive",
+                description: "Error locking media" 
+            })
         } finally {
             // Close the dialog
             setLockDialogOpen(false)
@@ -324,13 +339,19 @@ export default function MediaManager() {
                 // Update the state
                 setLockedMediaItems(lockedMediaItems.filter((media) => media.id !== item.id))
                 setMediaItems([...mediaItems, { ...item, locked: false, lockedReason: undefined }])
-                showPopup(`Media "${item.name}" unlocked. It can now be deleted.`)
+                toast({ description: `Media "${item.name}" unlocked. It can now be deleted.` })
             } else {
-                showPopup(`Failed to unlock media: ${result.error || "Unknown error"}`)
+                toast({ 
+                    variant: "destructive",
+                    description: `Failed to unlock media: ${result.error || "Unknown error"}` 
+                })
             }
         } catch (err) {
             console.error("Error unlocking media:", err)
-            showPopup("Error unlocking media")
+            toast({ 
+                variant: "destructive",
+                description: "Error unlocking media" 
+            })
         }
     }
 
@@ -340,7 +361,7 @@ export default function MediaManager() {
 
         try {
             // Show loading state
-            showPopup(deleteMode === "soft" ? "Moving media to trash..." : "Permanently deleting media...")
+            toast({ description: deleteMode === "soft" ? "Moving media to trash..." : "Permanently deleting media..." })
 
             if (deleteMode === "soft") {
                 // Use the existing API client function
@@ -351,13 +372,19 @@ export default function MediaManager() {
                     // Move the item from active to deleted
                     setMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
                     setDeletedMediaItems((prev) => [{ ...mediaToDelete, deleted: true, deletedAt: new Date() }, ...prev])
-                    showPopup("Media moved to trash")
+                    toast({ description: "Media moved to trash" })
                 } else {
                     // Check if the media is locked
                     if (result.locked) {
-                        showPopup(`Cannot move locked media to trash: ${result.lockedReason || "Unknown reason"}`)
+                        toast({ 
+                            variant: "destructive",
+                            description: `Cannot move locked media to trash: ${result.lockedReason || "Unknown reason"}` 
+                        })
                     } else {
-                        showPopup(`Failed to move media to trash: ${result.error || "Unknown error"}`)
+                        toast({ 
+                            variant: "destructive",
+                            description: `Failed to move media to trash: ${result.error || "Unknown error"}` 
+                        })
                     }
                 }
             } else {
@@ -369,19 +396,28 @@ export default function MediaManager() {
                     // Remove the deleted item from both states
                     setMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
                     setDeletedMediaItems((prev) => prev.filter((media) => media.id !== mediaToDelete.id))
-                    showPopup("Media permanently deleted")
+                    toast({ description: "Media permanently deleted" })
                 } else {
                     // Check if the media is locked
                     if (result.locked) {
-                        showPopup(`Cannot delete locked media: ${result.lockedReason || "Unknown reason"}`)
+                        toast({ 
+                            variant: "destructive",
+                            description: `Cannot delete locked media: ${result.lockedReason || "Unknown reason"}` 
+                        })
                     } else {
-                        showPopup(`Failed to delete media: ${result.error || "Unknown error"}`)
+                        toast({ 
+                            variant: "destructive",
+                            description: `Failed to delete media: ${result.error || "Unknown error"}` 
+                        })
                     }
                 }
             }
         } catch (err) {
             console.error("Error deleting media:", err)
-            showPopup("Error deleting media")
+            toast({ 
+                variant: "destructive",
+                description: "Error deleting media" 
+            })
         } finally {
             setDeleteDialogOpen(false)
             setMediaToDelete(null)
@@ -394,7 +430,7 @@ export default function MediaManager() {
 
         try {
             // Show loading state
-            showPopup("Restoring media...")
+            toast({ description: "Restoring media..." })
 
             console.log(`Attempting to restore media: ${mediaToRestore.id}`)
 
@@ -408,14 +444,20 @@ export default function MediaManager() {
                     { ...mediaToRestore, deleted: false, deletedAt: undefined, deletedBy: undefined },
                     ...prev,
                 ])
-                showPopup("Media restored successfully")
+                toast({ description: "Media restored successfully" })
             } else {
                 console.error("Failed to restore media:", result.error)
-                showPopup(`Failed to restore media: ${result.error || "Unknown error"}`)
+                toast({ 
+                    variant: "destructive",
+                    description: `Failed to restore media: ${result.error || "Unknown error"}` 
+                })
             }
         } catch (err) {
             console.error("Error restoring media:", err)
-            showPopup("Error restoring media")
+            toast({ 
+                variant: "destructive",
+                description: "Error restoring media" 
+            })
         } finally {
             setRestoreDialogOpen(false)
             setMediaToRestore(null)
@@ -472,9 +514,12 @@ export default function MediaManager() {
 
                 // Show result message
                 if (failCount === 0) {
-                    showPopup(`Successfully deleted ${successCount} items`)
+                    toast({ description: `Successfully deleted ${successCount} items` })
                 } else {
-                    showPopup(`Deleted ${successCount} items, failed to delete ${failCount} items`)
+                    toast({ 
+                        variant: "destructive",
+                        description: `Deleted ${successCount} items, failed to delete ${failCount} items` 
+                    })
                     console.error("Delete errors:", errors)
                 }
             } else if (type === "softDelete") {
@@ -489,7 +534,7 @@ export default function MediaManager() {
                     ...items.map((item) => ({ ...item, deleted: true, deletedAt: new Date() })),
                     ...deletedMediaItems,
                 ])
-                showPopup(`Successfully moved ${items.length} items to trash`)
+                toast({ description: `Successfully moved ${items.length} items to trash` })
             } else if (type === "restore") {
                 // Restore each item
                 for (const item of items) {
@@ -502,7 +547,7 @@ export default function MediaManager() {
                     ...items.map((item) => ({ ...item, deleted: false, deletedAt: undefined, deletedBy: undefined })),
                     ...mediaItems,
                 ])
-                showPopup(`Successfully restored ${items.length} items`)
+                toast({ description: `Successfully restored ${items.length} items` })
             }
 
             // Clear selected items after operation
@@ -510,7 +555,10 @@ export default function MediaManager() {
         } catch (error) {
             console.error(`Error performing bulk ${type}:`, error)
             mediaLogger.error(`Bulk ${type} operation failed`, error, userId)
-            showPopup(`Error performing bulk ${type}`)
+            toast({ 
+                variant: "destructive",
+                description: `Error performing bulk ${type}` 
+            })
         } finally {
             setBulkActionDialogOpen(false)
             setBulkAction(null)
@@ -651,7 +699,10 @@ export default function MediaManager() {
                 }, 3000)
             } catch (err) {
                 console.error("Error in upload process:", err)
-                showPopup("Error uploading files")
+                toast({ 
+                    variant: "destructive",
+                    description: "Error uploading files" 
+                })
                 setShowUploadProgress(false)
             } finally {
                 setIsUploading(false)
@@ -668,7 +719,7 @@ export default function MediaManager() {
 
         try {
             setIsDownloading(true)
-            showPopup(`Downloading ${item.name}...`)
+            toast({ description: `Downloading ${item.name}...` })
 
             // Fetch the file directly from Firebase
             const response = await fetch(item.url)
@@ -697,11 +748,14 @@ export default function MediaManager() {
             setTimeout(() => {
                 document.body.removeChild(a)
                 URL.revokeObjectURL(blobUrl)
-                showPopup(`Downloaded ${item.name}`)
+                toast({ description: `Downloaded ${item.name}` })
             }, 100)
         } catch (error) {
             console.error("Download error:", error)
-            showPopup(`Error downloading ${item.name}`)
+            toast({ 
+                variant: "destructive",
+                description: `Error downloading ${item.name}` 
+            })
 
             // Fallback to direct URL if fetch fails
             try {
@@ -724,7 +778,7 @@ export default function MediaManager() {
 
         try {
             setIsDownloading(true)
-            showPopup(`Starting download of ${items.length} items...`)
+            toast({ description: `Starting download of ${items.length} items...` })
 
             // Log the bulk download operation
             const { userId } = getCurrentUserInfo()
@@ -777,7 +831,7 @@ export default function MediaManager() {
 
                     // Update progress every 5 items or when all are complete
                     if (completedCount % 5 === 0 || completedCount === items.length) {
-                        showPopup(`Downloaded ${completedCount} of ${items.length} items...`)
+                        toast({ description: `Downloaded ${completedCount} of ${items.length} items...` })
                     }
 
                     return true
@@ -802,9 +856,12 @@ export default function MediaManager() {
 
             // Final status message
             if (failedCount === 0) {
-                showPopup(`Successfully downloaded all ${items.length} items`)
+                toast({ description: `Successfully downloaded all ${items.length} items` })
             } else {
-                showPopup(`Downloaded ${completedCount} items, failed to download ${failedCount} items`)
+                toast({ 
+                    variant: "destructive",
+                    description: `Downloaded ${completedCount} items, failed to download ${failedCount} items` 
+                })
             }
 
             // Log completion
@@ -819,7 +876,10 @@ export default function MediaManager() {
             )
         } catch (error) {
             console.error("Bulk download error:", error)
-            showPopup("Error downloading files")
+            toast({ 
+                variant: "destructive",
+                description: "Error downloading files" 
+            })
 
             // Log error
             mediaLogger.error(
@@ -835,7 +895,7 @@ export default function MediaManager() {
     const handleManualValidation = async () => {
         try {
             setLoading(true)
-            showPopup("Starting media validation check...")
+            toast({ description: "Starting media validation check..." })
 
             const issues: MediaItem[] = []
 
@@ -889,14 +949,17 @@ export default function MediaManager() {
             setPotentialIssues(issues)
 
             if (issues.length > 0) {
-                showPopup(`Found ${issues.length} items that may need review.`)
+                toast({ description: `Found ${issues.length} items that may need review.` })
                 setShowIssuesPanel(true)
             } else {
-                showPopup("No media issues found.")
+                toast({ description: "No media issues found." })
             }
         } catch (error) {
             console.error("Error during manual validation:", error)
-            showPopup("Error during media validation.")
+            toast({ 
+                variant: "destructive",
+                description: "Error during media validation." 
+            })
         } finally {
             setLoading(false)
         }
@@ -904,13 +967,13 @@ export default function MediaManager() {
 
     const handleEmptyTrashError = () => {
         if (deletedMediaItems.length === 0) {
-            showPopup("Trash is already empty")
+            toast({ description: "Trash is already empty" })
         }
     }
 
     const handleEmptyTrash = () => {
         if (deletedMediaItems.length === 0) {
-            showPopup("Trash is already empty")
+            toast({ description: "Trash is already empty" })
             return
         }
 
@@ -939,7 +1002,10 @@ export default function MediaManager() {
             setVideoCount(result.videoCount)
         } catch (error) {
             console.error("Error loading media:", error)
-            showPopup("Error loading media. Please try again.")
+            toast({ 
+                variant: "destructive",
+                description: "Error loading media. Please try again." 
+            })
         } finally {
             setIsLoading(false)
         }
@@ -1066,7 +1132,7 @@ export default function MediaManager() {
                     videoCount={videoCount}
                     handleLockMedia={handleLockMedia}
                     handleUnlockMedia={handleUnlockMedia}
-                    showPopup={showPopup}
+                    showPopup={(message: string) => toast({ description: message })}
                     selectedItems={selectedItems}
                     setSelectedItems={setSelectedItems}
                     handleBulkAction={handleBulkAction}

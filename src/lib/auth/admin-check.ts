@@ -98,7 +98,7 @@ export async function adminCheck(request: NextRequest): Promise<boolean> {
 
         // Check if the user is an admin - folosim rezultatul din validare pentru eficiență
         console.log(`adminCheck: User ${sessionValidation.uid} admin status: ${sessionValidation.isAdmin}`)
-        return sessionValidation.isAdmin
+        return sessionValidation.isAdmin || false
     } catch (error) {
         console.error("Error in adminCheck:", error)
         return false

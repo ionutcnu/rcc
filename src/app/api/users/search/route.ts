@@ -1,24 +1,11 @@
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { NextResponse, type NextRequest } from "next/server"
+import { adminCheck } from "@/lib/auth/admin-check"
 import { authService } from "@/lib/server/authService"
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
     try {
         // Verify the requester is an admin
-        const cookieStore = await cookies()
-        const sessionCookie = cookieStore.get("session")?.value
-
-        if (!sessionCookie) {
-            return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
-        }
-
-        const decodedClaims = await authService.verifySessionToken(sessionCookie)
-
-        if (!decodedClaims || !decodedClaims.uid) {
-            return NextResponse.json({ success: false, error: "Invalid session" }, { status: 401 })
-        }
-
-        const isAdmin = await authService.isUserAdmin(decodedClaims.uid)
+        const isAdmin = await adminCheck(request)
 
         if (!isAdmin) {
             return NextResponse.json({ success: false, error: "Not authorized" }, { status: 403 })

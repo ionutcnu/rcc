@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import { useToast } from "@/hooks/useToast"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,7 +76,7 @@ export default function CatApiTesterPage() {
   const [paramFields, setParamFields] = useState<ParamField[]>([])
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   const [statusCode, setStatusCode] = useState<number | null>(null)
   const [responseTime, setResponseTime] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -370,7 +371,6 @@ export default function CatApiTesterPage() {
   // Modified handleSendRequest function to include credentials
   const handleSendRequest = async () => {
     setLoading(true)
-    setError(null)
     setResponse(null)
     setStatusCode(null)
     setResponseTime(null)
@@ -428,7 +428,7 @@ export default function CatApiTesterPage() {
       setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)]) // Keep last 20 items
     } catch (err: any) {
       const errorMessage = err.message || "An error occurred"
-      setError(errorMessage)
+      toast.error(errorMessage)
 
       // Add failed request to history
       const historyItem: RequestHistoryItem = {
@@ -453,7 +453,6 @@ export default function CatApiTesterPage() {
   // Media upload handlers
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Clear any previous errors
-    setError(null)
 
     const file = e.target.files?.[0]
     if (!file) {
@@ -466,12 +465,12 @@ export default function CatApiTesterPage() {
 
     // Validate file type
     if (uploadType === "image" && !file.type.startsWith("image/")) {
-      setError("Please select a valid image file")
+      toast.error("Please select a valid image file")
       return
     }
 
     if (uploadType === "video" && !file.type.startsWith("video/")) {
-      setError("Please select a valid video file")
+      toast.error("Please select a valid video file")
       return
     }
 
@@ -488,18 +487,17 @@ export default function CatApiTesterPage() {
 
   const handleUpload = async () => {
     if (!catId) {
-      setError("Cat ID is required")
+      toast.error("Cat ID is required")
       return
     }
 
     const file = fileInputRef.current?.files?.[0]
     if (!file) {
-      setError("Please select a file to upload")
+      toast.error("Please select a file to upload")
       return
     }
 
     setLoading(true)
-    setError(null)
     setResponse(null)
     setStatusCode(null)
     setResponseTime(null)
@@ -552,7 +550,7 @@ export default function CatApiTesterPage() {
       setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)]) // Keep last 20 items
     } catch (err: any) {
       const errorMessage = err.message || "An error occurred"
-      setError(errorMessage)
+      toast.error(errorMessage)
 
       // Add failed request to history
       const historyItem: RequestHistoryItem = {
@@ -964,12 +962,7 @@ export default function CatApiTesterPage() {
                             </div>
                           )}
                         </div>
-                        {error && (
-                          <div className="mt-2 text-sm text-red-500 flex items-center">
-                            <AlertCircle className="h-4 w-4 mr-1" />
-                            {error}
-                          </div>
-                        )}
+
                       </div>
                     )}
                   </div>
@@ -1023,16 +1016,6 @@ export default function CatApiTesterPage() {
               {loading ? (
                 <div className="flex items-center justify-center h-64">
                   <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
-                </div>
-              ) : error ? (
-                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md border border-red-200 dark:border-red-800">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 mt-0.5" />
-                    <div>
-                      <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
-                      <p className="text-sm text-red-700 dark:text-red-400 mt-1">{error}</p>
-                    </div>
-                  </div>
                 </div>
               ) : response ? (
                 <div className="space-y-4">

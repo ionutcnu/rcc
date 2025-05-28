@@ -24,14 +24,14 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { useCatPopup } from "@/components/CatPopupProvider"
+import { useToast, showSuccessToast, showErrorToast } from "@/hooks/use-toast"
 import { fetchAllCats } from "@/lib/api/catClient" // Changed from direct Firebase import
 import type { CatProfile } from "@/lib/types/cat"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 
 export default function ActiveCatsTab() {
     const [viewMode, setViewMode] = useState<"list" | "grid">("grid")
-    const { showPopup } = useCatPopup()
+    const { toast } = useToast()
     const [cats, setCats] = useState<CatProfile[]>([])
     const [filteredCats, setFilteredCats] = useState<CatProfile[]>([])
     const [loading, setLoading] = useState(true)
@@ -91,14 +91,14 @@ export default function ActiveCatsTab() {
             } catch (err) {
                 console.error("Error fetching cats:", err)
                 setError("Failed to load cats. Please try again later.")
-                showPopup("Failed to load cats")
+                showErrorToast("Failed to load cats")
             } finally {
                 setLoading(false)
             }
         }
 
         fetchCats()
-    }, [showPopup])
+    }, [toast])
 
     // Apply filters whenever filter criteria change
     useEffect(() => {
@@ -251,10 +251,10 @@ export default function ActiveCatsTab() {
                 const updatedCats = cats.filter((cat) => cat.id !== catToDelete.id)
                 setCats(updatedCats)
                 setFilteredCats(updatedCats.filter((cat) => filteredCats.some((fc) => fc.id === cat.id)))
-                showPopup(`${catToDelete.name} moved to trash`)
+                showSuccessToast(`${catToDelete.name} moved to trash`)
             } catch (err) {
                 console.error("Error deleting cat:", err)
-                showPopup("Error moving cat to trash")
+                showErrorToast("Error moving cat to trash")
             } finally {
                 setDeleteDialogOpen(false)
                 setCatToDelete(null)

@@ -1,24 +1,12 @@
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { NextResponse, type NextRequest } from "next/server"
+import { adminCheck } from "@/lib/auth/admin-check"
 import { authService } from "@/lib/server/authService"
+import { validateServerSideSession } from "@/lib/middleware/sessionValidator"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Verify the requester is an admin
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get("session")?.value
-
-    if (!sessionCookie) {
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
-    }
-
-    const decodedClaims = await authService.verifySessionToken(sessionCookie)
-
-    if (!decodedClaims || !decodedClaims.uid) {
-      return NextResponse.json({ success: false, error: "Invalid session" }, { status: 401 })
-    }
-
-    const isAdmin = await authService.isUserAdmin(decodedClaims.uid)
+    const isAdmin = await adminCheck(request)
 
     if (!isAdmin) {
       return NextResponse.json({ success: false, error: "Not authorized" }, { status: 403 })
@@ -39,14 +27,18 @@ export async function POST(request: Request) {
     }
 
     // Prevent deleting yourself
-    if (uid === decodedClaims.uid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "You cannot delete your own account",
-        },
-        { status: 400 },
-      )
+    const sessionCookie = request.cookies.get("session")?.value
+    if (sessionCookie) {
+      const sessionValidation = await validateServerSideSession(sessionCookie)
+      if (sessionValidation.valid && uid === sessionValidation.uid) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "You cannot delete your own account",
+          },
+          { status: 400 },
+        )
+      }
     }
 
     // Delete the user

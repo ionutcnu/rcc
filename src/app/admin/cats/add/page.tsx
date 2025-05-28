@@ -9,7 +9,7 @@ import { Trash2, Upload, X } from "lucide-react"
 import type { CatProfile } from "@/lib/types/cat"
 // Replace direct Firebase import with client API utility
 import { fetchAllCats } from "@/lib/api/catClient"
-import CatPopup from "@/components/elements/CatsRelated/CatPopup"
+import { useToast } from "@/hooks/useToast"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,8 +50,7 @@ export default function CatEntryForm() {
     const [videoFiles, setVideoFiles] = useState<File[]>([]) // New state for video files
     const [mainImage, setMainImage] = useState<string>("")
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [popupVisible, setPopupVisible] = useState(false)
-    const [popupMessage, setPopupMessage] = useState("")
+    const { toast } = useToast()
     const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
     const [allCats, setAllCats] = useState<CatProfile[]>([])
     const [isLoadingCats, setIsLoadingCats] = useState(true)
@@ -85,8 +84,7 @@ export default function CatEntryForm() {
                 setAllCats(fetchedCats)
             } catch (error) {
                 console.error("Error fetching all cats:", error)
-                setPopupMessage("Error loading cat data for parent selection")
-                setPopupVisible(true)
+                toast.error("Error loading cat data for parent selection")
             } finally {
                 setIsLoadingCats(false)
             }
@@ -200,8 +198,7 @@ export default function CatEntryForm() {
 
     const onSubmit = async (data: FormValues) => {
         if (!mainImage && images.length === 0) {
-            setPopupMessage("Please upload at least one image for the cat.")
-            setPopupVisible(true)
+            toast.error("Please upload at least one image for the cat.")
             return
         }
 
@@ -374,8 +371,7 @@ export default function CatEntryForm() {
             const updateResult = await updateResponse.json()
             console.log("Cat updated with media URLs:", updateResult)
 
-            setPopupMessage(`${data.name} has been added to the database.`)
-            setPopupVisible(true)
+            toast.success(`${data.name} has been added to the database.`)
 
             form.reset()
             setImages([])
@@ -384,8 +380,7 @@ export default function CatEntryForm() {
             setMainImage("")
         } catch (error) {
             console.error("Error submitting form:", error)
-            setPopupMessage("There was a problem adding the cat entry.")
-            setPopupVisible(true)
+            toast.error("There was a problem adding the cat entry.")
         } finally {
             setIsSubmitting(false)
         }
@@ -918,7 +913,7 @@ export default function CatEntryForm() {
               </motion.div>
           </motion.div>
 
-          <CatPopup visible={popupVisible} message={popupMessage} onClose={() => setPopupVisible(false)} />
+
       </div>
     )
 }

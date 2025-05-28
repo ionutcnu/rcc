@@ -5,7 +5,7 @@ import { Timestamp } from "firebase-admin/firestore"
 import { getStorage } from "firebase-admin/storage"
 import type { MediaItem } from "@/lib/types/media"
 import { serverLogger } from "@/lib/utils/server-logger"
-import { mediaLogger } from "@/lib/utils/media-logger"
+
 import path from "path"
 
 // Get storage instance
@@ -16,6 +16,15 @@ const db = admin.db
 /**
  * Server-side media service for managing media files
  */
+
+// Helper function to convert Date/string to timestamp
+function getTimestamp(date: string | Date | undefined): number {
+  if (!date) return 0
+  if (typeof date === 'string') {
+    return new Date(date).getTime()
+  }
+  return date.getTime()
+}
 
 // Type for filtering media items
 export type MediaFilterOptions = {
@@ -120,10 +129,10 @@ export async function getAllMedia(options: MediaFilterOptions = {}): Promise<{
       if (options.sortBy) {
         switch (options.sortBy) {
           case "dateAsc":
-            mediaItems.sort((a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0))
+            mediaItems.sort((a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt))
             break
           case "dateDesc":
-            mediaItems.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+            mediaItems.sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt))
             break
           case "nameAsc":
             mediaItems.sort((a, b) => a.name.localeCompare(b.name))
@@ -140,7 +149,7 @@ export async function getAllMedia(options: MediaFilterOptions = {}): Promise<{
         }
       } else {
         // Default sorting: newest first
-        mediaItems.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+        mediaItems.sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt))
       }
     }
 
@@ -343,7 +352,7 @@ export async function uploadMedia(
     const mediaRef = await db.collection("media").add(mediaData)
 
     // Log the upload
-    mediaLogger.info(
+    serverLogger.info(
       `Uploaded media: ${fileName}`,
       {
         mediaId: mediaRef.id,
@@ -373,7 +382,7 @@ export async function uploadMedia(
     }
   } catch (error) {
     console.error("Error in uploadMedia:", error)
-    serverLogger.error("Failed to upload media", { fileName, error })
+    serverLogger.error("Failed to upload media", { fileName, error }, userId)
     throw new Error("Failed to upload media")
   }
 }
@@ -449,7 +458,7 @@ export async function lockMedia(
     })
 
     // Log the action
-    mediaLogger.info(
+    serverLogger.info(
       `Locked media: ${mediaData?.name}`,
       {
         id: mediaId,
@@ -580,7 +589,7 @@ export async function unlockMedia(
     })
 
     // Log the action
-    mediaLogger.info(
+    serverLogger.info(
       `Unlocked media: ${mediaData.name}`,
       {
         id: mediaId,
@@ -718,7 +727,7 @@ export async function moveMediaToTrash(
     })
 
     // Log the action
-    mediaLogger.info(
+    serverLogger.info(
       `Moved media to trash: ${mediaData.name}`,
       {
         id: mediaId,
@@ -765,7 +774,7 @@ export async function moveMediaToTrash(
     }
   } catch (error) {
     console.error("Error in moveMediaToTrash:", error)
-    serverLogger.error("Failed to move media to trash", { mediaId, error })
+    serverLogger.error("Failed to move media to trash", { mediaId, error }, userId)
     return {
       success: false,
       message: "Failed to move media to trash",
@@ -845,7 +854,7 @@ export async function restoreMediaFromTrash(
     })
 
     // Log the action
-    mediaLogger.info(
+    serverLogger.info(
       `Restored media from trash: ${mediaData.name}`,
       {
         id: mediaId,
@@ -958,8 +967,8 @@ export async function deleteMediaPermanently(
         storageDeleteSuccess = true
 
         // Log successful deletion from storage
-        mediaLogger.info(
-          `Deleted file from storage: ${mediaData.path}`,
+        serverLogger.info(
+          `Deleted media from Firestore: ${mediaData.name}`,
           {
             id: mediaId,
           },
@@ -969,7 +978,7 @@ export async function deleteMediaPermanently(
         // If file doesn't exist, consider it a success
         if (storageError.code === 404 || storageError.message.includes("No such object")) {
           storageDeleteSuccess = true
-          mediaLogger.info(
+          serverLogger.info(
             `File already deleted from storage: ${mediaData.path}`,
             {
               id: mediaId,
@@ -978,7 +987,7 @@ export async function deleteMediaPermanently(
           )
         } else {
           console.error(`Error deleting file from storage: ${mediaData.path}`, storageError)
-          mediaLogger.error(
+          serverLogger.error(
             `Error deleting file from storage: ${mediaData.path}`,
             {
               error: storageError,
@@ -994,11 +1003,11 @@ export async function deleteMediaPermanently(
     await db.collection("media").doc(mediaId).delete()
 
     // Log the action
-    mediaLogger.info(
+    serverLogger.info(
       `Permanently deleted media: ${mediaData.name}`,
       {
         id: mediaId,
-        storageDeleted: storageDeleteSuccess,
+        path: mediaData.storagePath,
       },
       userId,
     )
@@ -1009,7 +1018,7 @@ export async function deleteMediaPermanently(
     }
   } catch (error) {
     console.error("Error in deleteMediaPermanently:", error)
-    serverLogger.error("Failed to permanently delete media", { mediaId, error })
+    serverLogger.error("Failed to permanently delete media", { mediaId, error }, userId)
     return {
       success: false,
       message: "Failed to permanently delete media",

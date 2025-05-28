@@ -9,7 +9,7 @@ import * as z from "zod"
 import { ArrowLeft, Trash2, Upload, X, Loader2 } from "lucide-react"
 // Replace Firebase imports with API client imports
 import { fetchCatById, fetchAllCats } from "@/lib/api/catClient"
-import CatPopup from "@/components/elements/CatsRelated/CatPopup"
+import { useToast } from "@/hooks/useToast"
 import type { CatProfile } from "@/lib/types/cat"
 import Link from "next/link"
 
@@ -57,8 +57,7 @@ export default function EditCatPage() {
     const [mainImage, setMainImage] = useState<string>("")
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [popupVisible, setPopupVisible] = useState(false)
-    const [popupMessage, setPopupMessage] = useState("")
+    const { toast } = useToast()
     const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
     const [allCats, setAllCats] = useState<CatProfile[]>([])
     const [isLoadingCats, setIsLoadingCats] = useState(true)
@@ -119,14 +118,12 @@ export default function EditCatPage() {
                         setVideos(cat.videos)
                     }
                 } else {
-                    setPopupMessage("Cat not found")
-                    setPopupVisible(true)
+                    toast.error("Cat not found")
                     router.push("/admin/cats")
                 }
             } catch (error) {
                 console.error("Error fetching cat:", error)
-                setPopupMessage("Error loading cat data")
-                setPopupVisible(true)
+                toast.error("Error loading cat data")
             } finally {
                 setIsLoading(false)
             }
@@ -147,8 +144,7 @@ export default function EditCatPage() {
                 setAllCats(fetchedCats)
             } catch (error) {
                 console.error("Error fetching all cats:", error)
-                setPopupMessage("Error loading cat data for parent selection")
-                setPopupVisible(true)
+                toast.error("Error loading cat data for parent selection")
             } finally {
                 setIsLoadingCats(false)
             }
@@ -291,8 +287,7 @@ export default function EditCatPage() {
 
     const onSubmit = async (data: FormValues) => {
         if (!mainImage && images.length === 0) {
-            setPopupMessage("Please upload at least one image for the cat.")
-            setPopupVisible(true)
+            toast.error("Please upload at least one image for the cat.")
             return
         }
 
@@ -465,8 +460,7 @@ export default function EditCatPage() {
             const result = await response.json()
             console.log("Cat data updated successfully:", result)
 
-            setPopupMessage(`${data.name} has been updated successfully.`)
-            setPopupVisible(true)
+            toast.success(`${data.name} has been updated successfully.`)
 
             // Navigate back to cats list after a short delay
             setTimeout(() => {
@@ -474,8 +468,7 @@ export default function EditCatPage() {
             }, 2000)
         } catch (error) {
             console.error("Error submitting form:", error)
-            setPopupMessage("There was a problem updating the cat entry.")
-            setPopupVisible(true)
+            toast.error("There was a problem updating the cat entry.")
         } finally {
             setIsSubmitting(false)
         }
@@ -998,7 +991,6 @@ export default function EditCatPage() {
               </motion.div>
           </motion.div>
 
-          <CatPopup visible={popupVisible} message={popupMessage} onClose={() => setPopupVisible(false)} />
       </div>
     )
 }

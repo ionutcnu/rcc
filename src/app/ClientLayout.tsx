@@ -9,6 +9,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import SeoHead from "@/components/seo/seo-head"
 import { Suspense } from "react"
 import { Providers } from "./providers"
+import { Toaster } from "@/components/ui/toaster"
 
 
 // Configure main fonts
@@ -64,6 +65,7 @@ export default function ClientLayout({
         <Suspense>
             <Providers>{children}</Providers>
         </Suspense>
+        <Toaster />
         <Analytics />
         <SpeedInsights />
         </body>
