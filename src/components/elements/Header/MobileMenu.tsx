@@ -8,6 +8,7 @@ import { GiPawPrint, GiExitDoor } from "react-icons/gi"
 import { MdOutlineDashboard } from "react-icons/md"
 import LanguageSwitcher from "./LanguageSwitcher"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useTranslationSettings } from "@/lib/hooks/useTranslationSettings"
 
 interface NavLink {
     name: string
@@ -26,6 +27,7 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
     const [userEmail, setUserEmail] = useState<string | null>(null)
     const router = useRouter()
     const { user, logout } = useAuth()
+    const { isEnabled: translationsEnabled } = useTranslationSettings()
 
     // Get current user email when authenticated
     useEffect(() => {
@@ -153,9 +155,11 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
                         )}
                     </div>
 
-                    <div className="mt-4 border-t border-orange-200 pt-4 flex justify-center">
-                        <LanguageSwitcher />
-                    </div>
+                    {translationsEnabled && (
+                        <div className="mt-4 border-t border-orange-200 pt-4 flex justify-center">
+                            <LanguageSwitcher />
+                        </div>
+                    )}
                 </nav>
             </motion.div>
           )}

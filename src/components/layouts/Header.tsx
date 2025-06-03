@@ -8,6 +8,7 @@ import ProfileDropdown from "@/components/elements/Header/ProfileDropdown"
 import MobileMenu from "@/components/elements/Header/MobileMenu"
 import LanguageSwitcher from "@/components/elements/Header/LanguageSwitcher"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useTranslationSettings } from "@/lib/hooks/useTranslationSettings"
 
 interface NavLink {
     name: string
@@ -18,6 +19,7 @@ interface NavLink {
 export default function Header() {
     const [isSticky, setIsSticky] = useState(false)
     const { user, loading, logout } = useAuth()
+    const { isEnabled: translationsEnabled } = useTranslationSettings()
     const isAuthenticated = !!user
 
     useEffect(() => {
@@ -96,7 +98,7 @@ export default function Header() {
 
                   <div className="flex items-center space-x-4 border-l-2 border-[#d1d5db] pl-4">
                       {/* Language Switcher - Added before authentication controls */}
-                      <LanguageSwitcher />
+                      {translationsEnabled && <LanguageSwitcher />}
 
                       {loading ? (
                         // Show a subtle loading indicator
