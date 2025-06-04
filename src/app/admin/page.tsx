@@ -11,6 +11,7 @@ import { getProxiedImageUrl } from "@/lib/utils/image-utils"
 import { Badge } from "@/components/ui/badge"
 import { CatProfile } from '@/lib/types/cat';
 
+
 export default function AdminDashboardPage() {
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({
@@ -25,15 +26,13 @@ export default function AdminDashboardPage() {
             try {
                 setLoading(true)
 
-                // Fetch cats data
-                const cats = await fetchCats()
+                // Fetch all data in parallel for better performance
+                const [cats, mediaStats, activityData] = await Promise.all([
+                    fetchCats(),
+                    fetchMediaStats(),
+                    fetchRecentActivity(4)
+                ])
                 const totalCats = cats.length
-
-                // Fetch media stats
-                const mediaStats = await fetchMediaStats()
-
-                // Fetch recent activity
-                const activityData = await fetchRecentActivity(4)
 
                 // Update state with fetched data
                 setStats({
@@ -65,6 +64,8 @@ export default function AdminDashboardPage() {
 
         fetchDashboardData()
     }, [])
+
+
 
     return (
       <div className="space-y-8 py-4">

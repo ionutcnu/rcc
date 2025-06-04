@@ -39,7 +39,9 @@ export async function GET(request: NextRequest) {
     const cats = await getAllCats(includeDeleted)
     console.log(`GET /api/cats - Found ${cats.length} cats`)
 
-    return NextResponse.json(cats)
+    const response = NextResponse.json(cats)
+    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
+    return response
   } catch (error: any) {
     console.error("Error in cats API:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })

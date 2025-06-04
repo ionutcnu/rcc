@@ -135,6 +135,7 @@ export default function MediaManager() {
                 })
             } finally {
                 setIsLoading(false)
+                setLoading(false)
             }
         }
 

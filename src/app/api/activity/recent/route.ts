@@ -8,7 +8,9 @@ export async function GET(request: Request) {
 
     const activity = await getRecentActivity(limit)
 
-    return NextResponse.json(activity)
+    const response = NextResponse.json(activity)
+    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
+    return response
   } catch (error) {
     console.error("Error fetching recent activity:", error)
     return NextResponse.json({ error: "Failed to fetch recent activity" }, { status: 500 })

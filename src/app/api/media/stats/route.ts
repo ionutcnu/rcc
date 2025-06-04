@@ -20,7 +20,9 @@ export async function GET(request: NextRequest) {
     // Get media stats
     const stats = await getMediaStats()
 
-    return NextResponse.json(stats)
+    const response = NextResponse.json(stats)
+    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
+    return response
   } catch (error) {
     console.error("Error in media stats API:", error)
     return NextResponse.json(

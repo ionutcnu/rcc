@@ -25,6 +25,8 @@ interface AuthResponse {
   error?: string;
 }
 
+import { deduplicateRequest } from "../../api/requestDeduplicator"
+
 export class ClientAuthService {
   private baseUrl = '/api/auth';
 
@@ -106,55 +108,59 @@ export class ClientAuthService {
   }
 
   async getCurrentUser(): Promise<AuthResponse> {
-    try {
-      const response = await fetch(`${this.baseUrl}/session`, {
-        method: 'GET',
-        credentials: 'include',
-      });
+    return deduplicateRequest('getCurrentUser', async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/session`, {
+          method: 'GET',
+          credentials: 'include',
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
+        if (!response.ok) {
+          return {
+            success: false,
+            error: data.error || 'Session check failed',
+          };
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Session check error:', error);
         return {
           success: false,
-          error: data.error || 'Session check failed',
+          error: error instanceof Error ? error.message : 'Session check failed',
         };
       }
-
-      return data;
-    } catch (error) {
-      console.error('Session check error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Session check failed',
-      };
-    }
+    });
   }
 
   async checkAdminStatus(): Promise<{ isAdmin: boolean; error?: string }> {
-    try {
-      const response = await fetch(`${this.baseUrl}/check-admin`, {
-        method: 'GET',
-        credentials: 'include',
-      });
+    return deduplicateRequest('checkAdminStatus', async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/check-admin`, {
+          method: 'GET',
+          credentials: 'include',
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
+        if (!response.ok) {
+          return {
+            isAdmin: false,
+            error: data.error || 'Admin check failed',
+          };
+        }
+
+        return { isAdmin: data.isAdmin || false };
+      } catch (error) {
+        console.error('Admin check error:', error);
         return {
           isAdmin: false,
-          error: data.error || 'Admin check failed',
+          error: error instanceof Error ? error.message : 'Admin check failed',
         };
       }
-
-      return { isAdmin: data.isAdmin || false };
-    } catch (error) {
-      console.error('Admin check error:', error);
-      return {
-        isAdmin: false,
-        error: error instanceof Error ? error.message : 'Admin check failed',
-      };
-    }
+    });
   }
 
   async createSession(idToken: string): Promise<AuthResponse> {

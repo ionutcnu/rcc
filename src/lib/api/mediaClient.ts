@@ -12,37 +12,10 @@ export interface MediaApiResponse {
 }
 
 // Create a cache for API responses
+import { deduplicateRequest } from "./requestDeduplicator"
+
 const apiCache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_EXPIRY = 60000 // 1 minute cache expiry
-
-// Request deduplication mechanism
-const pendingRequests = new Map<string, Promise<any>>()
-
-/**
- * Deduplicates requests by key
- * @param key Unique key for the request
- * @param requestFn Function that performs the actual request
- * @returns Promise with the result
- */
-export function deduplicateRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
-  // If there's already a pending request with this key, return it
-  if (pendingRequests.has(key)) {
-    console.log(`Request '${key}' already in progress, reusing promise`)
-    return pendingRequests.get(key) as Promise<T>
-  }
-
-  // Create a new request
-  console.log(`Creating new request for '${key}'`)
-  const promise = requestFn().finally(() => {
-    // Remove from pending requests when done (success or failure)
-    pendingRequests.delete(key)
-    console.log(`Request '${key}' completed and removed from tracking`)
-  })
-
-  // Store the promise
-  pendingRequests.set(key, promise)
-  return promise
-}
 
 /**
  * Fetches active media from the API

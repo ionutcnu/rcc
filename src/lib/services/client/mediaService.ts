@@ -31,6 +31,8 @@ interface MediaStats {
   deletedCount: number
 }
 
+import { deduplicateRequest } from "../../api/requestDeduplicator"
+
 export class ClientMediaService {
   private baseUrl = '/api/media'
 
@@ -147,45 +149,49 @@ export class ClientMediaService {
   }
 
   async getAllMedia(): Promise<MediaFile[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}`, {
-        method: 'GET',
-        credentials: 'include',
-        cache: 'no-store'
-      })
+    return deduplicateRequest('getAllMedia', async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}`, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store'
+        })
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch media: ${response.status}`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch media: ${response.status}`)
+        }
+
+        const data = await response.json()
+        return data.files || data || []
+      } catch (error) {
+        console.error('Error fetching media:', error)
+        return []
       }
-
-      const data = await response.json()
-      return data.files || data || []
-    } catch (error) {
-      console.error('Error fetching media:', error)
-      return []
-    }
+    })
   }
 
   async getMediaById(id: string): Promise<MediaFile | null> {
-    try {
-      const response = await fetch(`${this.baseUrl}/${id}`, {
-        method: 'GET',
-        credentials: 'include',
-        cache: 'no-store'
-      })
+    return deduplicateRequest(`getMediaById_${id}`, async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/${id}`, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store'
+        })
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null
+        if (!response.ok) {
+          if (response.status === 404) {
+            return null
+          }
+          throw new Error(`Failed to fetch media: ${response.status}`)
         }
-        throw new Error(`Failed to fetch media: ${response.status}`)
-      }
 
-      return await response.json()
-    } catch (error) {
-      console.error(`Error fetching media ${id}:`, error)
-      throw error
-    }
+        return await response.json()
+      } catch (error) {
+        console.error(`Error fetching media ${id}:`, error)
+        throw error
+      }
+    })
   }
 
   async deleteMedia(id: string): Promise<boolean> {
@@ -255,35 +261,37 @@ export class ClientMediaService {
   }
 
   async getMediaStats(): Promise<MediaStats> {
-    try {
-      const response = await fetch(`${this.baseUrl}/stats`, {
-        method: 'GET',
-        credentials: 'include',
-        cache: 'no-store'
-      })
+    return deduplicateRequest('getMediaStats', async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/stats`, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store'
+        })
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch media stats: ${response.status}`)
-      }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch media stats: ${response.status}`)
+        }
 
-      const data = await response.json()
-      return {
-        totalFiles: data.totalFiles || 0,
-        totalSize: data.totalSize || 0,
-        imageCount: data.imageCount || 0,
-        videoCount: data.videoCount || 0,
-        deletedCount: data.deletedCount || 0
+        const data = await response.json()
+        return {
+          totalFiles: data.totalFiles || 0,
+          totalSize: data.totalSize || 0,
+          imageCount: data.imageCount || 0,
+          videoCount: data.videoCount || 0,
+          deletedCount: data.deletedCount || 0
+        }
+      } catch (error) {
+        console.error('Error fetching media stats:', error)
+        return {
+          totalFiles: 0,
+          totalSize: 0,
+          imageCount: 0,
+          videoCount: 0,
+          deletedCount: 0
+        }
       }
-    } catch (error) {
-      console.error('Error fetching media stats:', error)
-      return {
-        totalFiles: 0,
-        totalSize: 0,
-        imageCount: 0,
-        videoCount: 0,
-        deletedCount: 0
-      }
-    }
+    })
   }
 
   async downloadMedia(id: string): Promise<Blob> {

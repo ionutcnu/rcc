@@ -87,11 +87,6 @@ export default function DebugPage() {
                       </p>
                   </CardContent>
                   <CardFooter className="flex flex-col items-stretch gap-2">
-                      <Link href="/admin/debug/test-image" className="w-full">
-                          <Button variant="outline" className="w-full">
-                              Test Image
-                          </Button>
-                      </Link>
                       <Link href="/admin/debug/test-media" className="w-full">
                           <Button variant="outline" className="w-full">
                               Test Media

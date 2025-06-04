@@ -1,5 +1,6 @@
 // Import the transformation utilities
 import { transformCatApiResponseArray } from "./catApiUtils"
+import { deduplicateRequest } from "./requestDeduplicator"
 import type { CatProfile } from "@/lib/types/cat"
 
 interface ApiResponse<T = any> {
@@ -32,55 +33,59 @@ interface UpdateCatData extends Partial<CreateCatData> {
  * @returns Array of cat profiles
  */
 export async function fetchAllCats(includeDeleted = false): Promise<CatProfile[]> {
-  try {
-    // Explicitly pass the includeDeleted parameter in the query string
-    const response = await fetch(`/api/cats?includeDeleted=${includeDeleted}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      // Add cache: 'no-store' to prevent caching of results
-      cache: "no-store",
-    })
+  const cacheKey = `fetchAllCats_${includeDeleted}`
+  
+  return deduplicateRequest(cacheKey, async () => {
+    try {
+      // Explicitly pass the includeDeleted parameter in the query string
+      const response = await fetch(`/api/cats?includeDeleted=${includeDeleted}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // Add cache: 'no-store' to prevent caching of results
+        cache: "no-store",
+      })
 
-    if (!response.ok) {
-      throw new Error(`Error fetching cats: ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Error fetching cats: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Add more detailed logging to debug the response
+      console.log("API Response:", data)
+
+      // Check the structure of the response
+      if (data && typeof data === "object") {
+        // If the response has a cats property that is an array
+        if (data.cats && Array.isArray(data.cats)) {
+          console.log(`Found ${data.cats.length} cats in data.cats`)
+          return transformCatApiResponseArray(data.cats)
+        }
+
+        // If the response itself is an array
+        if (Array.isArray(data)) {
+          console.log(`Found ${data.length} cats in data array`)
+          return transformCatApiResponseArray(data)
+        }
+
+        // If the response has a different structure but contains cat objects
+        const possibleCatsArray = Object.values(data).find((val) => Array.isArray(val))
+        if (possibleCatsArray) {
+          console.log(`Found ${possibleCatsArray.length} cats in a nested property`)
+          return transformCatApiResponseArray(possibleCatsArray)
+        }
+      }
+
+      // If all else fails, return empty array
+      console.warn("Could not parse cats from API response, returning empty array")
+      return []
+    } catch (error) {
+      console.error("Error fetching cats:", error)
+      throw error
     }
-
-    const data = await response.json()
-
-    // Add more detailed logging to debug the response
-    console.log("API Response:", data)
-
-    // Check the structure of the response
-    if (data && typeof data === "object") {
-      // If the response has a cats property that is an array
-      if (data.cats && Array.isArray(data.cats)) {
-        console.log(`Found ${data.cats.length} cats in data.cats`)
-        return transformCatApiResponseArray(data.cats)
-      }
-
-      // If the response itself is an array
-      if (Array.isArray(data)) {
-        console.log(`Found ${data.length} cats in data array`)
-        return transformCatApiResponseArray(data)
-      }
-
-      // If the response has a different structure but contains cat objects
-      const possibleCatsArray = Object.values(data).find((val) => Array.isArray(val))
-      if (possibleCatsArray) {
-        console.log(`Found ${possibleCatsArray.length} cats in a nested property`)
-        return transformCatApiResponseArray(possibleCatsArray)
-      }
-    }
-
-    // If all else fails, return empty array
-    console.warn("Could not parse cats from API response, returning empty array")
-    return []
-  } catch (error) {
-    console.error("Error fetching cats:", error)
-    throw error
-  }
+  })
 }
 
 /**
@@ -89,28 +94,32 @@ export async function fetchAllCats(includeDeleted = false): Promise<CatProfile[]
  * @returns Cat profile or null if not found
  */
 export async function fetchCatById(id: string): Promise<CatProfile | null> {
-  try {
-    const response = await fetch(`/api/cats?id=${encodeURIComponent(id)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    })
+  const cacheKey = `fetchCatById_${id}`
+  
+  return deduplicateRequest(cacheKey, async () => {
+    try {
+      const response = await fetch(`/api/cats?id=${encodeURIComponent(id)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      })
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        throw new Error(`Error fetching cat: ${response.status}`)
       }
-      throw new Error(`Error fetching cat: ${response.status}`)
-    }
 
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error(`Error fetching cat ${id}:`, error)
-    throw error
-  }
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error(`Error fetching cat ${id}:`, error)
+      throw error
+    }
+  })
 }
 
 /**
@@ -119,28 +128,32 @@ export async function fetchCatById(id: string): Promise<CatProfile | null> {
  * @returns Cat profile or null if not found
  */
 export async function fetchCatByName(name: string): Promise<CatProfile | null> {
-  try {
-    const response = await fetch(`/api/cats/by-name?name=${encodeURIComponent(name)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    })
+  const cacheKey = `fetchCatByName_${name}`
+  
+  return deduplicateRequest(cacheKey, async () => {
+    try {
+      const response = await fetch(`/api/cats/by-name?name=${encodeURIComponent(name)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      })
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null
+        }
+        throw new Error(`Error fetching cat by name: ${response.status}`)
       }
-      throw new Error(`Error fetching cat by name: ${response.status}`)
-    }
 
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error(`Error fetching cat by name ${name}:`, error)
-    throw error
-  }
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error(`Error fetching cat by name ${name}:`, error)
+      throw error
+    }
+  })
 }
 
 /**
@@ -376,47 +389,51 @@ export async function bulkRestoreCats(ids: string[]): Promise<ApiResponse[]> {
  * @returns Array of deleted cat profiles
  */
 export async function fetchTrashCats(): Promise<CatProfile[]> {
-  try {
-    const response = await fetch("/api/cats/trash", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    })
+  const cacheKey = "fetchTrashCats"
+  
+  return deduplicateRequest(cacheKey, async () => {
+    try {
+      const response = await fetch("/api/cats/trash", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      })
 
-    if (!response.ok) {
-      throw new Error(`Error fetching deleted cats: ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Error fetching deleted cats: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Check the structure of the response
+      if (data && typeof data === "object") {
+        // If the response has a cats property that is an array
+        if (data.cats && Array.isArray(data.cats)) {
+          return transformCatApiResponseArray(data.cats)
+        }
+
+        // If the response itself is an array
+        if (Array.isArray(data)) {
+          return transformCatApiResponseArray(data)
+        }
+
+        // If the response has a different structure but contains cat objects
+        const possibleCatsArray = Object.values(data).find((val) => Array.isArray(val))
+        if (possibleCatsArray) {
+          return transformCatApiResponseArray(possibleCatsArray)
+        }
+      }
+
+      // If all else fails, return empty array
+      console.warn("Could not parse deleted cats from API response, returning empty array")
+      return []
+    } catch (error) {
+      console.error("Error fetching deleted cats:", error)
+      throw error
     }
-
-    const data = await response.json()
-
-    // Check the structure of the response
-    if (data && typeof data === "object") {
-      // If the response has a cats property that is an array
-      if (data.cats && Array.isArray(data.cats)) {
-        return transformCatApiResponseArray(data.cats)
-      }
-
-      // If the response itself is an array
-      if (Array.isArray(data)) {
-        return transformCatApiResponseArray(data)
-      }
-
-      // If the response has a different structure but contains cat objects
-      const possibleCatsArray = Object.values(data).find((val) => Array.isArray(val))
-      if (possibleCatsArray) {
-        return transformCatApiResponseArray(possibleCatsArray)
-      }
-    }
-
-    // If all else fails, return empty array
-    console.warn("Could not parse deleted cats from API response, returning empty array")
-    return []
-  } catch (error) {
-    console.error("Error fetching deleted cats:", error)
-    throw error
-  }
+  })
 }
 
 /**
