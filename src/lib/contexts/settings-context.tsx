@@ -44,6 +44,9 @@ const SettingsContext = createContext<SettingsContextType>({
   fetchSettingsIfNeeded: async () => null,
 })
 
+// Export the context for optional usage
+export { SettingsContext }
+
 // Custom hook to use the settings context
 export const useSettings = () => useContext(SettingsContext)
 

@@ -5,7 +5,7 @@ import { AdminSidebar } from "@/components/admin/sidebar"
 import { CatPopupProvider } from "@/components/CatPopupProvider"
 import AdminProtected from "@/components/admin-protected"
 import { validateServerSideSession } from "@/lib/middleware/sessionValidator"
-import { SettingsProvider } from "@/lib/contexts/settings-context"
+
 
 export default async function AdminLayout({
                                               children,
@@ -39,12 +39,10 @@ export default async function AdminLayout({
         return (
           <AdminProtected>
               <CatPopupProvider>
-                  <SettingsProvider>
-                      <div className="flex min-h-screen bg-gray-50">
-                          <AdminSidebar />
-                          <main className="flex-1 overflow-auto p-6">{children}</main>
-                      </div>
-                  </SettingsProvider>
+                  <div className="flex min-h-screen bg-gray-50">
+                      <AdminSidebar />
+                      <main className="flex-1 overflow-auto p-6">{children}</main>
+                  </div>
               </CatPopupProvider>
           </AdminProtected>
         )

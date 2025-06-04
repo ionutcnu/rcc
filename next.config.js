@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    reactStrictMode: true,
+    reactStrictMode: process.env.NODE_ENV === 'production',
     output: "standalone",
     eslint: {
         ignoreDuringBuilds: true,

@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useContext } from "react"
 import Script from "next/script"
 import { getProxiedImageUrl } from "@/lib/utils/image-utils"
+import { SettingsContext } from "@/lib/contexts/settings-context"
 
 interface SeoSettings {
   metaTitle?: string
@@ -19,60 +20,44 @@ interface SeoHeadProps {
 }
 
 export default function SeoHead({ title, description, ogImage, path = "" }: SeoHeadProps) {
-  const [settings, setSettings] = useState<SeoSettings | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Try to use settings context if available, but don't throw if not
+  const settingsContext = useContext(SettingsContext)
+  const [localSettings, setLocalSettings] = useState<SeoSettings | null>(null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Default placeholder image for social media
   const defaultOgImage = "/placeholder-vc3r6.png"
 
   useEffect(() => {
-    async function loadSeoSettings() {
-      // Check if we're in the admin area by looking at the URL path
-      const isAdminPage = window.location.pathname.startsWith("/admin")
-
-      if (isAdminPage) {
-        try {
-          setLoading(true)
-          const response = await fetch("/api/settings?type=seo", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            cache: "no-store",
-          })
-
-          if (!response.ok) {
-            throw new Error(`Failed to fetch SEO settings: ${response.status}`)
-          }
-
-          const data = await response.json()
-          setSettings(data.seo || {})
-        } catch (error) {
-          console.error("Error loading SEO settings:", error)
-          setError(error instanceof Error ? error.message : "Unknown error")
-        } finally {
-          setLoading(false)
-        }
-      } else {
-        // For public pages, just set loading to false without making the API call
-        setLoading(false)
-      }
+    // If we have settings context, use it (this means we're on settings page)
+    if (settingsContext && settingsContext.settings) {
+      const seoSettings = settingsContext.settings?.seo || {}
+      setLocalSettings(seoSettings)
+      setError(null)
+      setLoading(false)
+    } else {
+      // For all pages without SettingsProvider context, use default settings
+      // No API calls should be made from this component
+      setLocalSettings({})
+      setError(null)
+      setLoading(false)
     }
+  }, [settingsContext])
 
-    loadSeoSettings()
-  }, [])
-
-  if (loading && !settings) {
+  if (loading && !localSettings) {
     return null
   }
 
+  // Extract SEO settings
+  const seoSettings = localSettings || {}
+
   // Use provided values or fall back to global settings
-  const pageTitle = title || settings?.metaTitle || "RCC"
-  const pageDescription = description || settings?.metaDescription || "Russian Cat Club"
+  const pageTitle = title || seoSettings?.metaTitle || "RCC"
+  const pageDescription = description || seoSettings?.metaDescription || "Russian Cat Club"
 
   // Determine which OG image to use (with fallback)
-  let pageOgImage = ogImage || settings?.ogImage
+  let pageOgImage = ogImage || seoSettings?.ogImage
 
   // If no image is provided, use the default placeholder
   if (!pageOgImage || pageOgImage.trim() === "") {
@@ -105,10 +90,10 @@ export default function SeoHead({ title, description, ogImage, path = "" }: SeoH
       <meta name="twitter:image" content={pageOgImage} />
 
       {/* Google Analytics */}
-      {settings?.googleAnalyticsId && (
+      {seoSettings?.googleAnalyticsId && (
         <>
           <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${settings.googleAnalyticsId}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${seoSettings.googleAnalyticsId}`}
             strategy="afterInteractive"
           />
           <Script id="google-analytics" strategy="afterInteractive">
@@ -116,7 +101,7 @@ export default function SeoHead({ title, description, ogImage, path = "" }: SeoH
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${settings.googleAnalyticsId}');
+              gtag('config', '${seoSettings.googleAnalyticsId}');
             `}
           </Script>
         </>

@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSettings } from "@/lib/contexts/settings-context"
+import { useSettings, SettingsProvider } from "@/lib/contexts/settings-context"
 import { Loader2 } from "lucide-react"
 import SettingsUi from "@/components/admin/settings-ui"
 import { useCatPopup } from "@/hooks/use-cat-popup"
 
-export default function SettingsPage() {
+function SettingsPageContent() {
     const { settings, isLoading, error, updateSeoSettings, updateFirebaseSettings, fetchSettingsIfNeeded } = useSettings()
     const { showPopup } = useCatPopup()
     const [localSeoSettings, setLocalSeoSettings] = useState<any>({})
@@ -97,5 +97,13 @@ export default function SettingsPage() {
             savingFirebase={saving.firebase}
           />
       </div>
+    )
+}
+
+export default function SettingsPage() {
+    return (
+        <SettingsProvider>
+            <SettingsPageContent />
+        </SettingsProvider>
     )
 }
