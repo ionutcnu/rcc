@@ -132,15 +132,15 @@ export function useApiRequests<T extends Record<string, any>>(
   const [errors, setErrors] = useState<Partial<Record<keyof T, Error>>>({})
 
   const execute = useCallback(async (keys?: (keyof T)[]) => {
-    const keysToExecute = keys || Object.keys(requests)
+    const keysToExecute = keys || (Object.keys(requests) as (keyof T)[])
     setLoading(true)
 
     const results = await Promise.allSettled(
       keysToExecute.map(async (key) => {
-        const cacheKey = cacheKeys[key] || `${String(key)}_${Date.now()}`
+        const cacheKey = (cacheKeys as any)[key] || `${String(key)}_${Date.now()}`
         const result = await deduplicateRequest(
           cacheKey,
-          requests[key],
+          (requests as any)[key],
           {
             retryOnError: restOptions.retryOnError,
             fallbackFn: restOptions.fallbackFn,

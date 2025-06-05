@@ -4,6 +4,10 @@ const nextConfig = {
     output: "standalone",
     eslint: {
         ignoreDuringBuilds: true,
+        dirs: ['src'],
+        rules: {
+            '@next/next/no-serializable-props': 'off',
+        },
     },
     typescript: {
         ignoreBuildErrors: true,

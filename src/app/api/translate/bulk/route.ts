@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { translateSingleText, getTranslationSettings, recordTranslationUsage } from "@/lib/server/translationService"
+import { translateText, getTranslationSettings, recordTranslationUsage } from "@/lib/server/translationService"
 import type { Language } from "@/lib/i18n/types"
 
 export async function POST(request: Request) {
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     try {
       // Translate the combined text
-      const translatedCombined = await translateSingleText(
+      const translatedCombined = await translateText(
         combinedText,
         targetLanguage as Language,
         sourceLanguage as Language,
