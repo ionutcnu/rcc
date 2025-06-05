@@ -199,6 +199,25 @@ export async function getLockedMedia(options: MediaFilterOptions = {}) {
 }
 
 /**
+ * Retrieves deleted media items with optional filtering
+ */
+export async function getDeletedMedia(options: MediaFilterOptions = {}) {
+  const result = await getAllMedia({
+    ...options,
+    includeDeleted: true,
+    includeLocked: true,
+  })
+
+  return {
+    ...result,
+    media: result.media.filter((item) => item.deleted),
+    totalCount: result.media.filter((item) => item.deleted).length,
+    imageCount: result.media.filter((item) => item.deleted && item.type === "image").length,
+    videoCount: result.media.filter((item) => item.deleted && item.type === "video").length,
+  }
+}
+
+/**
  * Get only trashed media
  */
 export async function getTrashedMedia(options: MediaFilterOptions = {}) {

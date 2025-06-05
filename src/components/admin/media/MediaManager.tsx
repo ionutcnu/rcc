@@ -40,6 +40,8 @@ const URL_CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour in milliseconds
 // Import the new API client at the top of the file
 import {
     fetchActiveMedia,
+    fetchLockedMedia,
+    fetchTrashMedia,
     lockMediaItem,
     moveMediaToTrash,
     restoreMediaFromTrash,
@@ -97,6 +99,188 @@ export default function MediaManager() {
 
     // State for download in progress
     const [isDownloading, setIsDownloading] = useState(false)
+
+
+
+    // Load active media only
+    const loadActiveMedia = async () => {
+        setIsLoading(true)
+        try {
+            const activeMediaResponse = await fetchActiveMedia()
+            setMediaItems(activeMediaResponse.media)
+            setImageCount(activeMediaResponse.imageCount)
+            setVideoCount(activeMediaResponse.videoCount)
+        } catch (error) {
+            console.error("Error loading active media:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // Load all counts for header display
+    const loadAllCounts = async () => {
+        setIsLoading(true)
+        console.log("Loading all media counts for headers...")
+        
+        // Load active media
+        try {
+            const activeMediaResponse = await fetchActiveMedia()
+            setMediaItems(activeMediaResponse.media || [])
+            setImageCount(activeMediaResponse.imageCount || 0)
+            setVideoCount(activeMediaResponse.videoCount || 0)
+            console.log("Active media loaded:", activeMediaResponse.media?.length || 0)
+        } catch (error) {
+            console.error("Error loading active media:", error)
+            setMediaItems([])
+            setImageCount(0)
+            setVideoCount(0)
+        }
+        
+        // Load locked media
+        try {
+            const lockedMediaResponse = await fetchLockedMedia()
+            setLockedMediaItems(lockedMediaResponse.media || [])
+        } catch (error) {
+            console.error("Error loading locked media:", error)
+        }
+        
+        // Load trash media
+        try {
+            const trashMediaResponse = await fetchTrashMedia()
+            setDeletedMediaItems(trashMediaResponse.media || [])
+        } catch (error) {
+            console.error("Error loading trash media:", error)
+        }
+        
+        setIsLoading(false)
+    }
+
+    // Load locked media only
+    const loadLockedMedia = async () => {
+        setIsLoading(true)
+        try {
+            const lockedMediaResponse = await fetchLockedMedia()
+            setLockedMediaItems(lockedMediaResponse.media || [])
+        } catch (error) {
+            console.error("Error loading locked media:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // Load trash media only
+    const loadTrashMedia = async () => {
+        setIsLoading(true)
+        try {
+            const trashMediaResponse = await fetchTrashMedia()
+            setDeletedMediaItems(trashMediaResponse.media || [])
+        } catch (error) {
+            console.error("Error loading trash media:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // Force refresh functions (reload regardless of existing data)
+    const forceRefreshActiveMedia = async () => {
+        setIsLoading(true)
+        try {
+            const activeMediaResponse = await fetchActiveMedia()
+            setMediaItems(activeMediaResponse.media || [])
+            setImageCount(activeMediaResponse.imageCount || 0)
+            setVideoCount(activeMediaResponse.videoCount || 0)
+        } catch (error) {
+            console.error("Error refreshing active media:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const forceRefreshLockedMedia = async () => {
+        setIsLoading(true)
+        try {
+            const lockedMediaResponse = await fetchLockedMedia()
+            setLockedMediaItems(lockedMediaResponse.media || [])
+        } catch (error) {
+            console.error("Error refreshing locked media:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const forceRefreshTrashMedia = async () => {
+        setIsLoading(true)
+        try {
+            const trashMediaResponse = await fetchTrashMedia()
+            setDeletedMediaItems(trashMediaResponse.media || [])
+        } catch (error) {
+            console.error("Error refreshing trash media:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // Refresh all media data (for upload completion)
+    const refreshMediaData = async () => {
+        setIsLoading(true)
+        try {
+            const [activeMediaResponse, lockedMediaResponse, trashMediaResponse] = await Promise.all([
+                fetchActiveMedia(),
+                fetchLockedMedia(),
+                fetchTrashMedia()
+            ])
+            
+            setMediaItems(activeMediaResponse.media || [])
+            setLockedMediaItems(lockedMediaResponse.media || [])
+            setDeletedMediaItems(trashMediaResponse.media || [])
+            
+            // Update counts from API responses
+            setImageCount(activeMediaResponse.imageCount || 0)
+            setVideoCount(activeMediaResponse.videoCount || 0)
+        } catch (error) {
+            console.error("Error refreshing media data:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // Force refresh current tab data
+    const forceRefreshCurrentTab = async () => {
+        switch (activeTab) {
+            case "active":
+                await forceRefreshActiveMedia()
+                break
+            case "locked":
+                await forceRefreshLockedMedia()
+                break
+            case "trash":
+                await forceRefreshTrashMedia()
+                break
+        }
+    }
+
+    // Real-time updates when page becomes visible
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                loadActiveMedia()
+            }
+        }
+        
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }, [])
+
+    // Load data when tab changes
+    useEffect(() => {
+        if (activeTab === "locked") {
+            loadLockedMedia()
+        } else if (activeTab === "trash") {
+            loadTrashMedia()
+        }
+    }, [activeTab])
+
+
 
     // State for lock dialog
     const [lockDialogOpen, setLockDialogOpen] = useState(false)
@@ -690,8 +874,8 @@ export default function MediaManager() {
                     }
                 }
 
-                // Refresh media list
-                await fetchMedia()
+                // Refresh media data immediately
+                await refreshMediaData()
 
                 // Keep progress visible for a moment so user can see completion
                 setTimeout(() => {
@@ -993,14 +1177,11 @@ export default function MediaManager() {
         setSizeFilter("all")
     }
 
-    // Declare fetchMedia function
+    // Initial load - only active media for now
     const fetchMedia = async () => {
         setIsLoading(true)
         try {
-            const result = await fetchActiveMedia()
-            setMediaItems(result.media)
-            setImageCount(result.imageCount)
-            setVideoCount(result.videoCount)
+            await loadActiveMedia()
         } catch (error) {
             console.error("Error loading media:", error)
             toast({ 
@@ -1098,14 +1279,14 @@ export default function MediaManager() {
             className="w-full"
           >
               <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="active" className="flex items-center">
+                  <TabsTrigger value="active" className="flex items-center gap-2">
                       Active Media ({mediaItems.length})
                   </TabsTrigger>
-                  <TabsTrigger value="locked" className="flex items-center">
-                      <LockIcon className="h-4 w-4 mr-1" />
+                  <TabsTrigger value="locked" className="flex items-center gap-2">
+                      <LockIcon className="h-4 w-4" />
                       Locked ({lockedMediaItems.length})
                   </TabsTrigger>
-                  <TabsTrigger value="trash" className="flex items-center">
+                  <TabsTrigger value="trash" className="flex items-center gap-2">
                       Trash ({deletedMediaItems.length})
                   </TabsTrigger>
               </TabsList>

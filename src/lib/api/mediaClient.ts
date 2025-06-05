@@ -20,10 +20,11 @@ const CACHE_EXPIRY = 60000 // 1 minute cache expiry
 /**
  * Fetches active media from the API
  * @param includeLocked Whether to include locked media items (default: false)
+ * @param includeDeleted Whether to include deleted media items (default: false)
  */
-export async function fetchActiveMedia(includeLocked = false): Promise<MediaApiResponse> {
+export async function fetchActiveMedia(includeLocked = false, includeDeleted = false): Promise<MediaApiResponse> {
   // Check cache first
-  const cacheKey = `active-media-${includeLocked}`
+  const cacheKey = `active-media-${includeLocked}-${includeDeleted}`
   const cachedData = apiCache.get(cacheKey)
   const now = Date.now()
 
@@ -33,9 +34,12 @@ export async function fetchActiveMedia(includeLocked = false): Promise<MediaApiR
   }
 
   // Use the deduplicator to prevent duplicate requests
-  return deduplicateRequest(`fetchActiveMedia-${includeLocked}`, async () => {
+  return deduplicateRequest(`fetchActiveMedia-${includeLocked}-${includeDeleted}`, async () => {
     try {
-      const url = `/api/media/active${includeLocked ? "?includeLocked=true" : ""}`
+      const params = new URLSearchParams()
+      if (includeLocked) params.append("includeLocked", "true")
+      if (includeDeleted) params.append("includeDeleted", "true")
+      const url = `/api/media/active${params.toString() ? "?" + params.toString() : ""}`
       const response = await fetch(url, {
         method: "GET",
         credentials: "include", // Important: This ensures cookies are sent with the request
@@ -97,6 +101,11 @@ export async function fetchLockedMedia(): Promise<MediaApiResponse> {
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Authentication required. Please log in.")
+        } else if (response.status === 403) {
+          throw new Error("Access denied. You don't have permission to view this media.")
+        }
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`)
       }
@@ -104,10 +113,7 @@ export async function fetchLockedMedia(): Promise<MediaApiResponse> {
       const data = await response.json()
 
       // Cache the response
-      apiCache.set(cacheKey, {
-        data,
-        timestamp: now,
-      })
+      apiCache.set(cacheKey, { data, timestamp: Date.now() })
 
       return data
     } catch (error) {
@@ -134,6 +140,7 @@ export async function fetchTrashMedia(): Promise<MediaApiResponse> {
   // Use the deduplicator to prevent duplicate requests
   return deduplicateRequest("fetchTrashMedia", async () => {
     try {
+      console.log("Actually fetching trash media from API")
       const response = await fetch("/api/media/trash", {
         method: "GET",
         credentials: "include", // Important: This sends cookies with the request
@@ -143,6 +150,11 @@ export async function fetchTrashMedia(): Promise<MediaApiResponse> {
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Authentication required. Please log in.")
+        } else if (response.status === 403) {
+          throw new Error("Access denied. You don't have permission to view this media.")
+        }
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`)
       }
@@ -157,11 +169,13 @@ export async function fetchTrashMedia(): Promise<MediaApiResponse> {
 
       return data
     } catch (error) {
-      console.error("Error fetching trash media:", error)
+      console.error("Error fetching locked media:", error)
       throw error
     }
   })
 }
+
+
 
 /**
  * Moves a media item to trash via the API
@@ -506,8 +520,8 @@ export function useMedia(type: "active" | "locked" | "trash" = "active") {
   const [error, setError] = React.useState<Error | null>(null)
 
   React.useEffect(() => {
-    // Skip if this media type has already been loaded
-    if (mediaLoaded[type]) {
+    // Skip if this media type has already been loaded AND we have media in state
+    if (mediaLoaded[type] && media.length > 0) {
       console.log(`Media type ${type} already loaded, skipping fetch`)
       setLoading(false)
       return
@@ -548,6 +562,10 @@ export function useMedia(type: "active" | "locked" | "trash" = "active") {
     }
 
     loadMedia()
+
+    return () => {
+      mediaLoaded[type] = false
+    }
   }, [type])
 
   return { media, imageCount, videoCount, loading, error }
