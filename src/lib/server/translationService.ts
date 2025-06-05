@@ -150,8 +150,14 @@ export async function getTranslationSettings(): Promise<TranslationSettings> {
   try {
     const settingsJson = await redis.get(SETTINGS_KEY)
     
-    if (settingsJson && typeof settingsJson === 'string') {
-      const settings = JSON.parse(settingsJson) as TranslationSettings
+    if (settingsJson) {
+      let settings: TranslationSettings
+      if (typeof settingsJson === 'string') {
+        settings = JSON.parse(settingsJson) as TranslationSettings
+      } else {
+        settings = settingsJson as TranslationSettings
+      }
+      
       // Ensure the useGroupedCache property exists (for backward compatibility)
       if (settings.useGroupedCache === undefined) {
         settings.useGroupedCache = defaultTranslationSettings.useGroupedCache
