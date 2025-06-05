@@ -247,11 +247,20 @@ export default function CatProfilePage() {
                             <video
                               key={selectedMedia.src}
                               controls
+                              controlsList="nodownload"
                               ref={(el) => {
                                   if (el) videoRefs.current[selectedMediaIndex] = el
                               }}
-                              className="rounded-lg shadow-lg w-full h-full object-cover cursor-pointer main-video"
-                              onClick={handleVideoFrameClick}
+                              className="rounded-lg shadow-lg w-full h-full object-cover main-video"
+                              style={{ 
+                                outline: 'none',
+                                backgroundColor: '#000'
+                              }}
+                              onClickCapture={(e) => {
+                                if (e.target === e.currentTarget) {
+                                  handleVideoFrameClick(e)
+                                }
+                              }}
                             >
                                 <source src={getProxiedUrl(selectedMedia.src)} type="video/mp4" />
                                 Your browser does not support the video tag.
@@ -334,9 +343,13 @@ export default function CatProfilePage() {
           </div>
 
           {isModalOpen && (
-            <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
+            <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center" style={{ zIndex: 9999 }}>
                 <div className="relative w-full h-full">
-                    <button className="absolute top-4 right-4 text-white text-2xl z-50" onClick={closeModal}>
+                    <button 
+                      className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 transition-colors"
+                      style={{ zIndex: 10000 }}
+                      onClick={closeModal}
+                    >
                         &times;
                     </button>
 
@@ -345,25 +358,40 @@ export default function CatProfilePage() {
                       slidesPerView={1}
                       initialSlide={selectedMediaIndex}
                       loop={media.length > 1}
-                      navigation={true}
-                      pagination={{ clickable: true }}
+                      navigation={{
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                      }}
+                      pagination={{ 
+                        clickable: true,
+                        dynamicBullets: true 
+                      }}
                       modules={[Navigation, Pagination]}
                       className="fullscreen-carousel"
                       onSlideChange={handleModalSlideChange}
+                      style={{ zIndex: 9990 }}
                     >
                         {media.map((item, index) => (
                           <SwiperSlide key={index}>
                               {item.type === "video" ? (
-                                <video
-                                  ref={(el) => {
-                                      if (el) videoRefs.current[index] = el
-                                  }}
-                                  controls
-                                  className="w-full h-screen object-contain"
-                                >
-                                    <source src={getProxiedUrl(item.src)} type="video/mp4" />
-                                    Your browser does not support the video tag.
-                                </video>
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <video
+                                    ref={(el) => {
+                                        if (el) videoRefs.current[index] = el
+                                    }}
+                                    controls
+                                    controlsList="nodownload"
+                                    className="max-w-full max-h-full object-contain"
+                                    style={{ 
+                                      outline: 'none',
+                                      backgroundColor: '#000',
+                                      zIndex: 9995
+                                    }}
+                                  >
+                                      <source src={getProxiedUrl(item.src)} type="video/mp4" />
+                                      Your browser does not support the video tag.
+                                  </video>
+                                </div>
                               ) : (
                                 <div className="relative w-full h-screen">
                                     <Image
