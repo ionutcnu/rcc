@@ -1,7 +1,7 @@
 "use client"
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -49,7 +49,9 @@ type FormValues = z.infer<typeof formSchema>
 export default function EditCatPage() {
     const router = useRouter()
     const params = useParams()
+    const searchParams = useSearchParams()
     const catId = params.id as string
+    const redirectUrl = searchParams.get('redirect')
 
     const [images, setImages] = useState<string[]>([])
     const [videos, setVideos] = useState<string[]>([])
@@ -462,9 +464,9 @@ export default function EditCatPage() {
 
             toast.success(`${data.name} has been updated successfully.`)
 
-            // Navigate back to cats list after a short delay
+            // Navigate back to redirect URL or cats list after a short delay
             setTimeout(() => {
-                router.push("/admin/cats")
+                router.push(redirectUrl || "/admin/cats")
             }, 2000)
         } catch (error) {
             console.error("Error submitting form:", error)

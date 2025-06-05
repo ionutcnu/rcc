@@ -1,7 +1,7 @@
 "use client"
 import type React from "react"
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Header from "@/components/layouts/Header"
 import Image from "next/image"
 import Footer from "@/components/layouts/Footer"
@@ -11,12 +11,24 @@ import ParentInfoPopup from "@/components/elements/CatsRelated/ParentInfoModal"
 import "swiper/swiper-bundle.css"
 import { fetchCatByName, incrementCatViewCount } from "@/lib/api/catClient"
 import type { CatProfile } from "@/lib/types/cat"
+import { useAuth } from "@/lib/auth/auth-context"
+import { Button } from "@/components/ui/button"
+import { EditIcon } from "lucide-react"
 
 export default function CatProfilePage() {
     const params = useParams()
+    const router = useRouter()
+    const { user, isAdmin } = useAuth()
     const [cat, setCat] = useState<CatProfile | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+
+    const handleEditCat = () => {
+        if (cat?.id) {
+            const redirectUrl = encodeURIComponent(`/cat-profile/${encodeURIComponent(cat.name)}`)
+            router.push(`/admin/cats/edit/${cat.id}?redirect=${redirectUrl}`)
+        }
+    }
 
     // Fetch cat data from Firebase
     useEffect(() => {
@@ -165,9 +177,24 @@ export default function CatProfilePage() {
       <>
           <Header />
           <div className="bg-[#1C1C21] text-white min-h-screen">
-              <div className="bg-gray-200 text-center py-20 mt-18">
+              <div className="bg-gray-200 text-center py-20 mt-18 relative">
                   <h1 className="text-4xl lg:text-5xl text-black font-bold">{cat.name}</h1>
                   <p className="text-lg lg:text-xl text-blue-950 mt-4">{cat.description || `${cat.breed} ${cat.gender}`}</p>
+                  
+                  {/* Admin Edit Button */}
+                  {isAdmin && (
+                    <div className="absolute bottom-4 right-4">
+                        <Button
+                          onClick={handleEditCat}
+                          variant="outline"
+                          size="sm"
+                          className="bg-white text-black hover:bg-gray-100 border-gray-400"
+                        >
+                            <EditIcon className="h-4 w-4 mr-2" />
+                            Edit Cat
+                        </Button>
+                    </div>
+                  )}
               </div>
 
               <div className="container mx-auto py-10 px-4 flex flex-col lg:flex-row lg:gap-16 lg:py-16 lg:px-8">
