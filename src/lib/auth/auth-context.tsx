@@ -70,26 +70,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check session status on mount and periodically
     useEffect(() => {
         const checkSession = async () => {
-            setLoading(true)
             try {
                 const sessionData = await authService.checkSession()
 
-                if (sessionData.authenticated) {
-                    // User is signed in
+                if (sessionData.authenticated && sessionData.uid) {
+                    // User is signed in with valid uid
                     // Check if user is admin
                     const adminStatus = await checkAdminStatus()
                     setIsAdmin(adminStatus)
 
-                    // Create user object
+                    // Create user object only with valid uid
                     setUser({
-                        uid: sessionData.uid || "",
+                        uid: sessionData.uid,
                         email: sessionData.email || null,
                         isAdmin: adminStatus,
                     })
                 } else {
-                    // User is signed out
+                    // User is signed out - ensure clean state
                     setUser(null)
                     setIsAdmin(false)
+                    setError(null)
                 }
             } catch (err) {
                 safeErrorLog("Session check error", err)

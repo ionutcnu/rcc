@@ -6,9 +6,9 @@ import { motion } from "framer-motion"
 import { GiCat, GiPawPrint, GiHollowCat } from "react-icons/gi"
 import ProfileDropdown from "@/components/elements/Header/ProfileDropdown"
 import MobileMenu from "@/components/elements/Header/MobileMenu"
-import LanguageSwitcher from "@/components/elements/Header/LanguageSwitcher"
+// import LanguageSwitcher from "@/components/elements/Header/LanguageSwitcher"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useTranslationSettings } from "@/lib/hooks/useTranslationSettings"
+// import { useTranslationSettings } from "@/lib/hooks/useTranslationSettings"
 
 interface NavLink {
     name: string
@@ -19,8 +19,12 @@ interface NavLink {
 export default function Header() {
     const [isSticky, setIsSticky] = useState(false)
     const { user, loading, logout } = useAuth()
-    const { isEnabled: translationsEnabled } = useTranslationSettings()
-    const isAuthenticated = !!user
+    // const { isEnabled: translationsEnabled } = useTranslationSettings()
+    
+    // Debug authentication state
+    console.log('Header render - loading:', loading, 'user:', user, 'userExists:', !!user)
+    
+    const isAuthenticated = !loading && !!user
 
     useEffect(() => {
         const handleScroll = () => setIsSticky(window.scrollY > 50)
@@ -98,12 +102,13 @@ export default function Header() {
 
                   <div className="flex items-center space-x-4 border-l-2 border-[#d1d5db] pl-4">
                       {/* Language Switcher - Added before authentication controls */}
-                      {translationsEnabled && <LanguageSwitcher />}
+                      {/* {translationsEnabled && <LanguageSwitcher />} */}
 
                       {loading ? (
-                        // Show a subtle loading indicator
+                        // Show loading indicator while checking auth
                         <div className="w-24 h-10 bg-gray-200 animate-pulse rounded-full"></div>
-                      ) : isAuthenticated ? (
+                      ) : user ? (
+                        // Only show authenticated UI if user exists and loading is false
                         <>
                             <ProfileDropdown icon={<GiCat className="w-6 h-6 text-[#FF6B6B]" />} />
                             <button
@@ -115,6 +120,7 @@ export default function Header() {
                             </button>
                         </>
                       ) : (
+                        // Show login when not loading and no user
                         <>
                             <Link
                               href="/login"
@@ -123,15 +129,6 @@ export default function Header() {
                                 <GiPawPrint className="mr-2" />
                                 Login
                             </Link>
-                            {/* Registration link commented out - can be re-enabled in the future
-               <Link
-                 href="/register"
-                 className="flex items-center bg-[#5C6AC4] text-white px-4 py-2 rounded-full hover:bg-[#3F4EB3] transition-colors"
-               >
-                 <GiCat className="mr-2" />
-                 Register
-               </Link>
-               */}
                         </>
                       )}
                   </div>
@@ -142,9 +139,10 @@ export default function Header() {
                 isAuthenticated={isAuthenticated}
                 authActions={
                     loading ? (
-                      // Show a subtle loading indicator
+                      // Show loading indicator
                       <div className="w-full h-10 bg-gray-200 animate-pulse rounded-full"></div>
-                    ) : isAuthenticated ? (
+                    ) : user ? (
+                      // Only show logout if user exists
                       <button
                         onClick={handleLogout}
                         className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
@@ -153,6 +151,7 @@ export default function Header() {
                           Logout
                       </button>
                     ) : (
+                      // Show login when no user
                       <>
                           <Link
                             href="/login"
@@ -161,15 +160,6 @@ export default function Header() {
                               <GiPawPrint className="mr-2" />
                               Login
                           </Link>
-                          {/* Registration link commented out - can be re-enabled in the future
-               <Link
-                 href="/register"
-                 className="flex items-center justify-center text-xl text-[#2E2E2E] hover:text-[#FF6B6B] p-3"
-               >
-                 <GiCat className="mr-2" />
-                 Register
-               </Link>
-               */}
                       </>
                     )
                 }
