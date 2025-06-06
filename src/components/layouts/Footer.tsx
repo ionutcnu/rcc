@@ -77,7 +77,7 @@ export default function Footer() {
                         ORGANIZATION
                     </h3>
                     <nav className="space-y-2">
-                        {["Club", "History"].map((item, index) => (
+                        {["Club"].map((item, index) => (
                             <a
                                 key={index}
                                 href={`/${item.toLowerCase()}`}
