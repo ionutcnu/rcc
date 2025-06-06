@@ -21,9 +21,6 @@ export default function Header() {
     const { user, loading, logout } = useAuth()
     // const { isEnabled: translationsEnabled } = useTranslationSettings()
     
-    // Debug authentication state
-    console.log('Header render - loading:', loading, 'user:', user, 'userExists:', !!user)
-    
     const isAuthenticated = !loading && !!user
 
     useEffect(() => {

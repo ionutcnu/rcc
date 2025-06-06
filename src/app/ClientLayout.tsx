@@ -53,6 +53,17 @@ export default function ClientLayout({
                 // You could send to an error reporting service here
             })
         }
+
+        // Register service worker for image caching
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then((registration) => {
+                    console.log('SW registered: ', registration)
+                })
+                .catch((registrationError) => {
+                    console.log('SW registration failed: ', registrationError)
+                })
+        }
     }, [])
 
     return (

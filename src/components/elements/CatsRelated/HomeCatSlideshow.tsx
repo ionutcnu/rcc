@@ -3,7 +3,7 @@ import { Swiper, SwiperSlide } from "swiper/react"
 import "swiper/swiper-bundle.css"
 import { Navigation, Pagination, Autoplay } from "swiper/modules"
 import { useState, useEffect, useCallback } from "react"
-import Image from "next/image"
+import NextImage from "next/image"
 import { getProxiedImageUrl } from "@/lib/utils/image-utils"
 import type { MediaItem } from "@/lib/types/media" // Updated import path
 import { fetchLockedMedia } from "@/lib/api/mediaClient" // Import API client function
@@ -144,7 +144,7 @@ export default function HeroSlideshow() {
                       className={`relative flex items-center justify-center ${slideHeight} bg-gray-200 border-4 border-gray-300`}
                     >
                         <div className="absolute inset-0 w-full h-full">
-                            <Image
+                            <NextImage
                               src={getProxiedImageUrl(slide.url) || "/placeholder.svg?height=870&width=1546"}
                               alt={slide.name || "Cat image"}
                               fill

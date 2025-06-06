@@ -17,6 +17,25 @@ import { deduplicateRequest } from "./requestDeduplicator"
 const apiCache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_EXPIRY = 60000 // 1 minute cache expiry
 
+// Add browser cache headers
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+  'Pragma': 'cache'
+}
+
+// Preload critical images
+const preloadCriticalImages = (urls: string[]) => {
+  if (typeof window === 'undefined') return
+  
+  urls.slice(0, 3).forEach(url => {
+    const link = document.createElement('link')
+    link.rel = 'preload'
+    link.as = 'image'
+    link.href = `/api/image-proxy?url=${encodeURIComponent(url)}`
+    document.head.appendChild(link)
+  })
+}
+
 /**
  * Fetches active media from the API
  * @param includeLocked Whether to include locked media items (default: false)
@@ -97,6 +116,7 @@ export async function fetchLockedMedia(): Promise<MediaApiResponse> {
         credentials: "include", // Important: This ensures cookies are sent with the request
         headers: {
           "Content-Type": "application/json",
+          ...CACHE_HEADERS,
         },
       })
 
@@ -114,6 +134,14 @@ export async function fetchLockedMedia(): Promise<MediaApiResponse> {
 
       // Cache the response
       apiCache.set(cacheKey, { data, timestamp: Date.now() })
+
+      // Preload critical images for performance
+      if (data.media && Array.isArray(data.media)) {
+        const imageUrls = data.media
+          .filter((item: any) => item.type === "image")
+          .map((item: any) => item.url)
+        preloadCriticalImages(imageUrls)
+      }
 
       return data
     } catch (error) {

@@ -125,11 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return { success: false, message: result.message || "Failed to login" }
             }
 
-            // Fetch the session data after successful login
-            const sessionData = await authService.checkSession()
-
-            // Check if user is admin
-            const adminStatus = await checkAdminStatus()
+            // Use admin status from login response
+            const adminStatus = result.user?.isAdmin || false
 
             if (!adminStatus) {
                 await authService.logout()
@@ -140,8 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             setIsAdmin(adminStatus)
             setUser({
-                uid: sessionData.uid || "",
-                email: sessionData.email || null,
+                uid: result.user?.uid || "",
+                email: result.user?.email || null,
                 isAdmin: adminStatus,
             })
 
