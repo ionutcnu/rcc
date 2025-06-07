@@ -418,36 +418,78 @@ export const authService = {
   },
 
   /**
-   * Autentificare server-side suverană - folosește DOAR Firebase Admin SDK
-   * Principiu: Controlul complet asupra autentificării fără dependențe externe
+   * SECURE credential authentication with Firebase password validation
+   * Uses Firebase REST API with proper headers for server-side password validation
    */
   async authenticateWithCredentials(email: string, password: string) {
     try {
-      // Metoda suveranistă: Validăm existența utilizatorului prin Firebase Admin
-      let userRecord
-      try {
-        userRecord = await auth.getUserByEmail(email)
-      } catch (error: any) {
-        if (error.code === 'auth/user-not-found') {
+      // Use Firebase REST API for password validation with proper headers
+      const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+      if (!apiKey) {
+        throw new Error('Firebase API key not configured')
+      }
+
+      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Origin': 'http://localhost:3000',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          returnSecureToken: true,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle Firebase REST API errors
+        if (data.error?.message === 'EMAIL_NOT_FOUND' || 
+            data.error?.message === 'INVALID_PASSWORD' ||
+            data.error?.message === 'INVALID_LOGIN_CREDENTIALS') {
           throw new Error('Invalid email or password')
         }
-        throw error
+        if (data.error?.message === 'TOO_MANY_ATTEMPTS_TRY_LATER') {
+          throw new Error('Too many failed attempts. Please try again later.')
+        }
+        throw new Error(data.error?.message || 'Authentication failed')
       }
 
-      // Pentru validarea parolei în mediul server-side, creăm un custom token
-      // Aceasta este metoda recomandată pentru autentificare server-side
-      const customToken = await auth.createCustomToken(userRecord.uid)
+      // Extract user info from REST API response
+      const { localId: uid } = data
 
-      // Obținem datele complete ale utilizatorului
-      const user = await this.getUserById(userRecord.uid)
-
-      return {
-        user,
-        customToken,
-        uid: userRecord.uid
+      // Comprehensive admin validation after password validation
+      const isAdmin = await this.isUserAdmin(uid)
+      if (!isAdmin) {
+        throw new Error('Access denied. Admin privileges required.')
       }
-    } catch (error) {
-      console.error("Error in credential authentication:", error)
+
+      // Get user data via Admin SDK
+      const userRecord = await auth.getUser(uid)
+      
+      // Additional security checks for admin users
+      if (userRecord.disabled) {
+        throw new Error('Account is disabled. Contact system administrator.')
+      }
+
+      // Generate secure session token for validated admin user
+      const customToken = await auth.createCustomToken(uid, {
+        admin: true,
+        loginTime: Date.now()
+      })
+      
+      const user = await this.getUserById(uid)
+
+      // Log successful admin authentication
+      console.log(`Admin authentication successful for ${email} at ${new Date().toISOString()}`)
+
+      return { user, customToken, uid }
+
+    } catch (error: any) {
+      console.error("Authentication error:", error)
       throw error
     }
   },
