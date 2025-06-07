@@ -98,7 +98,7 @@ export default function HeroSlideshow() {
             let selectedMedia = isMobile ? standard : widescreen
 
             // If we don't have enough images in the preferred category, mix in some from the other
-            if (selectedMedia.length < 3) {
+            if (selectedMedia.length < 5) {
                 const otherMedia = isMobile ? widescreen : standard
                 selectedMedia = [...selectedMedia, ...otherMedia]
             }

@@ -12,13 +12,13 @@ export default function Footer() {
             <div className="absolute hidden md:block top-24 right-[55%] opacity-50">
                 <IoLogoOctocat className="w-14 h-14 transform rotate-12 text-red-600" />
             </div>
-            <div className="absolute hidden md:block top-10 right-[35%] opacity-50">
+            <div className="absolute hidden md:block top-50 right-[35%] opacity-50">
                 <GiPawPrint className="w-16 h-16 transform rotate-12 text-red-600" />
             </div>
             <div className="absolute hidden md:block bottom-15 left-[22%] opacity-50">
                 <TbCat className="w-20 h-20 transform -rotate-6 text-red-600" />
             </div>
-            <div className="absolute hidden md:block bottom-9 right-[9%] opacity-60">
+            <div className="absolute hidden md:block bottom-9 right-[16%] opacity-60">
                 <GiCat className="w-40 h-40 transform rotate-4 text-red-600" />
             </div>
 
@@ -55,7 +55,7 @@ export default function Footer() {
                         CAT
                     </h3>
                     <nav className="space-y-2">
-                        {["Contract", "Adoption Process", "Living Conditions", "Post-adoption Guide"].map((item, index) => (
+                        {["Contract", "Living Conditions", "Post-adoption Guide"].map((item, index) => (
                             <a
                                 key={index}
                                 href={`/${item.toLowerCase().replace(' ', '-')}`}
