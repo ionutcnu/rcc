@@ -176,8 +176,10 @@ export function UserManagement() {
             const data = await response.json()
 
             if (data.success) {
-                // Update the local state
-                setUsers(users.map((u) => (u.uid === user.uid ? { ...u, isAdmin: !u.isAdmin } : u)))
+                // Update both users and filteredUsers states
+                const updatedUser = { ...user, isAdmin: !user.isAdmin }
+                setUsers(users.map((u) => (u.uid === user.uid ? updatedUser : u)))
+                setFilteredUsers(filteredUsers.map((u) => (u.uid === user.uid ? updatedUser : u)))
                 showSuccessToast(`${user.email} is ${!user.isAdmin ? "now" : "no longer"} an admin`)
             } else {
                 showErrorToast(data.error || "Failed to update admin status")
@@ -208,8 +210,10 @@ export function UserManagement() {
             const data = await response.json()
 
             if (data.success) {
-                // Update the local state
-                setUsers(users.map((u) => (u.uid === user.uid ? { ...u, disabled: !u.disabled } : u)))
+                // Update both users and filteredUsers states
+                const updatedUser = { ...user, disabled: !user.disabled }
+                setUsers(users.map((u) => (u.uid === user.uid ? updatedUser : u)))
+                setFilteredUsers(filteredUsers.map((u) => (u.uid === user.uid ? updatedUser : u)))
                 showSuccessToast(`${user.email} is ${!user.disabled ? "now disabled" : "now enabled"}`)
             } else {
                 showErrorToast(data.error || "Failed to update user status")
@@ -290,8 +294,10 @@ export function UserManagement() {
             const data = await response.json()
 
             if (data.success) {
-                // Update the local state
-                setUsers(users.filter((u) => u.uid !== userToDelete.uid))
+                // Update both users and filteredUsers states
+                const updatedUsers = users.filter((u) => u.uid !== userToDelete.uid)
+                setUsers(updatedUsers)
+                setFilteredUsers(filteredUsers.filter((u) => u.uid !== userToDelete.uid))
                 showSuccessToast(`User ${userToDelete.email} deleted successfully`)
                 setDeleteDialogOpen(false)
                 setUserToDelete(null)
