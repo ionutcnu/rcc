@@ -4,11 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "bun run next dev",
-    "build": "bun run next build",
-    "build:with-tests": "bun run test:ci && bun run next build",
-    "build:local": "bun run test:ci:local && bun run next build",
+    "build": "bun run test:ci && bun run next build",
+    "build:no-tests": "bun run next build",
     "build:production": "NEXT_PUBLIC_NODE_ENV=production bun run test:ci && bun run next build",
-    "build:production:no-tests": "NEXT_PUBLIC_NODE_ENV=production bun run next build",
     "build:secure": "bun run build:production && bun run obfuscate",
     "obfuscate": "bun run javascript-obfuscator ./out --output ./out --compact true --self-defending true --disable-console-output true --string-array true --string-array-encoding 'rc4'",
     "clean": "bun run rimraf .next",
@@ -23,8 +21,7 @@
     "cypress:run": "cypress run",
     "test:e2e": "cypress run",
     "test:e2e:headed": "cypress run --headed",
-    "test:ci": "start-server-and-test dev http://localhost:3000 \"cypress run --record --key $CYPRESS_RECORD_KEY --reporter spec\"",
-    "test:ci:local": "start-server-and-test dev http://localhost:3000 \"cypress run --reporter spec\"",
+
     "test:auto": "node scripts/test-automation.js",
     "test:auto:headless": "node scripts/test-automation.js --headless",
     "test:auto:record": "node scripts/test-automation.js --record",
@@ -32,7 +29,8 @@
     "test:auto:ps": "powershell -ExecutionPolicy Bypass -File scripts/test-automation.ps1",
     "test:auto:ps:headless": "powershell -ExecutionPolicy Bypass -File scripts/test-automation.ps1 -Headless",
     "test:auto:ps:record": "powershell -ExecutionPolicy Bypass -File scripts/test-automation.ps1 -Record",
-    "test:auto:ps:record:headless": "powershell -ExecutionPolicy Bypass -File scripts/test-automation.ps1 -Headless -Record"
+    "test:auto:ps:record:headless": "powershell -ExecutionPolicy Bypass -File scripts/test-automation.ps1 -Headless -Record",
+    "test:ci": "cypress run --headless --record --key $CYPRESS_RECORD_KEY"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
@@ -105,7 +103,8 @@
     "tsparticles": "^2.12.0",
     "tsparticles-engine": "^2.12.0",
     "undici": "^7.3.0",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "cypress": "^13.17.0"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.4.2",
@@ -115,7 +114,6 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^10.0.0",
-    "cypress": "^13.17.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.6",
     "eslint-plugin-css": "^0.11.0",
