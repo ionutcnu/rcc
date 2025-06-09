@@ -1,0 +1,40 @@
+name: E2E Tests and Vercel Deployment
+
+on:
+  push:
+    branches:
+      - '**'  # Run on all branches
+  pull_request:
+    branches:
+      - '**'  # Run on PRs to all branches
+
+jobs:
+  test_and_deploy:
+    runs-on: ubuntu-latest
+    env:
+      # For Cypress tests
+      CYPRESS_ADMIN_EMAIL: ${{ secrets.CYPRESS_ADMIN_EMAIL }}
+      CYPRESS_ADMIN_PASSWORD: ${{ secrets.CYPRESS_ADMIN_PASSWORD }}
+      CYPRESS_USER_EMAIL: ${{ secrets.CYPRESS_USER_EMAIL }}
+      CYPRESS_USER_PASSWORD: ${{ secrets.CYPRESS_USER_PASSWORD }}
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+      # For Vercel CLI
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Add other ENV VARS your app needs
+      CI: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run Cypress E2E tests
+        run: bun run test:auto:headless
