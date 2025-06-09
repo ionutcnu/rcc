@@ -3,14 +3,15 @@ name: E2E Tests and Vercel Deployment
 on:
   push:
     branches:
-      - '**'  # Run on all branches
+      - '**' # Run on all branches
   pull_request:
     branches:
-      - '**'  # Run on PRs to all branches
+      - '**' # Run on PRs to all branches
 
 jobs:
-  test_and_deploy:
+  cypress-run:
     runs-on: ubuntu-latest
+
     env:
       # For Cypress tests
       CYPRESS_ADMIN_EMAIL: ${{ secrets.CYPRESS_ADMIN_EMAIL }}
@@ -18,10 +19,7 @@ jobs:
       CYPRESS_USER_EMAIL: ${{ secrets.CYPRESS_USER_EMAIL }}
       CYPRESS_USER_PASSWORD: ${{ secrets.CYPRESS_USER_PASSWORD }}
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-      # For Vercel CLI
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      # Add other ENV VARS your app needs
+      CYPRESS_PROJECT_ID: ${{ secrets.CYPRESS_PROJECT_ID }}
       CI: true
 
     steps:
@@ -36,5 +34,23 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Run Cypress E2E tests
+      - name: Build application
+        run: bun run build
+
+      - name: Run Cypress E2E tests with automation script
         run: bun run test:auto:headless
+        timeout-minutes: 15
+
+      - name: Upload Cypress screenshots
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+
+      - name: Upload Cypress videos
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos
