@@ -1,0 +1,49 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - run: bun install
+      - run: |
+          echo "$SECRETS_BLOB" | base64 -d > .env
+          set -a
+          source .env
+          set +a
+      - uses: cypress-io/github-action@v6
+        with:
+          build: bun run build:no-tests
+          start: bun run start
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 60
+          record: true
+
+  deploy:
+    needs: test
+    if: success()
+    runs-on: ubuntu-latest
+    env:
+      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - run: bun install
+      - run: |
+          echo "$SECRETS_BLOB" | base64 -d > .env
+          set -a
+          source .env
+          set +a
+      - run: npm install -g vercel
+      - run: vercel --prod --confirm
