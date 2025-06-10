@@ -10,49 +10,32 @@ jobs:
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
+      - run: bun install
 
-      - name: Debug & Rehydrate secrets
+      - name: Rehydrate & expose secrets
         run: |
-          echo "👉 Secret blob length: $(printf '%s' "$SECRETS_BLOB" | wc -c) bytes"
-
-          # Collapse line‐breaks, decode, strip CR, write to decoded.env
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
             | base64 -d \
             | tr -d '\r' > decoded.env
 
-          echo "🔍 decoded.env (first 12 lines):"
-          head -n 12 decoded.env | nl
-          echo "🔍 Total lines: $(wc -l < decoded.env)"
+          sed -E 's/^([^=]+)=(.*)$/\1="\2"/' decoded.env > .env
 
-          # Keep only KEY=VALUE lines, strip any leftover CR, write .env
-          grep '=' decoded.env | tr -d '\r' > .env
+          while IFS= read -r line; do
+            echo "$line" >> $GITHUB_ENV
+          done < .env
 
-          echo "✅ .env after filtering:"
-          nl .env
-
-          # Export and source
-          set -a
-          source .env
-          set +a
-
-      - name: Run & record Cypress tests
-        uses: cypress-io/github-action@v6
+      - uses: cypress-io/github-action@v6
         with:
           build: bun run build:no-tests
           start: bun run start
@@ -67,33 +50,31 @@ jobs:
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
+      - run: bun install
 
-      - name: Rehydrate secrets
+      - name: Rehydrate & expose secrets
         run: |
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
             | base64 -d \
-            | tr -d '\r' > .env
-          set -a
-          source .env
-          set +a
+            | tr -d '\r' > decoded.env
 
-      - name: Deploy to Vercel
-        run: |
+          sed -E 's/^([^=]+)=(.*)$/\1="\2"/' decoded.env > .env
+
+          while IFS= read -r line; do
+            echo "$line" >> $GITHUB_ENV
+          done < .env
+
+      - run: |
           npm install -g vercel
           vercel --prod --confirm
