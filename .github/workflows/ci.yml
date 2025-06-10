@@ -1,8 +1,7 @@
 # .github/workflows/ci.yml
 name: CI
 
-on:
-  push:
+on: push
 
 jobs:
   test:
@@ -30,14 +29,12 @@ jobs:
             | tr -d '\r' \
             > decoded.env
 
-          sed -E 's/^([^=]+)=(.*)$/\1="\2"/' decoded.env > .env
-
           while IFS= read -r line; do
+            [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
             key=${line%%=*}
             val=${line#*=}
-            val=${val#\"}; val=${val%\"}
-            echo "$key=$val" >> $GITHUB_ENV
-          done < .env
+            echo "${key}=${val}" >> $GITHUB_ENV
+          done < decoded.env
 
       - uses: cypress-io/github-action@v6
         with:
@@ -74,14 +71,12 @@ jobs:
             | tr -d '\r' \
             > decoded.env
 
-          sed -E 's/^([^=]+)=(.*)$/\1="\2"/' decoded.env > .env
-
           while IFS= read -r line; do
+            [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
             key=${line%%=*}
             val=${line#*=}
-            val=${val#\"}; val=${val%\"}
-            echo "$key=$val" >> $GITHUB_ENV
-          done < .env
+            echo "${key}=${val}" >> $GITHUB_ENV
+          done < decoded.env
 
       - run: |
           npm install -g vercel
