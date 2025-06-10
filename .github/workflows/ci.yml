@@ -27,7 +27,9 @@ jobs:
 
       - name: Rehydrate all secrets
         run: |
-          echo "$SECRETS_BLOB" | base64 -d > .env
+          echo "$SECRETS_BLOB" \
+            | base64 -d \
+            | tr -d '\r' > .env
           set -a
           source .env
           set +a
@@ -66,7 +68,9 @@ jobs:
 
       - name: Rehydrate all secrets
         run: |
-          echo "$SECRETS_BLOB" | base64 -d > .env
+          echo "$SECRETS_BLOB" \
+            | base64 -d \
+            | tr -d '\r' > .env
           set -a
           source .env
           set +a
