@@ -16,17 +16,18 @@ jobs:
           bun-version: latest
       - run: bun install
 
-      - name: Decode .env and source it
+      - name: Decode & source .env
         run: |
           printf '%s' "$SECRETS_BLOB" | base64 -d | tr -d '\r' > .env
           set -a
           source .env
           set +a
 
-      - name: Trim Redis vars
+      - name: Expose Redis & Cypress-Record
         run: |
           echo "UPSTASH_REDIS_REST_URL=$(printf '%s' "$UPSTASH_REDIS_REST_URL" | tr -d '[:space:]')" >> $GITHUB_ENV
           echo "UPSTASH_REDIS_REST_TOKEN=$(printf '%s' "$UPSTASH_REDIS_REST_TOKEN" | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "CYPRESS_RECORD_KEY=$(printf '%s' "$CYPRESS_RECORD_KEY" | tr -d '[:space:]')" >> $GITHUB_ENV
 
       - uses: cypress-io/github-action@v6
         with:
@@ -52,17 +53,18 @@ jobs:
           bun-version: latest
       - run: bun install
 
-      - name: Decode .env and source it
+      - name: Decode & source .env
         run: |
           printf '%s' "$SECRETS_BLOB" | base64 -d | tr -d '\r' > .env
           set -a
           source .env
           set +a
 
-      - name: Trim Redis vars
+      - name: Expose Redis & Cypress-Record
         run: |
           echo "UPSTASH_REDIS_REST_URL=$(printf '%s' "$UPSTASH_REDIS_REST_URL" | tr -d '[:space:]')" >> $GITHUB_ENV
           echo "UPSTASH_REDIS_REST_TOKEN=$(printf '%s' "$UPSTASH_REDIS_REST_TOKEN" | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "CYPRESS_RECORD_KEY=$(printf '%s' "$CYPRESS_RECORD_KEY" | tr -d '[:space:]')" >> $GITHUB_ENV
 
       - run: |
           npm install -g vercel
