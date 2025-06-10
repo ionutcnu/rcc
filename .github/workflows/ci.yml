@@ -1,7 +1,8 @@
 # .github/workflows/ci.yml
 name: CI
 
-on: push
+on:
+  push:
 
 jobs:
   test:
@@ -9,34 +10,49 @@ jobs:
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - uses: oven-sh/setup-bun@v1
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - run: bun install
+      - name: Install dependencies
+        run: bun install
 
       - name: Rehydrate & expose secrets
         run: |
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
-            | base64 -d \
-            | tr -d '\r' \
-            > decoded.env
+            | base64 -d > decoded.env
 
           while IFS= read -r line; do
+            # skip blank or comment lines
             [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
+
             key=${line%%=*}
             val=${line#*=}
-            echo "${key}=${val}" >> $GITHUB_ENV
+
+            # if value contains any char other than a–z, A–Z, 0–9, ., _, :, /, -
+            if [[ "$val" =~ [^a-zA-Z0-9._:\/-] ]]; then
+              # use multi-line syntax for unsafe values
+              echo "$key<<EOF" >> $GITHUB_ENV
+              printf '%s\n' "$val" >> $GITHUB_ENV
+              echo "EOF" >> $GITHUB_ENV
+            else
+              # safe to set inline
+              echo "$key=$val" >> $GITHUB_ENV
+            fi
           done < decoded.env
 
-      - uses: cypress-io/github-action@v6
+      - name: Run & record Cypress tests
+        uses: cypress-io/github-action@v6
         with:
           build: bun run build:no-tests
           start: bun run start
@@ -51,33 +67,44 @@ jobs:
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - uses: oven-sh/setup-bun@v1
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - run: bun install
+      - name: Install dependencies
+        run: bun install
 
       - name: Rehydrate & expose secrets
         run: |
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
-            | base64 -d \
-            | tr -d '\r' \
-            > decoded.env
+            | base64 -d > decoded.env
 
           while IFS= read -r line; do
             [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
+
             key=${line%%=*}
             val=${line#*=}
-            echo "${key}=${val}" >> $GITHUB_ENV
+
+            if [[ "$val" =~ [^a-zA-Z0-9._:\/-] ]]; then
+              echo "$key<<EOF" >> $GITHUB_ENV
+              printf '%s\n' "$val" >> $GITHUB_ENV
+              echo "EOF" >> $GITHUB_ENV
+            else
+              echo "$key=$val" >> $GITHUB_ENV
+            fi
           done < decoded.env
 
-      - run: |
+      - name: Deploy to Vercel
+        run: |
           npm install -g vercel
           vercel --prod --confirm
