@@ -1,7 +1,5 @@
 name: CI
-
-on:
-  push:
+on: push
 
 jobs:
   test:
@@ -17,16 +15,19 @@ jobs:
         with:
           bun-version: latest
       - run: bun install
-      - name: Rehydrate & source full .env
+
+      - name: Decode .env and source it
         run: |
-          printf '%s' "$SECRETS_BLOB" | tr -d '\r\n' | base64 -d > .env
+          printf '%s' "$SECRETS_BLOB" | base64 -d | tr -d '\r' > .env
           set -a
           source .env
           set +a
-      - name: Trim only Redis URL & Token
+
+      - name: Trim Redis vars
         run: |
-          echo "UPSTASH_REDIS_REST_URL=$(printf '%s' \"$UPSTASH_REDIS_REST_URL\" | tr -d '[:space:]')" >> $GITHUB_ENV
-          echo "UPSTASH_REDIS_REST_TOKEN=$(printf '%s' \"$UPSTASH_REDIS_REST_TOKEN\" | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "UPSTASH_REDIS_REST_URL=$(printf '%s' "$UPSTASH_REDIS_REST_URL" | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "UPSTASH_REDIS_REST_TOKEN=$(printf '%s' "$UPSTASH_REDIS_REST_TOKEN" | tr -d '[:space:]')" >> $GITHUB_ENV
+
       - uses: cypress-io/github-action@v6
         with:
           build: bun run build:no-tests
@@ -50,16 +51,19 @@ jobs:
         with:
           bun-version: latest
       - run: bun install
-      - name: Rehydrate & source full .env
+
+      - name: Decode .env and source it
         run: |
-          printf '%s' "$SECRETS_BLOB" | tr -d '\r\n' | base64 -d > .env
+          printf '%s' "$SECRETS_BLOB" | base64 -d | tr -d '\r' > .env
           set -a
           source .env
           set +a
-      - name: Trim only Redis URL & Token
+
+      - name: Trim Redis vars
         run: |
-          echo "UPSTASH_REDIS_REST_URL=$(printf '%s' \"$UPSTASH_REDIS_REST_URL\" | tr -d '[:space:]')" >> $GITHUB_ENV
-          echo "UPSTASH_REDIS_REST_TOKEN=$(printf '%s' \"$UPSTASH_REDIS_REST_TOKEN\" | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "UPSTASH_REDIS_REST_URL=$(printf '%s' "$UPSTASH_REDIS_REST_URL" | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "UPSTASH_REDIS_REST_TOKEN=$(printf '%s' "$UPSTASH_REDIS_REST_TOKEN" | tr -d '[:space:]')" >> $GITHUB_ENV
+
       - run: |
           npm install -g vercel
           vercel --prod --confirm
