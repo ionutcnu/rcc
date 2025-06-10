@@ -10,37 +10,36 @@ jobs:
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
+      - run: bun install
 
-      - name: Rehydrate & expose secrets
+      - name: Rehydrate & expose secrets (trim whitespace)
         run: |
-          # Decode your blob into decoded.env
+          # 1) collapse Base64, decode, keep raw lines
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
             | base64 -d > decoded.env
 
-          # Read each non-empty, non-comment line and export raw values
+          # 2) read each non-empty, non-comment line
           while IFS= read -r line; do
             [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
+
             key=${line%%=*}
             raw=${line#*=}
-            # strip any surrounding quotes
-            val=${raw#\"}; val=${val%\"}
-            # export
+
+            # 3) strip ALL whitespace (spaces, tabs, newlines)
+            val=$(printf '%s' "$raw" | tr -d '[:space:]')
+
+            # 4) export clean value
             echo "$key=$val" >> $GITHUB_ENV
           done < decoded.env
 
@@ -60,23 +59,19 @@ jobs:
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
+      - run: bun install
 
-      - name: Rehydrate & expose secrets
+      - name: Rehydrate & expose secrets (trim whitespace)
         run: |
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
@@ -86,7 +81,7 @@ jobs:
             [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
             key=${line%%=*}
             raw=${line#*=}
-            val=${raw#\"}; val=${val%\"}
+            val=$(printf '%s' "$raw" | tr -d '[:space:]')
             echo "$key=$val" >> $GITHUB_ENV
           done < decoded.env
 
