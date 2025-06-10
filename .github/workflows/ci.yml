@@ -28,27 +28,20 @@ jobs:
 
       - name: Rehydrate & expose secrets
         run: |
+          # Decode your blob into decoded.env
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
             | base64 -d > decoded.env
 
+          # Read each non-empty, non-comment line and export raw values
           while IFS= read -r line; do
-            # skip blank or comment lines
             [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
-
             key=${line%%=*}
-            val=${line#*=}
-
-            # if value contains any char other than a–z, A–Z, 0–9, ., _, :, /, -
-            if [[ "$val" =~ [^a-zA-Z0-9._:\/-] ]]; then
-              # use multi-line syntax for unsafe values
-              echo "$key<<EOF" >> $GITHUB_ENV
-              printf '%s\n' "$val" >> $GITHUB_ENV
-              echo "EOF" >> $GITHUB_ENV
-            else
-              # safe to set inline
-              echo "$key=$val" >> $GITHUB_ENV
-            fi
+            raw=${line#*=}
+            # strip any surrounding quotes
+            val=${raw#\"}; val=${val%\"}
+            # export
+            echo "$key=$val" >> $GITHUB_ENV
           done < decoded.env
 
       - name: Run & record Cypress tests
@@ -91,17 +84,10 @@ jobs:
 
           while IFS= read -r line; do
             [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
-
             key=${line%%=*}
-            val=${line#*=}
-
-            if [[ "$val" =~ [^a-zA-Z0-9._:\/-] ]]; then
-              echo "$key<<EOF" >> $GITHUB_ENV
-              printf '%s\n' "$val" >> $GITHUB_ENV
-              echo "EOF" >> $GITHUB_ENV
-            else
-              echo "$key=$val" >> $GITHUB_ENV
-            fi
+            raw=${line#*=}
+            val=${raw#\"}; val=${val%\"}
+            echo "$key=$val" >> $GITHUB_ENV
           done < decoded.env
 
       - name: Deploy to Vercel
