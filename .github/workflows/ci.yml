@@ -29,23 +29,24 @@ jobs:
       - name: Debug & Rehydrate secrets
         run: |
           echo "👉 Secret blob length: $(printf '%s' "$SECRETS_BLOB" | wc -c) bytes"
-          
-          # Decode into a temp file
+
+          # Collapse line‐breaks, decode, strip CR, write to decoded.env
           printf '%s' "$SECRETS_BLOB" \
             | tr -d '\r\n' \
-            | base64 -d > decoded.env
+            | base64 -d \
+            | tr -d '\r' > decoded.env
 
-          # Inspect
-          echo "🔍 decoded.env (first 10 lines):"
-          head -n 10 decoded.env | nl
-          echo "🔍 Total lines in decoded.env: $(wc -l < decoded.env)"
+          echo "🔍 decoded.env (first 12 lines):"
+          head -n 12 decoded.env | nl
+          echo "🔍 Total lines: $(wc -l < decoded.env)"
 
-          # Filter only key=value lines into .env
-          grep '=' decoded.env > .env
+          # Keep only KEY=VALUE lines, strip any leftover CR, write .env
+          grep '=' decoded.env | tr -d '\r' > .env
+
           echo "✅ .env after filtering:"
           nl .env
 
-          # Export & source
+          # Export and source
           set -a
           source .env
           set +a
@@ -82,17 +83,15 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Debug & Rehydrate secrets
+      - name: Rehydrate secrets
         run: |
-          echo "👉 Secret blob length: $(printf '%s' "$SECRETS_BLOB" | wc -c) bytes"
-          printf '%s' "$SECRETS_BLOB" | tr -d '\r\n' | base64 -d > decoded.env
-          echo "🔍 decoded.env (first 10 lines):"
-          head -n 10 decoded.env | nl
-          echo "🔍 Total lines in decoded.env: $(wc -l < decoded.env)"
-          grep '=' decoded.env > .env
-          echo "✅ .env after filtering:"
-          nl .env
-          set -a; source .env; set +a
+          printf '%s' "$SECRETS_BLOB" \
+            | tr -d '\r\n' \
+            | base64 -d \
+            | tr -d '\r' > .env
+          set -a
+          source .env
+          set +a
 
       - name: Deploy to Vercel
         run: |
