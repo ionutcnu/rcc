@@ -6,6 +6,7 @@ import Footer from "@/components/layouts/Footer"
 import Header from "@/components/layouts/Header"
 import { fetchAllCats } from "@/lib/api/catClient"
 import type { CatProfile } from "@/lib/types/cat"
+import { GiCat, GiPawPrint, GiPartyPopper } from "react-icons/gi"
 
 type Category = {
     id: string
@@ -160,12 +161,14 @@ export default function CategoriesPage() {
 
     if (isLoading) {
         return (
-          <div className="bg-gray-50 min-h-screen flex flex-col">
+          <div className="min-h-screen cat-bg-pattern flex flex-col">
               <Header />
               <main className="flex-grow flex items-center justify-center">
-                  <div className="text-center">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
-                      <p className="text-lg text-gray-600">Loading categories...</p>
+                  <div className="text-center cat-glass rounded-3xl p-8">
+                      <div className="animate-cat-bounce mb-4">
+                          <GiCat className="h-16 w-16 cat-text-gradient-warm mx-auto" />
+                      </div>
+                      <p className="text-lg text-gray-600">Finding your purrfect companions...</p>
                   </div>
               </main>
               <Footer />
@@ -175,31 +178,20 @@ export default function CategoriesPage() {
 
     if (error) {
         return (
-          <div className="bg-gray-50 min-h-screen flex flex-col">
+          <div className="min-h-screen cat-bg-pattern flex flex-col">
               <Header />
               <main className="flex-grow flex items-center justify-center">
-                  <div className="text-center bg-red-50 p-6 rounded-lg shadow-md max-w-md">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-12 w-12 text-red-500 mx-auto mb-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                      </svg>
-                      <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Data</h2>
+                  <div className="text-center cat-glass rounded-3xl p-8 max-w-md">
+                      <div className="animate-whisker-twitch mb-4">
+                          <GiCat className="h-16 w-16 text-red-500 mx-auto" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-800 mb-2">Oops! Cat got your data</h2>
                       <p className="text-gray-600 mb-4">{error}</p>
                       <button
                         onClick={() => window.location.reload()}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg font-medium"
+                        className="cat-button-primary"
                       >
-                          Try Again
+                          Try Again 🐾
                       </button>
                   </div>
               </main>
@@ -209,65 +201,87 @@ export default function CategoriesPage() {
     }
 
     return (
-      <div className="bg-gray-50 min-h-screen flex flex-col">
+      <div className="min-h-screen cat-bg-pattern relative overflow-hidden">
+          {/* Floating Cat Elements */}
+          <div className="cat-float top-20 left-10">
+              <GiCat className="w-16 h-16 text-red-300" />
+          </div>
+          <div className="cat-float top-40 right-20 cat-float-delayed">
+              <GiPawPrint className="w-12 h-12 text-blue-300" />
+          </div>
+          <div className="cat-float bottom-40 left-1/4 cat-float-slow">
+              <GiPartyPopper className="w-14 h-14 text-orange-300" />
+          </div>
+          
           <Header />
-          <main className="flex-grow">
-              <div className="container mx-auto max-w-screen-xl py-12 px-4">
-                  <h1 className="text-4xl font-extrabold text-gray-800 text-center mb-6">Explore Categories</h1>
-                  <p className="text-lg text-gray-600 text-center max-w-2xl mx-auto mb-12">
-                      Find the perfect companion—whether a playful kitten, a charming male cat, or an elegant female cat.
-                  </p>
+          <main className="relative z-10">
+              <div className="container mx-auto max-w-screen-xl py-16 px-4">
+                  {/* Header Section */}
+                  <div className="text-center mb-16">
+                      <div className="animate-cat-bounce mb-6">
+                          <GiCat className="w-20 h-20 cat-text-gradient-warm mx-auto" />
+                      </div>
+                      <h1 className="text-5xl md:text-6xl font-extrabold cat-text-gradient-cool mb-6">
+                          Explore Categories
+                      </h1>
+                      <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                          Find your purrfect companion! Whether you're looking for a playful kitten, 
+                          a charming male cat, or an elegant female cat, we have the perfect match waiting for you.
+                          <span className="block mt-2 text-red-500 font-semibold">🏠 Your new family member is just a click away!</span>
+                      </p>
+                  </div>
 
                   {cats.length === 0 && !isLoading ? (
-                    <div className="text-center bg-yellow-50 p-6 rounded-lg shadow-md max-w-md mx-auto">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-12 w-12 text-yellow-500 mx-auto mb-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
+                    <div className="text-center cat-glass rounded-3xl p-8 max-w-md mx-auto">
+                        <div className="animate-purr mb-4">
+                            <GiCat className="h-16 w-16 text-yellow-500 mx-auto" />
+                        </div>
                         <h2 className="text-2xl font-bold text-gray-800 mb-2">No Cats Available</h2>
-                        <p className="text-gray-600">There are currently no cats in our database. Please check back later.</p>
+                        <p className="text-gray-600">All our furry friends are currently in loving homes! Please check back later for new arrivals.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {categories.map((category) => (
+                        {categories.map((category, index) => (
                           <div
                             key={category.id}
-                            className="group bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer"
+                            className="cat-card cat-hover-lift cursor-pointer group"
                             onClick={() => handleCategoryClick(category.filter)}
+                            style={{ animationDelay: `${index * 0.2}s` }}
                           >
-                              <div className="relative h-56">
+                              <div className="relative h-64 overflow-hidden rounded-t-3xl">
                                   <Image
                                     src={category.image || "/placeholder.svg?height=400&width=600&query=cat"}
                                     alt={category.title}
                                     fill
                                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                    className="object-cover transition-all duration-500 group-hover:scale-110"
                                     quality={80}
-                                    priority={category.id === "male"} // Optional: Prioritize above-the-fold images
+                                    priority={category.id === "male"}
                                   />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                               </div>
 
-                              <div className="p-6">
-                                  <h2 className="text-2xl font-bold text-gray-800 group-hover:text-indigo-600 transition-colors duration-300 mb-3">
-                                      {category.title}
-                                  </h2>
-                                  <p className="text-gray-600 mb-4">{category.description}</p>
+                              <div className="p-8">
+                                  <div className="flex items-center mb-4">
+                                      <div className="animate-paw-wave mr-3">
+                                          {category.id === 'male' && <GiCat className="w-8 h-8 text-blue-500" />}
+                                          {category.id === 'female' && <GiCat className="w-8 h-8 text-pink-500" />}
+                                          {category.id === 'kittens' && <GiPartyPopper className="w-8 h-8 text-orange-500" />}
+                                      </div>
+                                      <h2 className="text-2xl font-bold cat-text-gradient-warm group-hover:scale-105 transition-transform duration-300">
+                                          {category.title}
+                                      </h2>
+                                  </div>
+                                  <p className="text-gray-600 mb-6 leading-relaxed">{category.description}</p>
 
                                   <button
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full cat-button-secondary group-hover:scale-105 transition-transform duration-300"
                                     aria-label={`View all ${category.title}`}
                                   >
-                                      View All
+                                      <span className="flex items-center justify-center">
+                                          View All
+                                          <GiPawPrint className="ml-2 w-4 h-4 animate-paw-wave" />
+                                      </span>
                                   </button>
                               </div>
                           </div>

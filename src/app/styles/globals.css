@@ -1,21 +1,28 @@
-@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+  /* Cat-themed Color Palette */
+  --cat-primary: #FF6B6B;
+  --cat-secondary: #5C6AC4;
+  --cat-accent: #FFB74D;
+  --cat-soft-pink: #FFF0F5;
+  --cat-soft-blue: #F0F4FF;
+  --cat-soft-orange: #FFF7E6;
+  
+  /* Gradients */
+  --cat-gradient-warm: linear-gradient(135deg, #FF6B6B, #FFB74D);
+  --cat-gradient-cool: linear-gradient(135deg, #5C6AC4, #42A5F5);
+  --cat-gradient-sunset: linear-gradient(135deg, #FF6B6B, #FFB74D, #FF8A65);
+  --cat-gradient-ocean: linear-gradient(135deg, #42A5F5, #5C6AC4, #7E57C2);
+  
+  /* Background Colors */
+  --background-primary: #FAFBFF;
+  --background-secondary: #F4F6FA;
+  --foreground-rgb: 46, 46, 46;
 }
 
 .swiper-button-next, .swiper-button-prev {
@@ -23,12 +30,110 @@
 }
 
 body {
-  font-family: 'Patrick Hand', cursive;
+  font-family: 'Poppins', 'Patrick Hand', sans-serif;
+  background: var(--background-primary);
+  color: rgb(var(--foreground-rgb));
+}
+
+/* Cat-themed Components */
+@layer components {
+  /* Modern Cat Cards */
+  .cat-card {
+    @apply bg-white/80 backdrop-blur-sm rounded-3xl border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 relative overflow-hidden;
+  }
+  
+  .cat-card::before {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400 via-pink-400 to-orange-400;
+  }
+  
+  /* Cat Buttons */
+  .cat-button-primary {
+    @apply bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1;
+  }
+  
+  .cat-button-secondary {
+    @apply bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1;
+  }
+  
+  .cat-button-outline {
+    @apply border-2 border-red-400 text-red-600 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full font-semibold hover:bg-red-50 transition-all duration-300 hover:scale-105 hover:border-red-500;
+  }
+  
+  /* Cat Input Fields */
+  .cat-input {
+    @apply bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-transparent focus:border-blue-400 focus:bg-white rounded-xl px-4 py-3 transition-all duration-300 focus:scale-105 focus:shadow-lg;
+  }
+  
+  /* Cat Gradients */
+  .cat-gradient-warm {
+    background: var(--cat-gradient-warm);
+  }
+  
+  .cat-gradient-cool {
+    background: var(--cat-gradient-cool);
+  }
+  
+  .cat-gradient-sunset {
+    background: var(--cat-gradient-sunset);
+  }
+  
+  .cat-gradient-ocean {
+    background: var(--cat-gradient-ocean);
+  }
+  
+  /* Cat Text Gradients */
+  .cat-text-gradient-warm {
+    @apply bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 bg-clip-text text-transparent;
+  }
+  
+  .cat-text-gradient-cool {
+    @apply bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent;
+  }
+  
+  /* Cat Backgrounds */
+  .cat-bg-pattern {
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(92, 106, 196, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba(255, 183, 77, 0.1) 0%, transparent 50%);
+  }
+  
+  /* Cat Floating Elements */
+  .cat-float {
+    @apply absolute pointer-events-none opacity-20;
+    animation: catFloat 6s ease-in-out infinite;
+  }
+  
+  .cat-float-delayed {
+    animation-delay: 2s;
+  }
+  
+  .cat-float-slow {
+    animation-delay: 4s;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Cat Animation Utilities */
+  .animate-paw-wave {
+    animation: pawWave 2s ease-in-out infinite;
+  }
+  
+  .animate-cat-bounce {
+    animation: catBounce 1.5s ease-in-out infinite;
+  }
+  
+  .animate-whisker-twitch {
+    animation: whiskerTwitch 3s ease-in-out infinite;
+  }
+  
+  .animate-purr {
+    animation: purr 4s ease-in-out infinite;
   }
 }
 
@@ -172,5 +277,340 @@ a {
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+  }
+}
+
+/* Cat-themed Keyframe Animations */
+@keyframes catFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-15px) rotate(5deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-3deg);
+  }
+  75% {
+    transform: translateY(-20px) rotate(2deg);
+  }
+}
+
+@keyframes pawWave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  75% {
+    transform: rotate(-10deg);
+  }
+}
+
+@keyframes catBounce {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.05);
+  }
+}
+
+@keyframes whiskerTwitch {
+  0%, 100% {
+    transform: translateX(0px);
+  }
+  25% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: translateX(-1px);
+  }
+}
+
+@keyframes purr {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Cat-themed Hover Effects */
+.cat-hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cat-hover-lift:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.cat-hover-glow:hover {
+  box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+}
+
+.cat-hover-pulse:hover {
+  animation: purr 1s ease-in-out infinite;
+}
+
+/* Modern Glass Morphism */
+.cat-glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cat-glass-dark {
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Cat Page Transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #FF6B6B, #FFB74D);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #FF5252, #FF9800);
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(255, 107, 107, 0.3);
+  color: #333;
+}
+
+::-moz-selection {
+  background: rgba(255, 107, 107, 0.3);
+  color: #333;
+}
+
+/* Custom Fullscreen Modal Styles */
+.fullscreen-modal {
+  backdrop-filter: blur(10px);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.fullscreen-modal video {
+  max-width: 95vw;
+  max-height: 95vh;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.fullscreen-modal img {
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Modal Control Buttons */
+.modal-control-btn {
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.modal-control-btn:hover {
+  background: rgba(0, 0, 0, 0.8) !important;
+  transform: scale(1.1);
+}
+
+.modal-control-btn:active {
+  transform: scale(0.95);
+}
+
+/* Navigation buttons with better visibility */
+.modal-nav-btn {
+  width: 60px;
+  height: 60px;
+  font-size: 28px;
+  font-weight: bold;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Media counter styling */
+.modal-counter {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: monospace;
+  font-weight: 600;
+}
+
+/* Keyboard shortcuts info */
+.modal-shortcuts {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: monospace;
+  transition: opacity 0.3s ease;
+}
+
+.modal-shortcuts:hover {
+  opacity: 1 !important;
+}
+
+/* Fullscreen enhancements */
+.fullscreen-modal:fullscreen {
+  background: #000;
+}
+
+.fullscreen-modal:fullscreen video {
+  max-width: 100vw;
+  max-height: 100vh;
+  border-radius: 0;
+}
+
+.fullscreen-modal:fullscreen .modal-control-btn {
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .modal-nav-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+  }
+  
+  .modal-control-btn {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .fullscreen-modal video {
+    max-width: 98vw;
+    max-height: 90vh;
+  }
+  
+  .modal-shortcuts {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+}
+
+/* Animation keyframes */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Ensure video controls work properly */
+.fullscreen-modal video::-webkit-media-controls {
+  z-index: 2147483647;
+}
+
+.fullscreen-modal video::-webkit-media-controls-panel {
+  z-index: 2147483647;
+}
+
+/* Minimal video styling - no interference with controls */
+.fullscreen-modal video,
+.main-video {
+  outline: none;
+}
+
+/* Touch improvements for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .modal-control-btn {
+    background: rgba(0, 0, 0, 0.8) !important;
+  }
+  
+  .modal-shortcuts {
+    display: none;
   }
 }

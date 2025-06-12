@@ -1,6 +1,7 @@
 "use client"
 import Image from "next/image"
 import type React from "react"
+import { createPortal } from "react-dom"
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -402,13 +403,14 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({ currentCatId, catData
               <span>View Family Tree</span>
           </button>
 
-          <AnimatePresence>
-              {isOpen && (
+          {isOpen && typeof window !== 'undefined' && createPortal(
+            <AnimatePresence>
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+                  className="fixed inset-0 bg-black/40 flex items-center justify-center p-4"
+                  style={{ zIndex: 9999 }}
                 >
                     <motion.div
                       initial={{ scale: 0.95 }}
@@ -464,8 +466,9 @@ const ParentInfoPopup: React.FC<ParentInfoPopupProps> = ({ currentCatId, catData
                         </div>
                     </motion.div>
                 </motion.div>
-              )}
-          </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+          )}
       </>
     )
 }

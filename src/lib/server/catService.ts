@@ -347,17 +347,48 @@ export async function archiveCat(id: string): Promise<void> {
 // Add this function to fetch a cat by name
 export async function getCatByName(name: string): Promise<CatProfile | null> {
   try {
+    // Clean and normalize the input name
+    const cleanName = name.trim()
+    
     const query = {
       where: [
-        { field: "name", operator: "==", value: name },
+        { field: "name", operator: "==", value: cleanName },
         { field: "isDeleted", operator: "==", value: false },
       ],
       limit: 1,
     }
 
     const cats = await safeGetDocs("cats", query)
-
+    
+    // If exact match fails, try case-insensitive search
     if (cats.length === 0) {
+      // Get all non-deleted cats and search manually
+      const allCatsQuery = {
+        where: [{ field: "isDeleted", operator: "==", value: false }],
+      }
+      const allCats = await safeGetDocs("cats", allCatsQuery)
+      
+      // Find cat with case-insensitive name match
+      const matchingCat = allCats.find((cat: any) => 
+        cat.name && cat.name.toLowerCase().trim() === cleanName.toLowerCase()
+      )
+      
+      if (matchingCat) {
+        const catData = matchingCat as any
+        
+        // Calculate age
+        const currentYear = new Date().getFullYear()
+        let age: number | undefined = undefined
+        if (catData.yearOfBirth) {
+          age = currentYear - catData.yearOfBirth
+        }
+
+        return {
+          ...catData,
+          age,
+        } as CatProfile
+      }
+      
       return null
     }
 

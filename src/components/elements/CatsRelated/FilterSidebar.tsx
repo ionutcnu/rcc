@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ChevronDown, ChevronUp, Filter } from "lucide-react"
+import { GiCat, GiPawPrint } from "react-icons/gi"
 import type React from "react"
 
 type FilterOptionProps = {
@@ -12,15 +13,17 @@ type FilterOptionProps = {
     disabled?: boolean
 }
 
-// Update the FilterOption component to make it more compact
 const FilterOption = ({ label, value, onChange, options, disabled = false }: FilterOptionProps) => (
-    <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-800 mb-1">{label}</label>
+    <div className="mb-6">
+        <label className="flex items-center text-sm font-semibold text-gray-800 mb-2">
+            <GiPawPrint className="w-3 h-3 mr-2 text-red-500" />
+            {label}
+        </label>
         <select
             value={value ?? ""}
             onChange={onChange}
             disabled={disabled}
-            className={`w-full border border-gray-300 rounded-md py-1.5 px-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 hover:border-indigo-400 transition-all duration-300 shadow-sm ${
+            className={`cat-input w-full text-sm ${
                 disabled ? "opacity-60 cursor-not-allowed" : ""
             }`}
         >
@@ -98,62 +101,76 @@ const FilterSidebar = ({
     }
 
     return (
-        <aside className="bg-white rounded-lg shadow-md border border-gray-200">
+        <aside className="cat-card cat-hover-lift relative">
+            {/* Floating Cat Decoration */}
+            <div className="absolute top-2 right-2 opacity-20">
+                <GiCat className="w-8 h-8 text-red-300 animate-purr" />
+            </div>
+            
             {/* Mobile filter toggle */}
-            <div className="md:hidden p-3 flex items-center justify-between">
+            <div className="md:hidden p-4 flex items-center justify-between">
                 <div className="flex items-center">
-                    <Filter className="h-4 w-4 mr-2 text-indigo-600" />
-                    <h2 className="text-base font-semibold text-gray-800">Filters</h2>
+                    <div className="animate-cat-bounce mr-3">
+                        <GiCat className="h-5 w-5 text-red-500" />
+                    </div>
+                    <h2 className="text-lg font-bold cat-text-gradient-warm">Filters</h2>
                     {activeFiltersCount > 0 && (
-                        <span className="ml-2 bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full">
-              {activeFiltersCount}
-            </span>
+                        <span className="ml-3 bg-gradient-to-r from-red-100 to-pink-100 text-red-700 text-xs px-3 py-1 rounded-full font-semibold">
+                            {activeFiltersCount}
+                        </span>
                     )}
                 </div>
                 <button
                     onClick={toggleFilters}
-                    className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                    className="cat-button-outline !px-3 !py-2 flex items-center"
                     aria-expanded={isExpanded}
                     aria-label={isExpanded ? "Collapse filters" : "Expand filters"}
                 >
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
             </div>
 
             {/* Desktop header */}
-            <div className="hidden md:flex items-center justify-between p-4 border-b border-gray-100">
-                <h2 className="text-base font-semibold text-gray-800">Filters</h2>
-                {isLoading && (
-                    <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                )}
-                <button
-                    onClick={clearAllFilters}
-                    disabled={isLoading}
-                    className={`text-xs text-gray-500 hover:text-gray-700 underline focus:outline-none transition-colors ${
-                        isLoading ? "opacity-60 cursor-not-allowed" : ""
-                    }`}
-                >
-                    Clear all
-                </button>
+            <div className="hidden md:flex items-center justify-between p-6 border-b border-red-100">
+                <div className="flex items-center">
+                    <div className="animate-cat-bounce mr-3">
+                        <GiCat className="h-6 w-6 text-red-500" />
+                    </div>
+                    <h2 className="text-xl font-bold cat-text-gradient-warm">Filters</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                    {isLoading && (
+                        <div className="animate-cat-bounce">
+                            <GiPawPrint className="h-4 w-4 text-red-500" />
+                        </div>
+                    )}
+                    <button
+                        onClick={clearAllFilters}
+                        disabled={isLoading}
+                        className={`cat-button-outline !px-4 !py-1 !text-xs ${
+                            isLoading ? "opacity-60 cursor-not-allowed" : ""
+                        }`}
+                    >
+                        Clear all
+                    </button>
+                </div>
             </div>
 
             {/* Filter content - collapsible on mobile */}
             <div
                 className={`${
                     isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 md:max-h-[2000px] md:opacity-100"
-                } overflow-hidden transition-all duration-300 ease-in-out`}
+                } overflow-hidden transition-all duration-500 ease-in-out`}
             >
-                <div className="p-4">
+                <div className="p-6">
                     {/* Mobile clear all button */}
-                    <div className="md:hidden flex justify-end mb-3">
+                    <div className="md:hidden flex justify-end mb-4">
                         <button
                             onClick={() => {
                                 clearAllFilters()
-                                // Optionally collapse after clearing
-                                // setIsExpanded(false)
                             }}
                             disabled={isLoading}
-                            className={`text-xs text-gray-500 hover:text-gray-700 underline focus:outline-none transition-colors ${
+                            className={`cat-button-outline !px-4 !py-1 !text-xs ${
                                 isLoading ? "opacity-60 cursor-not-allowed" : ""
                             }`}
                         >
@@ -312,12 +329,14 @@ const FilterSidebar = ({
 
 
                     {/* Mobile apply button */}
-                    <div className="md:hidden mt-4">
+                    <div className="md:hidden mt-6">
                         <button
                             onClick={() => setIsExpanded(false)}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md text-sm font-medium transition-colors"
+                            className="w-full cat-button-primary flex items-center justify-center !py-3"
                         >
+                            <GiPawPrint className="mr-2 w-4 h-4 animate-paw-wave" />
                             Apply Filters
+                            <GiCat className="ml-2 w-4 h-4 animate-cat-bounce" />
                         </button>
                     </div>
                 </div>

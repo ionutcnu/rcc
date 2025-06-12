@@ -11,6 +11,7 @@ import Image from "next/image"
 import { fetchAllCats } from "@/lib/api/catClient"
 import type { CatProfile } from "@/lib/types/cat"
 import { getTimestampValue } from "@/lib/types/timestamp"
+import { GiCat, GiPawPrint } from "react-icons/gi"
 
 export default function CatsSection() {
     const swiperRef = useRef<SwiperCore>()
@@ -99,26 +100,36 @@ export default function CatsSection() {
                     {cats.slice(0, 6).map((cat) => (
                       <SwiperSlide key={cat.id}>
                           <Link href={`/cat-profile/${encodeURIComponent(cat.name)}`}>
-                              <div className="bg-white text-black rounded-lg overflow-hidden shadow-lg cursor-pointer h-full">
-                                  <div className="relative h-56 w-full">
+                              <div className="cat-card cat-hover-lift cursor-pointer h-full group">
+                                  <div className="relative h-56 w-full overflow-hidden rounded-t-3xl">
                                       <Image
                                         src={cat.mainImage || "/placeholder-cat.jpg"}
                                         alt={cat.name}
                                         fill
-                                        className="object-cover"
+                                        className="object-cover transition-all duration-500 group-hover:scale-110"
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                       />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                      
+                                      {/* Floating paw prints on hover */}
+                                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                          <GiPawPrint className="w-6 h-6 text-white animate-paw-wave" />
+                                      </div>
                                   </div>
-                                  <div className="p-6">
-                                      <h3 className="text-2xl font-bold mb-2">{cat.name}</h3>
-                                      <p className="text-gray-700 line-clamp-2">{cat.description || `${cat.breed} - ${cat.gender}`}</p>
-                                      <div className="mt-2 flex justify-between items-center">
-                        <span className="text-sm text-gray-500">
-                          {cat.yearOfBirth ? `Born ${cat.yearOfBirth}` : "Age unknown"}
-                        </span>
+                                  <div className="p-6 text-gray-800">
+                                      <div className="flex items-center mb-2">
+                                          <GiCat className="w-5 h-5 text-red-500 mr-2" />
+                                          <h3 className="text-2xl font-bold cat-text-gradient-warm group-hover:scale-105 transition-transform duration-300">{cat.name}</h3>
+                                      </div>
+                                      <p className="text-gray-700 line-clamp-2 mb-4">{cat.description || `${cat.breed} - ${cat.gender}`}</p>
+                                      <div className="flex justify-between items-center">
+                                          <span className="text-sm text-gray-500 flex items-center">
+                                              <GiPawPrint className="w-3 h-3 mr-1 text-pink-500" />
+                                              {cat.yearOfBirth ? `Born ${cat.yearOfBirth}` : "Age unknown"}
+                                          </span>
                                           {cat.availability && (
                                             <span
-                                              className={`text-sm px-2 py-1 rounded ${
+                                              className={`text-sm px-3 py-1 rounded-full font-medium ${
                                                 cat.availability === "Available"
                                                   ? "bg-green-100 text-green-800"
                                                   : cat.availability === "Reserved"
@@ -126,8 +137,8 @@ export default function CatsSection() {
                                                     : "bg-red-100 text-red-800"
                                               }`}
                                             >
-                            {cat.availability}
-                          </span>
+                                                {cat.availability}
+                                            </span>
                                           )}
                                       </div>
                                   </div>
@@ -177,7 +188,7 @@ export default function CatsSection() {
               <p className="mt-12 text-lg">
                   Rescued from the streets of Spain, these felines are treated with love, care, and full vaccinations.
               </p>
-              <p className="text-lg">They're now healthy and excited to meet their new owners!</p>
+              <p className="text-lg">They&#39;re now healthy and excited to meet their new owners!</p>
               <a href="/allcats" className="text-yellow-500 mt-4 inline-block text-lg hover:underline">
                   See all cats &gt;
               </a>
