@@ -2,9 +2,6 @@ name: CI
 on: push
 
 jobs:
-  # ──────────────────────────────────────────────────────────────
-  # TEST ─ run unit/E2E tests with Cypress
-  # ──────────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
     env:
@@ -13,34 +10,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 👉 Pin Bun instead of “latest” to avoid surprise regressions
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.2.16"   # update occasionally
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+      # ───────────────────────────────────────────────────────────
+      # Install dependencies (low concurrency + 3-try retry loop)
+      # ───────────────────────────────────────────────────────────
+      - name: Install deps (retries, low concurrency)
+        run: |
+          for try in 1 2 3; do
+            echo "🟡 bun install (try $try)…"
+            bun install --network-concurrency=12 --no-progress && break
+            if [ "$try" -lt 3 ]; then
+              echo "⚠️  bun install failed, retrying in 15 s…"
+              sleep 15
+            else
+              echo "🛑 bun install failed after 3 attempts"; exit 1
+            fi
+          done
+        # --network-concurrency caps simultaneous fetches (docs show the flag) :contentReference[oaicite:0]{index=0}
+        # a community workaround shows single-digit values fix 5xx timeouts :contentReference[oaicite:1]{index=1}
 
-      - name: Install deps
-        run: bun install
-
-      # 🔑 Decode the secret blob and persist every KEY=value line
-      #    for the rest of the job (and any matrix children).
+      # Load secrets for all downstream steps
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
 
+      # Run Cypress
       - uses: cypress-io/github-action@v6
         with:
           build: bun run build:no-tests
           start: bun run start
           wait-on: http://localhost:3000
           wait-on-timeout: 60
-          record: true                 # flip to false if you don’t need the dashboard
+          record: true
 
-  # ──────────────────────────────────────────────────────────────
-  # DEPLOY ─ only if tests pass
-  # ──────────────────────────────────────────────────────────────
   deploy:
     needs: test
     if: success()
@@ -50,23 +60,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.2.16"
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install deps
-        run: bun install
-
-      # Re-hydrate env vars for the deploy job too
+      - name: Install deps (reused script)
+        run: |
+          for try in 1 2 3; do
+            bun install --network-concurrency=12 --no-progress && break || {
+              [ "$try" -eq 3 ] && exit 1
+              sleep 15
+            }
+          done
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
-
       - name: Deploy with Vercel
         run: |
           npm install -g vercel
