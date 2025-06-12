@@ -1,12 +1,12 @@
 name: CI
 on:
-  push:            # every branch
-  pull_request:    # PR status checks
-  workflow_dispatch:   # manual “Run workflow” button
+  push:                # run on every branch push
+  pull_request:        # PR checks
+  workflow_dispatch:   # manual trigger
 
 jobs:
   # ──────────────────────────────────────────────────────────
-  # 1. TEST  – build the app & run Cypress
+  # 1  TEST – build the app & run Cypress
   # ──────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
@@ -24,6 +24,7 @@ jobs:
         with:
           node-version: 18
 
+      # install with retry + lower network fan-out
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
@@ -32,24 +33,31 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
           done
 
-      # 🔑 DECODE BLOB → expand \n → write multiline-safe vars to $GITHUB_ENV
+      # 🔑 decode BLOB → expand \n when needed → persist to $GITHUB_ENV
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode |
           while IFS= read -r line; do
             var="${line%%=*}"
             val="${line#*=}"
-            # expand back-slash escapes (\n, \t, etc.)
+
+            # expand back-slash escapes (\n, \t …)
             expanded=$(printf '%b' "$val")
-            # write using heredoc so multiline values survive
-            {
-              printf '%s<<EOF\n' "$var"
-              printf '%s\n' "$expanded"
-              echo EOF
-            } >> "$GITHUB_ENV"
+
+            if [[ "$expanded" == *$'\n'* ]]; then
+              # multiline value → heredoc
+              {
+                printf '%s<<EOF\n' "$var"
+                printf '%s\n' "$expanded"
+                echo EOF
+              } >> "$GITHUB_ENV"
+            else
+              # single-line value → plain assignment
+              printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
+            fi
           done
 
-      # 🔍 dump every key (values masked if they match repo/org secrets)
+      # optional dump of every env key (values auto-masked by GitHub)
       - name: Dump **every** env variable
         run: |
           echo "🟢 Full environment visible to Node:"
@@ -64,12 +72,13 @@ jobs:
           wait-on-timeout: 60
           headed: true
           browser: chrome
-          record: false
+          record: false         # toggle when you want Dashboard recordings
           config: |
             video=true
             screenshotOnRunFailure=true
             retries=1
 
+      # upload screenshots/videos if any spec fails
       - name: Upload Cypress videos & screenshots
         if: failure() || steps.cypress.outcome != 'success'
         uses: actions/upload-artifact@v4
@@ -80,11 +89,11 @@ jobs:
             cypress/screenshots
 
   # ──────────────────────────────────────────────────────────
-  # 2. DEPLOY  – runs after TEST, for every branch that passes
+  # 2  DEPLOY – runs on every branch once tests are green
   # ──────────────────────────────────────────────────────────
   deploy:
     needs: test
-    if: needs.test.result == 'success'   # deploy only when tests are green
+    if: needs.test.result == 'success'     # gate on green tests
     runs-on: ubuntu-latest
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
@@ -105,6 +114,7 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
           done
 
+      # same robust secret-loading logic
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode |
@@ -112,11 +122,16 @@ jobs:
             var="${line%%=*}"
             val="${line#*=}"
             expanded=$(printf '%b' "$val")
-            {
-              printf '%s<<EOF\n' "$var"
-              printf '%s\n' "$expanded"
-              echo EOF
-            } >> "$GITHUB_ENV"
+
+            if [[ "$expanded" == *$'\n'* ]]; then
+              {
+                printf '%s<<EOF\n' "$var"
+                printf '%s\n' "$expanded"
+                echo EOF
+              } >> "$GITHUB_ENV"
+            else
+              printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
+            fi
           done
 
       - name: Dump **every** env variable (deploy job)
