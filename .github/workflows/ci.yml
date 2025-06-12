@@ -1,8 +1,8 @@
 name: CI
 on:
-  push:          # every branch, every commit
-  pull_request:  # so reviewers see a green check
-  workflow_dispatch:  # manual “Run workflow” button
+  push:            # every branch
+  pull_request:    # PR status checks
+  workflow_dispatch:   # manual “Run workflow” button
 
 jobs:
   # ──────────────────────────────────────────────────────────
@@ -32,10 +32,24 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
           done
 
+      # 🔑 DECODE BLOB → expand \n → write multiline-safe vars to $GITHUB_ENV
       - name: Load secrets into runner-wide env
         run: |
-          echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
+          echo "$SECRETS_BLOB" | base64 --decode |
+          while IFS= read -r line; do
+            var="${line%%=*}"
+            val="${line#*=}"
+            # expand back-slash escapes (\n, \t, etc.)
+            expanded=$(printf '%b' "$val")
+            # write using heredoc so multiline values survive
+            {
+              printf '%s<<EOF\n' "$var"
+              printf '%s\n' "$expanded"
+              echo EOF
+            } >> "$GITHUB_ENV"
+          done
 
+      # 🔍 dump every key (values masked if they match repo/org secrets)
       - name: Dump **every** env variable
         run: |
           echo "🟢 Full environment visible to Node:"
@@ -93,7 +107,17 @@ jobs:
 
       - name: Load secrets into runner-wide env
         run: |
-          echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
+          echo "$SECRETS_BLOB" | base64 --decode |
+          while IFS= read -r line; do
+            var="${line%%=*}"
+            val="${line#*=}"
+            expanded=$(printf '%b' "$val")
+            {
+              printf '%s<<EOF\n' "$var"
+              printf '%s\n' "$expanded"
+              echo EOF
+            } >> "$GITHUB_ENV"
+          done
 
       - name: Dump **every** env variable (deploy job)
         run: |
