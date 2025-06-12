@@ -1,10 +1,13 @@
 name: CI
-on: push
+on:
+  push:          # every branch, every commit
+  pull_request:  # so reviewers see a green check
+  workflow_dispatch:  # manual “Run workflow” button
 
 jobs:
-  # ─────────────────────────────────────────────────────────────
-  # 1. TEST – build app & run Cypress
-  # ─────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────
+  # 1. TEST  – build the app & run Cypress
+  # ──────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
     env:
@@ -21,7 +24,6 @@ jobs:
         with:
           node-version: 18
 
-      # Bun install with retry + lower network fan-out
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
@@ -30,20 +32,15 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
           done
 
-      # Decode the base64 blob once and persist to all later steps
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
 
-      # 🔍 NEW: dump *all* env vars visible to the server
       - name: Dump **every** env variable
         run: |
           echo "🟢 Full environment visible to Node:"
-          node -e "Object.entries(process.env)
-            .sort(([a],[b]) => a.localeCompare(b))
-            .forEach(([k,v]) => console.log(`${k}=${v}`))"
+          node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
-      # Run Cypress
       - uses: cypress-io/github-action@v6
         id: cypress
         with:
@@ -59,7 +56,6 @@ jobs:
             screenshotOnRunFailure=true
             retries=1
 
-      # Upload Cypress artefacts on failure
       - name: Upload Cypress videos & screenshots
         if: failure() || steps.cypress.outcome != 'success'
         uses: actions/upload-artifact@v4
@@ -69,12 +65,12 @@ jobs:
             cypress/videos
             cypress/screenshots
 
-  # ─────────────────────────────────────────────────────────────
-  # 2. DEPLOY – only runs if TEST succeeds
-  # ─────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────
+  # 2. DEPLOY  – runs after TEST, for every branch that passes
+  # ──────────────────────────────────────────────────────────
   deploy:
     needs: test
-    if: success()
+    if: needs.test.result == 'success'   # deploy only when tests are green
     runs-on: ubuntu-latest
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
@@ -99,13 +95,10 @@ jobs:
         run: |
           echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
 
-      # Optional: dump env again for deploy job
-      - name: Dump **every** env variable (deploy)
+      - name: Dump **every** env variable (deploy job)
         run: |
           echo "🟢 Full environment visible to Node (deploy job):"
-          node -e "Object.entries(process.env)
-            .sort(([a],[b]) => a.localeCompare(b))
-            .forEach(([k,v]) => console.log(`${k}=${v}`))"
+          node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - name: Deploy with Vercel
         run: |
