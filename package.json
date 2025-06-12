@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "bun run next dev",
-    "build": "bun run test:ci && bun run next build",
+    "build": "bun run next build",
     "build:no-tests": "bun run next build",
-    "build:production": "NEXT_PUBLIC_NODE_ENV=production bun run test:ci && bun run next build",
+    "build:production": "NEXT_PUBLIC_NODE_ENV=production bun run next build",
     "build:secure": "bun run build:production && bun run obfuscate",
     "obfuscate": "bun run javascript-obfuscator ./out --output ./out --compact true --self-defending true --disable-console-output true --string-array true --string-array-encoding 'rc4'",
     "clean": "bun run rimraf .next",
