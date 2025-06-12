@@ -2,6 +2,7 @@ name: CI
 on: push
 
 jobs:
+  # ──────────── TEST ────────────
   test:
     runs-on: ubuntu-latest
     env:
@@ -10,39 +11,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 👉 Pin Bun instead of “latest” to avoid surprise regressions
+      # Bun (pinned) + built-in cache for the binary itself
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: "1.2.16"   # update occasionally
+          bun-version: "1.2.16"
 
+      # Cache Bun’s package-download cache (hits after the first run)
+      - name: Restore Bun package cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          restore-keys: bun-cache-${{ runner.os }}-
+
+      # Node is still needed for Cypress / Vercel CLIs
       - uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # ───────────────────────────────────────────────────────────
-      # Install dependencies (low concurrency + 3-try retry loop)
-      # ───────────────────────────────────────────────────────────
+      # ───────── install deps ─────────
       - name: Install deps (retries, low concurrency)
+        timeout-minutes: 20
         run: |
-          for try in 1 2 3; do
-            echo "🟡 bun install (try $try)…"
-            bun install --network-concurrency=12 --no-progress && break
-            if [ "$try" -lt 3 ]; then
-              echo "⚠️  bun install failed, retrying in 15 s…"
-              sleep 15
-            else
-              echo "🛑 bun install failed after 3 attempts"; exit 1
-            fi
-          done
-        # --network-concurrency caps simultaneous fetches (docs show the flag) :contentReference[oaicite:0]{index=0}
-        # a community workaround shows single-digit values fix 5xx timeouts :contentReference[oaicite:1]{index=1}
+          # Longer per-request timeout (60 s) to survive slow edges
+          export BUN_NETWORK_TIMEOUT_MS=60000
 
-      # Load secrets for all downstream steps
+          # Exponential-backoff retry loop
+          for try in 1 2 3; do
+            delay=$(( 10 * (try - 1) * (try - 1) ))
+            echo "🟡 bun install (try $try, wait ${delay}s if it fails)…"
+            bun install --network-concurrency=8 --no-progress \
+              && break
+            [ $try -lt 3 ] && { echo "⚠️  retrying in ${delay}s…"; sleep $delay; } || {
+              echo "🛑 bun install failed after 3 attempts"; exit 1; }
+          done
+
+      # Make env vars visible to all following steps
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
 
-      # Run Cypress
+      # Run Cypress tests
       - uses: cypress-io/github-action@v6
         with:
           build: bun run build:no-tests
@@ -51,33 +60,9 @@ jobs:
           wait-on-timeout: 60
           record: true
 
+  # ──────────── DEPLOY ────────────
   deploy:
     needs: test
     if: success()
     runs-on: ubuntu-latest
-    env:
-      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: "1.2.16"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - name: Install deps (reused script)
-        run: |
-          for try in 1 2 3; do
-            bun install --network-concurrency=12 --no-progress && break || {
-              [ "$try" -eq 3 ] && exit 1
-              sleep 15
-            }
-          done
-      - name: Load secrets into runner-wide env
-        run: |
-          echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
-      - name: Deploy with Vercel
-        run: |
-          npm install -g vercel
-          vercel --prod --confirm
