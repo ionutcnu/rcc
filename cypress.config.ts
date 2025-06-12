@@ -7,7 +7,7 @@ config();
 export default defineConfig({
   projectId: process.env.CYPRESS_PROJECT_ID,
   e2e: {
-    baseUrl: process.env.CI ? null : 'http://localhost:3000',
+    baseUrl: 'http://localhost:3000',
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     watchForFileChanges: false,
     viewportWidth: 1280,

@@ -1,13 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: process.env.NODE_ENV === 'production',
-    output: "standalone",
     eslint: {
         ignoreDuringBuilds: true,
         dirs: ['src'],
-        rules: {
-            '@next/next/no-serializable-props': 'off',
-        },
     },
     typescript: {
         ignoreBuildErrors: true,

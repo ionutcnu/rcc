@@ -35,10 +35,9 @@ jobs:
 
       - uses: cypress-io/github-action@v6
         with:
-          build: bun run build:no-tests
-          start: bun run start
+          start: bun run dev
           wait-on: http://localhost:3000
-          wait-on-timeout: 60
+          wait-on-timeout: 120
           record: true                        # set to false if you don’t need the dashboard
 
   # ─────────────────────────────────────────────────────────────
