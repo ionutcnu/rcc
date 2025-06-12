@@ -5,9 +5,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ──────────────────────────────────────────────────────────
-  # 1 ─ TEST  – build & run Cypress
-  # ──────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
     env:
@@ -27,7 +24,7 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # 🔑 Decode BLOB  → expand \n  → strip *trailing* newlines  → write to $GITHUB_ENV
+      # ─────────────  SECRET LOADER  ─────────────
       - name: Load secrets into runner-wide env
         shell: bash
         run: |
@@ -36,28 +33,31 @@ jobs:
             var="${line%%=*}"
             val="${line#*=}"
 
-            # 1) expand escape sequences
+            # 1) Expand back-slash escapes (\n, \t…)
             expanded=$(printf '%b' "$val")
 
-            # 2) remove trailing CR/LF that would make single-line secrets invalid URLs
-            trimmed="${expanded//$'\r'/}"
-            while [[ "$trimmed" == *$'\n' ]]; do trimmed=${trimmed%$'\n'}; done
+            # 2) Strip ONE pair of wrapping double-quotes, if present
+            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
+              expanded="${expanded:1:-1}"
+            fi
 
-            # 3) decide single- vs. multi-line
-            if [[ "$trimmed" == *$'\n'* ]]; then
-              {
-                printf '%s<<EOF\n' "$var"
-                printf '%s\n' "$trimmed"
-                echo EOF
-              } >> "$GITHUB_ENV"
+            # 3) Remove trailing CR / LF so single-line values stay single-line
+            expanded="${expanded//$'\r'/}"
+            while [[ "$expanded" == *$'\n' ]]; do
+              expanded=${expanded%$'\n'}
+            done
+
+            # 4) Decide single- vs multiline
+            if [[ "$expanded" == *$'\n'* ]]; then
+              printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
-              printf '%s=%s\n' "$var" "$trimmed" >> "$GITHUB_ENV"
+              printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
             fi
           done
+      # ───────────────────────────────────────────
 
       - name: Dump env keys (masked values)
-        run: |
-          node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
+        run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - uses: cypress-io/github-action@v6
         id: cypress
@@ -83,15 +83,12 @@ jobs:
             cypress/videos
             cypress/screenshots
 
-  # ──────────────────────────────────────────────────────────
-  # 2 ─ DEPLOY  – only if TEST passed, any branch
-  # ──────────────────────────────────────────────────────────
   deploy:
     needs: test
     if: needs.test.result == 'success'
     runs-on: ubuntu-latest
     env:
-      SECRETS_BLOB: ${{ secrets.SEcrets_BLOB }}
+      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +96,6 @@ jobs:
         with: { bun-version: "1.2.16" }
       - uses: actions/setup-node@v4
         with: { node-version: 18 }
-
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
@@ -107,6 +103,7 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
+      # same loader in deploy job
       - name: Load secrets into runner-wide env
         shell: bash
         run: |
@@ -115,18 +112,20 @@ jobs:
             var="${line%%=*}"
             val="${line#*=}"
             expanded=$(printf '%b' "$val")
-            trimmed="${expanded//$'\r'/}"
-            while [[ "$trimmed" == *$'\n' ]]; do trimmed=${trimmed%$'\n'}; done
-            if [[ "$trimmed" == *$'\n'* ]]; then
-              printf '%s<<EOF\n%s\nEOF\n' "$var" "$trimmed" >> "$GITHUB_ENV"
+            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
+              expanded="${expanded:1:-1}"
+            fi
+            expanded="${expanded//$'\r'/}"
+            while [[ "$expanded" == *$'\n' ]]; do expanded=${expanded%$'\n'}; done
+            if [[ "$expanded" == *$'\n'* ]]; then
+              printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
-              printf '%s=%s\n' "$var" "$trimmed" >> "$GITHUB_ENV"
+              printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
             fi
           done
 
       - name: Dump env keys (deploy job)
-        run: |
-          node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
+        run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - name: Deploy with Vercel
         run: |
