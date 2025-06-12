@@ -9,60 +9,115 @@ type CatGridProps = {
 }
 
 const CatGrid = ({ displayedCats, redirectToProfile }: CatGridProps) => {
+    const getAvailabilityColor = (availability: string) => {
+        switch (availability.toLowerCase()) {
+            case 'available':
+                return 'bg-green-500 text-white'
+            case 'reserved':
+                return 'bg-yellow-500 text-white'
+            case 'sold':
+                return 'bg-red-500 text-white'
+            default:
+                return 'bg-indigo-500 text-white'
+        }
+    }
+
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto">
-            {displayedCats.map((cat) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 overflow-y-auto">
+            {displayedCats.map((cat, index) => (
                 <div
                     key={cat.id}
-                    className="bg-white rounded-xl border border-gray-200 shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 hover:border-indigo-200 hover:scale-[1.02]"
+                    className="cat-card group cursor-pointer hover:scale-105 transition-all duration-500 h-full flex flex-col"
                     onClick={() => redirectToProfile(cat.name || cat.id)}
+                    style={{
+                        animationDelay: `${index * 50}ms`,
+                        transform: 'translateY(0)',
+                        opacity: 1
+                    }}
                 >
-                    <div className="relative h-32">
-                        <Image
-                            src={cat.mainImage || "/placeholder.svg?height=300&width=400&query=cat"}
-                            alt={cat.name}
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover"
-                            quality={70}
-                        />
-                        <div className="absolute top-0 right-0 bg-indigo-600 text-white px-2 py-0.5 m-1.5 rounded-full text-xs font-medium">
-                            {cat.availability || "Available"}
-                        </div>
-                    </div>
-
-                    <div className="p-3 border-t border-gray-100">
-                        <h3 className="text-sm font-bold text-gray-800 truncate">{cat.name}</h3>
-                        <div className="flex items-center mb-1.5">
-              <span
-                  className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${cat.gender === "Male" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"}`}
-              >
-                {cat.gender}
-              </span>
-                            <span className="mx-1 text-gray-400 text-xs">•</span>
-                            <span className="text-gray-600 text-xs truncate">{cat.breed || "Mixed Breed"}</span>
+                    {/* Gradient Top Bar */}
+                    <div className="h-1 bg-gradient-to-r from-pink-400 to-orange-400 rounded-t-3xl"></div>
+                    
+                    <div className="bg-white/90 backdrop-blur-sm rounded-b-3xl overflow-hidden flex-grow flex flex-col">
+                        {/* Image Section */}
+                        <div className="relative h-40 overflow-hidden">
+                            <Image
+                                src={cat.mainImage || "/placeholder.svg?height=300&width=400&query=cat"}
+                                alt={cat.name}
+                                fill
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                quality={75}
+                            />
+                            {/* Availability Badge */}
+                            <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-xs font-semibold ${getAvailabilityColor(cat.availability || "Available")} shadow-lg`}>
+                                {cat.availability || "Available"}
+                            </div>
+                            {/* Heart Icon */}
+                            <div className="absolute top-2 left-2 text-white/80 hover:text-red-400 transition-colors duration-300">
+                                <span className="text-xl">🤍</span>
+                            </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-1 mb-1.5">
-                            {cat.isVaccinated && (
-                                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">Vacc</span>
-                            )}
-                            {cat.isMicrochipped && (
-                                <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded-full">Chip</span>
-                            )}
-                            {cat.isCastrated && (
-                                <span className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded-full">Cast</span>
-                            )}
-                        </div>
+                        {/* Content Section */}
+                        <div className="p-4 flex-grow flex flex-col">
+                            {/* Name and Gender */}
+                            <div className="mb-3">
+                                <h3 className="text-lg font-bold text-gray-800 truncate group-hover:text-pink-600 transition-colors duration-300">
+                                    {cat.name}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${cat.gender === "Male" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
+                                        {cat.gender === "Male" ? "♂ Male" : "♀ Female"}
+                                    </span>
+                                    <span className="text-gray-500 text-xs">•</span>
+                                    <span className="text-gray-600 text-sm truncate">{cat.breed || "Mixed Breed"}</span>
+                                </div>
+                            </div>
 
-                        <div className="flex justify-between items-center pt-1 border-t border-gray-50">
-              <span className="text-gray-600 text-xs">
-                {cat.yearOfBirth
-                    ? `Born ${cat.yearOfBirth}`
-                    : cat.age !== undefined
-                        ? `${cat.age} year${cat.age !== 1 ? "s" : ""}`
-                        : ""}
-              </span>
+                            {/* Health Badges */}
+                            <div className="flex flex-wrap gap-1 mb-3">
+                                {cat.isVaccinated && (
+                                    <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium flex items-center">
+                                        💉 Vaccinated
+                                    </span>
+                                )}
+                                {cat.isMicrochipped && (
+                                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-medium flex items-center">
+                                        🔍 Chipped
+                                    </span>
+                                )}
+                                {cat.isCastrated && (
+                                    <span className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-medium flex items-center">
+                                        ✂️ Neutered
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Age and Color */}
+                            <div className="mt-auto pt-2 border-t border-gray-100">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600 flex items-center">
+                                        🎂 {cat.yearOfBirth
+                                            ? `Born ${cat.yearOfBirth}`
+                                            : cat.age !== undefined
+                                                ? `${cat.age} year${cat.age !== 1 ? "s" : ""}`
+                                                : "Age unknown"}
+                                    </span>
+                                    {cat.color && (
+                                        <span className="text-gray-600 text-xs bg-gray-100 px-2 py-1 rounded-full">
+                                            🎨 {cat.color}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* View Profile Button */}
+                            <div className="mt-3">
+                                <div className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white py-2 px-4 rounded-xl text-center text-sm font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                                    View Profile 🐾
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

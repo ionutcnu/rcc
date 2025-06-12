@@ -458,7 +458,9 @@ export default function CatProfilePage() {
                       <div className="animate-cat-bounce mb-6">
                           <GiCat className="w-20 h-20 cat-text-gradient-warm mx-auto" />
                       </div>
-                      <h1 className="text-5xl lg:text-6xl font-bold cat-text-gradient-cool mb-6">{cat.name}</h1>
+                      <h1 className="text-5xl lg:text-6xl font-bold text-white mb-6" style={{
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                      }}>{cat.name}</h1>
                       <p className="text-xl lg:text-2xl text-gray-200 leading-relaxed">
                           {cat.description || `Meet ${cat.name}, a beautiful ${cat.breed} ${cat.gender}`}
                       </p>
@@ -571,8 +573,16 @@ export default function CatProfilePage() {
                               </div>
                           </div>
                           
-                          <div className="mt-8">
+                          <div className="mt-8 col-span-1 md:col-span-2 flex justify-between items-center w-full">
                               <ParentInfoPopup currentCatId={cat.id} />
+                              <a
+                                  href="/contact"
+                                  className="inline-flex items-center bg-gradient-to-r from-pink-900 to-red-800 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-950 hover:to-red-900 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}
+                              >
+                                  <span className="mr-2">💕</span>
+                                  Interested?
+                              </a>
                           </div>
                       </div>
                   </div>

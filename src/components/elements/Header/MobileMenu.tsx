@@ -138,11 +138,14 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
           <div className="md:hidden">
               <motion.button
                 onClick={toggleMenu}
-                className="relative z-50 p-2 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
+                className="relative p-2 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 animate={menuOpen ? "open" : "closed"}
                 aria-label="Toggle menu"
+                style={{
+                  zIndex: 10000
+                }}
               >
                   <motion.div
                     variants={buttonVariants}
@@ -163,21 +166,38 @@ export default function MobileMenu({ navLinks, isAuthenticated, authActions }: M
                 <>
                     {/* Backdrop Overlay */}
                     <motion.div
-                      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                      className="fixed inset-0 bg-black/50 backdrop-blur-sm"
                       variants={overlayVariants}
                       initial="hidden"
                       animate="visible"
                       exit="hidden"
                       onClick={toggleMenu}
+                      style={{
+                        zIndex: 9998,
+                        position: 'fixed'
+                      }}
                     />
 
                     {/* Mobile Menu Panel */}
                     <motion.div
-                      className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white/95 backdrop-blur-xl shadow-2xl z-50 flex flex-col"
+                      className="flex flex-col w-80 max-w-[85vw]"
                       variants={menuVariants}
                       initial="hidden"
                       animate="visible"
                       exit="hidden"
+                      style={{
+                        position: 'fixed',
+                        top: 0,
+                        right: 0,
+                        height: '100vh',
+                        minHeight: '100vh',
+                        maxHeight: '100vh',
+                        zIndex: 9999,
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        overflow: 'hidden'
+                      }}
                     >
                         {/* Header */}
                         <motion.div
