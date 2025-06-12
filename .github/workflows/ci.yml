@@ -1,12 +1,12 @@
 name: CI
 on:
-  push:                # run on every branch push
-  pull_request:        # PR checks
-  workflow_dispatch:   # manual trigger
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   # ──────────────────────────────────────────────────────────
-  # 1  TEST – build the app & run Cypress
+  # 1 ─ TEST  – build & run Cypress
   # ──────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
@@ -15,52 +15,48 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: "1.2.16"
-
+        with: { bun-version: "1.2.16" }
       - uses: actions/setup-node@v4
-        with:
-          node-version: 18
+        with: { node-version: 18 }
 
-      # install with retry + lower network fan-out
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
-            echo "🔄 bun install (try $try)…"
             bun install --network-concurrency=12 --no-progress && break
-            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
+            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # 🔑 decode BLOB → expand \n when needed → persist to $GITHUB_ENV
+      # 🔑 Decode BLOB  → expand \n  → strip *trailing* newlines  → write to $GITHUB_ENV
       - name: Load secrets into runner-wide env
+        shell: bash
         run: |
           echo "$SECRETS_BLOB" | base64 --decode |
           while IFS= read -r line; do
             var="${line%%=*}"
             val="${line#*=}"
 
-            # expand back-slash escapes (\n, \t …)
+            # 1) expand escape sequences
             expanded=$(printf '%b' "$val")
 
-            if [[ "$expanded" == *$'\n'* ]]; then
-              # multiline value → heredoc
+            # 2) remove trailing CR/LF that would make single-line secrets invalid URLs
+            trimmed="${expanded//$'\r'/}"
+            while [[ "$trimmed" == *$'\n' ]]; do trimmed=${trimmed%$'\n'}; done
+
+            # 3) decide single- vs. multi-line
+            if [[ "$trimmed" == *$'\n'* ]]; then
               {
                 printf '%s<<EOF\n' "$var"
-                printf '%s\n' "$expanded"
+                printf '%s\n' "$trimmed"
                 echo EOF
               } >> "$GITHUB_ENV"
             else
-              # single-line value → plain assignment
-              printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
+              printf '%s=%s\n' "$var" "$trimmed" >> "$GITHUB_ENV"
             fi
           done
 
-      # optional dump of every env key (values auto-masked by GitHub)
-      - name: Dump **every** env variable
+      - name: Dump env keys (masked values)
         run: |
-          echo "🟢 Full environment visible to Node:"
           node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - uses: cypress-io/github-action@v6
@@ -72,13 +68,12 @@ jobs:
           wait-on-timeout: 60
           headed: true
           browser: chrome
-          record: false         # toggle when you want Dashboard recordings
+          record: false
           config: |
             video=true
             screenshotOnRunFailure=true
             retries=1
 
-      # upload screenshots/videos if any spec fails
       - name: Upload Cypress videos & screenshots
         if: failure() || steps.cypress.outcome != 'success'
         uses: actions/upload-artifact@v4
@@ -89,57 +84,51 @@ jobs:
             cypress/screenshots
 
   # ──────────────────────────────────────────────────────────
-  # 2  DEPLOY – runs on every branch once tests are green
+  # 2 ─ DEPLOY  – only if TEST passed, any branch
   # ──────────────────────────────────────────────────────────
   deploy:
     needs: test
-    if: needs.test.result == 'success'     # gate on green tests
+    if: needs.test.result == 'success'
     runs-on: ubuntu-latest
     env:
-      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
+      SECRETS_BLOB: ${{ secrets.SEcrets_BLOB }}
 
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: "1.2.16"
+        with: { bun-version: "1.2.16" }
       - uses: actions/setup-node@v4
-        with:
-          node-version: 18
+        with: { node-version: 18 }
 
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
             bun install --network-concurrency=12 --no-progress && break
-            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
+            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # same robust secret-loading logic
       - name: Load secrets into runner-wide env
+        shell: bash
         run: |
           echo "$SECRETS_BLOB" | base64 --decode |
           while IFS= read -r line; do
             var="${line%%=*}"
             val="${line#*=}"
             expanded=$(printf '%b' "$val")
-
-            if [[ "$expanded" == *$'\n'* ]]; then
-              {
-                printf '%s<<EOF\n' "$var"
-                printf '%s\n' "$expanded"
-                echo EOF
-              } >> "$GITHUB_ENV"
+            trimmed="${expanded//$'\r'/}"
+            while [[ "$trimmed" == *$'\n' ]]; do trimmed=${trimmed%$'\n'}; done
+            if [[ "$trimmed" == *$'\n'* ]]; then
+              printf '%s<<EOF\n%s\nEOF\n' "$var" "$trimmed" >> "$GITHUB_ENV"
             else
-              printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
+              printf '%s=%s\n' "$var" "$trimmed" >> "$GITHUB_ENV"
             fi
           done
 
-      - name: Dump **every** env variable (deploy job)
+      - name: Dump env keys (deploy job)
         run: |
-          echo "🟢 Full environment visible to Node (deploy job):"
           node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - name: Deploy with Vercel
         run: |
-          npm install -g vercel
+          npm i -g vercel
           vercel --prod --confirm
