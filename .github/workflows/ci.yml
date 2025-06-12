@@ -3,49 +3,9 @@ on: push
 
 jobs:
   # ─────────────────────────────────────────────────────────────
-  # 1. TEST  – run unit/E2E tests with Cypress
+  # 1. TEST – build app & run Cypress
   # ─────────────────────────────────────────────────────────────
   test:
-    runs-on: ubuntu-latest
-    env:
-      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: "1.2.16"              # pin to a known-good build
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Install deps (with retry, lower concurrency)
-        run: |
-          for try in 1 2 3; do
-            echo "🔄 bun install (try $try)…"
-            bun install --network-concurrency=12 --no-progress && break
-            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
-          done
-
-      - name: Load secrets into runner-wide env
-        run: |
-          echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
-
-      - uses: cypress-io/github-action@v6
-        with:
-          start: bun run dev
-          wait-on: http://localhost:3000
-          wait-on-timeout: 120
-          record: true                        # set to false if you don’t need the dashboard
-
-  # ─────────────────────────────────────────────────────────────
-  # 2. DEPLOY – only runs if TEST succeeds
-  # ─────────────────────────────────────────────────────────────
-  deploy:
-    needs: test
-    if: success()
     runs-on: ubuntu-latest
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
@@ -61,7 +21,74 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install deps (same script as test)
+      # Bun install with retry + lower network fan-out
+      - name: Install deps (retry, low concurrency)
+        run: |
+          for try in 1 2 3; do
+            echo "🔄 bun install (try $try)…"
+            bun install --network-concurrency=12 --no-progress && break
+            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
+          done
+
+      # Decode the base64 blob once and persist to all later steps
+      - name: Load secrets into runner-wide env
+        run: |
+          echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
+
+      # 🔍 NEW: dump *all* env vars visible to the server
+      - name: Dump **every** env variable
+        run: |
+          echo "🟢 Full environment visible to Node:"
+          node -e "Object.entries(process.env)
+            .sort(([a],[b]) => a.localeCompare(b))
+            .forEach(([k,v]) => console.log(`${k}=${v}`))"
+
+      # Run Cypress
+      - uses: cypress-io/github-action@v6
+        id: cypress
+        with:
+          build: bun run build:no-tests
+          start: bun run start
+          wait-on: http://localhost:3000
+          wait-on-timeout: 60
+          headed: true
+          browser: chrome
+          record: false
+          config: |
+            video=true
+            screenshotOnRunFailure=true
+            retries=1
+
+      # Upload Cypress artefacts on failure
+      - name: Upload Cypress videos & screenshots
+        if: failure() || steps.cypress.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-debug
+          path: |
+            cypress/videos
+            cypress/screenshots
+
+  # ─────────────────────────────────────────────────────────────
+  # 2. DEPLOY – only runs if TEST succeeds
+  # ─────────────────────────────────────────────────────────────
+  deploy:
+    needs: test
+    if: success()
+    runs-on: ubuntu-latest
+    env:
+      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.2.16"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
             bun install --network-concurrency=12 --no-progress && break
@@ -71,6 +98,14 @@ jobs:
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
+
+      # Optional: dump env again for deploy job
+      - name: Dump **every** env variable (deploy)
+        run: |
+          echo "🟢 Full environment visible to Node (deploy job):"
+          node -e "Object.entries(process.env)
+            .sort(([a],[b]) => a.localeCompare(b))
+            .forEach(([k,v]) => console.log(`${k}=${v}`))"
 
       - name: Deploy with Vercel
         run: |
