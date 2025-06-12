@@ -2,7 +2,9 @@ name: CI
 on: push
 
 jobs:
-  # ──────────── TEST ────────────
+  # ─────────────────────────────────────────────────────────────
+  # 1. TEST  – run unit/E2E tests with Cypress
+  # ─────────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
     env:
@@ -11,58 +13,67 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Bun (pinned) + built-in cache for the binary itself
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: "1.2.16"
+          bun-version: "1.2.16"              # pin to a known-good build
 
-      # Cache Bun’s package-download cache (hits after the first run)
-      - name: Restore Bun package cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-cache-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
-          restore-keys: bun-cache-${{ runner.os }}-
-
-      # Node is still needed for Cypress / Vercel CLIs
       - uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # ───────── install deps ─────────
-      - name: Install deps (retries, low concurrency)
-        timeout-minutes: 20
+      - name: Install deps (with retry, lower concurrency)
         run: |
-          # Longer per-request timeout (60 s) to survive slow edges
-          export BUN_NETWORK_TIMEOUT_MS=60000
-
-          # Exponential-backoff retry loop
           for try in 1 2 3; do
-            delay=$(( 10 * (try - 1) * (try - 1) ))
-            echo "🟡 bun install (try $try, wait ${delay}s if it fails)…"
-            bun install --network-concurrency=8 --no-progress \
-              && break
-            [ $try -lt 3 ] && { echo "⚠️  retrying in ${delay}s…"; sleep $delay; } || {
-              echo "🛑 bun install failed after 3 attempts"; exit 1; }
+            echo "🔄 bun install (try $try)…"
+            bun install --network-concurrency=12 --no-progress && break
+            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
           done
 
-      # Make env vars visible to all following steps
       - name: Load secrets into runner-wide env
         run: |
           echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
 
-      # Run Cypress tests
       - uses: cypress-io/github-action@v6
         with:
           build: bun run build:no-tests
           start: bun run start
           wait-on: http://localhost:3000
           wait-on-timeout: 60
-          record: true
+          record: true                        # set to false if you don’t need the dashboard
 
-  # ──────────── DEPLOY ────────────
+  # ─────────────────────────────────────────────────────────────
+  # 2. DEPLOY – only runs if TEST succeeds
+  # ─────────────────────────────────────────────────────────────
   deploy:
     needs: test
     if: success()
     runs-on: ubuntu-latest
+    env:
+      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.2.16"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps (same script as test)
+        run: |
+          for try in 1 2 3; do
+            bun install --network-concurrency=12 --no-progress && break
+            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
+          done
+
+      - name: Load secrets into runner-wide env
+        run: |
+          echo "$SECRETS_BLOB" | base64 --decode | tr -d '\r' >> "$GITHUB_ENV"
+
+      - name: Deploy with Vercel
+        run: |
+          npm install -g vercel
+          vercel --prod --confirm
