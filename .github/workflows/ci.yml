@@ -138,6 +138,11 @@ jobs:
         run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - name: Deploy with Vercel
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           npm i -g vercel
+          export VERCEL_TOKEN=${VERCEL_ORG_ID:-${VERCEL_PROJECT_ID:-$VERCEL_TOKEN}}
           vercel --prod --confirm
