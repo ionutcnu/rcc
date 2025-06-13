@@ -96,7 +96,6 @@ jobs:
         with: { bun-version: "1.2.16" }
       - uses: actions/setup-node@v4
         with: { node-version: 18 }
-
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
@@ -128,10 +127,7 @@ jobs:
       - name: Dump env keys (deploy job)
         run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
-      # ───── Vercel recommended flow ─────
       - name: Deploy with Vercel
         run: |
           npm i -g vercel
-          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-          vercel build --prod --token="$VERCEL_TOKEN"
-          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          vercel --prod --confirm
