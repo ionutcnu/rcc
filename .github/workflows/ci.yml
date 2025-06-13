@@ -6,7 +6,7 @@ on:
 
 jobs:
   # ╭─────────────────────────────────────────────────────────╮
-  # │ 1. TEST – build the app & run Cypress                  │
+  # │ 1. TEST – build the app & run Cypress                   │
   # ╰─────────────────────────────────────────────────────────╯
   test:
     runs-on: ubuntu-latest
@@ -48,7 +48,7 @@ jobs:
             done
 
             # 3) strip ONE wrapping pair of quotes if still present
-            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
+            if [[ "$expanded" == "\"*\"" && "$expanded" == *"\"" ]]; then
               expanded="${expanded:1:-1}"
             fi
 
@@ -90,7 +90,7 @@ jobs:
             cypress/screenshots
 
   # ╭─────────────────────────────────────────────────────────╮
-  # │ 2. DEPLOY – runs after TEST on *any* branch            │
+  # │ 2. DEPLOY – runs after TEST on *any* branch             │
   # ╰─────────────────────────────────────────────────────────╯
   deploy:
     needs: test
@@ -124,7 +124,7 @@ jobs:
             expanded=$(printf '%b' "$val")
             expanded="${expanded//$'\r'/}"
             while [[ "$expanded" == *$'\n' ]]; do expanded=${expanded%$'\n'}; done
-            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
+            if [[ "$expanded" == "\"*\"" && "$expanded" == *"\"" ]]; then
               expanded="${expanded:1:-1}"
             fi
             if [[ "$expanded" == *$'\n'* ]]; then
@@ -137,7 +137,14 @@ jobs:
       - name: Dump env keys (deploy job)
         run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
-      - name: Deploy with Vercel
-        run: |
-          npm i -g vercel
-          vercel --prod --confirm
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment information
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build project artifacts
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy project artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
