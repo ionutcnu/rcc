@@ -5,9 +5,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ╭─────────────────────────────────────────────────────────╮
-  # │ 1. TEST – build the app & run Cypress                   │
-  # ╰─────────────────────────────────────────────────────────╯
   test:
     runs-on: ubuntu-latest
     env:
@@ -15,10 +12,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: oven-sh/setup-bun@v1
         with: { bun-version: "1.2.16" }
-
       - uses: actions/setup-node@v4
         with: { node-version: 18 }
 
@@ -29,7 +24,7 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # ─── SECRET LOADER ────────────────────────────────────
+      # ─────────────  SECRET LOADER  ─────────────
       - name: Load secrets into runner-wide env
         shell: bash
         run: |
@@ -38,30 +33,29 @@ jobs:
             var="${line%%=*}"
             val="${line#*=}"
 
-            # 1) expand \n, \t, etc.
+            # 1) Expand back-slash escapes (\n, \t…)
             expanded=$(printf '%b' "$val")
 
-            # 2) trim every trailing CR/LF
+            # 2) Strip ONE pair of wrapping double-quotes, if present
+            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
+              expanded="${expanded:1:-1}"
+            fi
+
+            # 3) Remove trailing CR / LF so single-line values stay single-line
             expanded="${expanded//$'\r'/}"
             while [[ "$expanded" == *$'\n' ]]; do
               expanded=${expanded%$'\n'}
             done
 
-            # 3) strip ONE wrapping pair of quotes if still present
-            if [[ "$expanded" == "\"*\"" && "$expanded" == *"\"" ]]; then
-              expanded="${expanded:1:-1}"
-            fi
-
-            # 4) write to $GITHUB_ENV (heredoc for multiline)
+            # 4) Decide single- vs multiline
             if [[ "$expanded" == *$'\n'* ]]; then
               printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
               printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
             fi
           done
-      # ───────────────────────────────────────────────────────
+      # ───────────────────────────────────────────
 
-      # optional—helpful while you verify
       - name: Dump env keys (masked values)
         run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
@@ -89,9 +83,6 @@ jobs:
             cypress/videos
             cypress/screenshots
 
-  # ╭─────────────────────────────────────────────────────────╮
-  # │ 2. DEPLOY – runs after TEST on *any* branch             │
-  # ╰─────────────────────────────────────────────────────────╯
   deploy:
     needs: test
     if: needs.test.result == 'success'
@@ -113,7 +104,7 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # same loader for the deploy job
+      # same loader in deploy job
       - name: Load secrets into runner-wide env
         shell: bash
         run: |
@@ -122,11 +113,11 @@ jobs:
             var="${line%%=*}"
             val="${line#*=}"
             expanded=$(printf '%b' "$val")
-            expanded="${expanded//$'\r'/}"
-            while [[ "$expanded" == *$'\n' ]]; do expanded=${expanded%$'\n'}; done
-            if [[ "$expanded" == "\"*\"" && "$expanded" == *"\"" ]]; then
+            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
               expanded="${expanded:1:-1}"
             fi
+            expanded="${expanded//$'\r'/}"
+            while [[ "$expanded" == *$'\n' ]]; do expanded=${expanded%$'\n'}; done
             if [[ "$expanded" == *$'\n'* ]]; then
               printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
@@ -137,14 +128,10 @@ jobs:
       - name: Dump env keys (deploy job)
         run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
-
-      - name: Pull Vercel environment information
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      - name: Build project artifacts
-        run: vercel build --prod --token="$VERCEL_TOKEN"
-
-      - name: Deploy project artifacts to Vercel
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      # ───── Vercel recommended flow ─────
+      - name: Deploy with Vercel
+        run: |
+          npm i -g vercel
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
