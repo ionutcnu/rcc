@@ -1,13 +1,13 @@
 name: CI
 on:
-  push:                # run on every branch push
-  pull_request:        # PR checks
-  workflow_dispatch:   # manual trigger
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-  # ──────────────────────────────────────────────────────────
-  # 1  TEST – build the app & run Cypress
-  # ──────────────────────────────────────────────────────────
+  # ╭─────────────────────────────────────────────────────────╮
+  # │ 1. TEST – build the app & run Cypress                  │
+  # ╰─────────────────────────────────────────────────────────╯
   test:
     runs-on: ubuntu-latest
     env:
@@ -17,51 +17,53 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: "1.2.16"
+        with: { bun-version: "1.2.16" }
 
       - uses: actions/setup-node@v4
-        with:
-          node-version: 18
+        with: { node-version: 18 }
 
-      # install with retry + lower network fan-out
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
-            echo "🔄 bun install (try $try)…"
             bun install --network-concurrency=12 --no-progress && break
-            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
+            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # 🔑 decode BLOB → expand \n when needed → persist to $GITHUB_ENV
+      # ─── SECRET LOADER ────────────────────────────────────
       - name: Load secrets into runner-wide env
+        shell: bash
         run: |
           echo "$SECRETS_BLOB" | base64 --decode |
           while IFS= read -r line; do
             var="${line%%=*}"
             val="${line#*=}"
 
-            # expand back-slash escapes (\n, \t …)
+            # 1) expand \n, \t, etc.
             expanded=$(printf '%b' "$val")
 
+            # 2) trim every trailing CR/LF
+            expanded="${expanded//$'\r'/}"
+            while [[ "$expanded" == *$'\n' ]]; do
+              expanded=${expanded%$'\n'}
+            done
+
+            # 3) strip ONE wrapping pair of quotes if still present
+            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
+              expanded="${expanded:1:-1}"
+            fi
+
+            # 4) write to $GITHUB_ENV (heredoc for multiline)
             if [[ "$expanded" == *$'\n'* ]]; then
-              # multiline value → heredoc
-              {
-                printf '%s<<EOF\n' "$var"
-                printf '%s\n' "$expanded"
-                echo EOF
-              } >> "$GITHUB_ENV"
+              printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
-              # single-line value → plain assignment
               printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
             fi
           done
+      # ───────────────────────────────────────────────────────
 
-      # optional dump of every env key (values auto-masked by GitHub)
-      - name: Dump **every** env variable
-        run: |
-          echo "🟢 Full environment visible to Node:"
-          node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
+      # optional—helpful while you verify
+      - name: Dump env keys (masked values)
+        run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - uses: cypress-io/github-action@v6
         id: cypress
@@ -72,13 +74,12 @@ jobs:
           wait-on-timeout: 60
           headed: true
           browser: chrome
-          record: false         # toggle when you want Dashboard recordings
+          record: false
           config: |
             video=true
             screenshotOnRunFailure=true
             retries=1
 
-      # upload screenshots/videos if any spec fails
       - name: Upload Cypress videos & screenshots
         if: failure() || steps.cypress.outcome != 'success'
         uses: actions/upload-artifact@v4
@@ -88,12 +89,12 @@ jobs:
             cypress/videos
             cypress/screenshots
 
-  # ──────────────────────────────────────────────────────────
-  # 2  DEPLOY – runs on every branch once tests are green
-  # ──────────────────────────────────────────────────────────
+  # ╭─────────────────────────────────────────────────────────╮
+  # │ 2. DEPLOY – runs after TEST on *any* branch            │
+  # ╰─────────────────────────────────────────────────────────╯
   deploy:
     needs: test
-    if: needs.test.result == 'success'     # gate on green tests
+    if: needs.test.result == 'success'
     runs-on: ubuntu-latest
     env:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
@@ -101,45 +102,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: "1.2.16"
+        with: { bun-version: "1.2.16" }
       - uses: actions/setup-node@v4
-        with:
-          node-version: 18
+        with: { node-version: 18 }
 
       - name: Install deps (retry, low concurrency)
         run: |
           for try in 1 2 3; do
             bun install --network-concurrency=12 --no-progress && break
-            [ "$try" -lt 3 ] && { echo "⚠️  retrying in 15 s…"; sleep 15; }
+            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # same robust secret-loading logic
+      # same loader for the deploy job
       - name: Load secrets into runner-wide env
+        shell: bash
         run: |
           echo "$SECRETS_BLOB" | base64 --decode |
           while IFS= read -r line; do
             var="${line%%=*}"
             val="${line#*=}"
             expanded=$(printf '%b' "$val")
-
+            expanded="${expanded//$'\r'/}"
+            while [[ "$expanded" == *$'\n' ]]; do expanded=${expanded%$'\n'}; done
+            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
+              expanded="${expanded:1:-1}"
+            fi
             if [[ "$expanded" == *$'\n'* ]]; then
-              {
-                printf '%s<<EOF\n' "$var"
-                printf '%s\n' "$expanded"
-                echo EOF
-              } >> "$GITHUB_ENV"
+              printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
               printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
             fi
           done
 
-      - name: Dump **every** env variable (deploy job)
-        run: |
-          echo "🟢 Full environment visible to Node (deploy job):"
-          node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
+      - name: Dump env keys (deploy job)
+        run: node -e 'for (const [k,v] of Object.entries(process.env).sort()) console.log(`${k}=${v}`)'
 
       - name: Deploy with Vercel
         run: |
-          npm install -g vercel
+          npm i -g vercel
           vercel --prod --confirm
