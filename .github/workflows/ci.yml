@@ -1,11 +1,11 @@
+# .github/workflows/vercel-preview.yml
 name: Vercel Preview Deployment
 
 on:
   push:
-    branches: ["**"]          # run on every branch
+    branches: ["**"]           # run on every branch
   workflow_dispatch:
 
-# Vercel-specific IDs and token are injected directly from Actions secrets
 env:
   VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -17,6 +17,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # ─── Install Bun (so `bun install` works) ──────────────────────────────
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.16      # pin or leave blank for latest
 
       # ─── Install Vercel CLI ────────────────────────────────────────────────
       - name: Install Vercel CLI
