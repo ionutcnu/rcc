@@ -1,164 +1,28 @@
-# .github/workflows/ci.yml
-name: CI
+name: CI (public)
 
 on:
   push:
   pull_request:
   workflow_dispatch:
 
-# Only the blob is referenced directly; all other secrets (VERCEL_*, CYPRESS_*)
-# come from it.
-env:
-  SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
-
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
+    env:
+      SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          bun-version: "1.2.16"
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: actions/setup-node@v4
+      - name: Run all tests & deploy inside private container
+        uses: docker://aeonftw/ci-action:latest
         with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: |
-          for try in 1 2 3; do
-            bun install --network-concurrency=12 --no-progress && break
-            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
-          done
-
-      # ─── Robust SECRETS_BLOB loader ──────────────────────────────────────
-      - name: Load secrets into runner-wide env
-        shell: bash
-        run: |
-          set -euo pipefail
-          declare -A kv
-
-          # Read each non-blank, non-comment line in the SAME shell
-          while IFS= read -r line; do
-            [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
-            key="${BASH_REMATCH[1]//[[:space:]]/}"
-            val="${BASH_REMATCH[2]}"
-
-            # 1) Strip ALL CRs, then any trailing newlines
-            val="${val//$'\r'/}"
-            while [[ "$val" == *$'\n' ]]; do val="${val%$'\n'}"; done
-
-            # 2) Unescape backslash-escapes (\n, \t, \", etc.)
-            val="$(printf '%b' "$val")"
-
-            # 3) Remove wrapping quotes (either "..." or '...')
-            case "$val" in
-              \"*\"|\'*\' ) val="${val:1:-1}" ;;
-            esac
-
-            kv["$key"]="$val"   # last occurrence wins
-          done < <(
-            printf '%s' "$SECRETS_BLOB" \
-              | base64 --decode \
-              | grep -Ev '^\s*$|^\s*#'
-          )
-
-          # Export them
-          for key in "${!kv[@]}"; do
-            val="${kv[$key]}"
-            if [[ "$val" == *$'\n'* ]]; then
-              printf '%s<<EOF\n%s\nEOF\n' "$key" "$val" >> "$GITHUB_ENV"
-            else
-              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
-            fi
-          done
-
-      - uses: cypress-io/github-action@v6
-        id: cypress
-        with:
-          build: bun run build:no-tests
-          start: bun run start
-          wait-on: http://localhost:3000
-          wait-on-timeout: 60
-          headed: true
-          browser: chrome
-          record: true
-          key: ${{ env.CYPRESS_RECORD_KEY }}
-          config: |
-            video=true
-            screenshotOnRunFailure=true
-            retries=1
-
-      - name: Upload Cypress videos & screenshots
-        if: failure() || steps.cypress.outcome != 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-debug
-          path: |
-            cypress/videos
-            cypress/screenshots
-
-  deploy:
-    needs: test
-    if: needs.test.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: "1.2.16"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: |
-          for try in 1 2 3; do
-            bun install --network-concurrency=12 --no-progress && break
-            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
-          done
-
-      - name: Load secrets into runner-wide env
-        shell: bash
-        run: |
-          set -euo pipefail
-          declare -A kv
-          while IFS= read -r line; do
-            [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
-            key="${BASH_REMATCH[1]//[[:space:]]/}"
-            val="${BASH_REMATCH[2]}"
-            val="${val//$'\r'/}"
-            while [[ "$val" == *$'\n' ]]; do val="${val%$'\n'}"; done
-            val="$(printf '%b' "$val")"
-            case "$val" in
-              \"*\"|\'*\' ) val="${val:1:-1}" ;;
-            esac
-            kv["$key"]="$val"
-          done < <(
-            printf '%s' "$SECRETS_BLOB" \
-              | base64 --decode \
-              | grep -Ev '^\s*$|^\s*#'
-          )
-          for key in "${!kv[@]}"; do
-            val="${kv[$key]}"
-            if [[ "$val" == *$'\n'* ]]; then
-              printf '%s<<EOF\n%s\nEOF\n' "$key" "$val" >> "$GITHUB_ENV"
-            else
-              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
-            fi
-          done
-
-      - name: Install Vercel CLI
-        run: npm install --global vercel
-
-      - name: Pull Vercel environment (preview)
-        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
-
-      - name: Build project
-        run: vercel build --token="$VERCEL_TOKEN"
-
-      - name: Deploy (preview)
-        run: vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+          secrets_blob: ${{ env.SECRETS_BLOB }}
+        env:
+          GITHUB_ENV: /github/env
