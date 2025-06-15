@@ -27,26 +27,32 @@ jobs:
       - name: Load secrets from SECRETS_BLOB
         shell: bash
         run: |
-          echo "$SECRETS_BLOB" | base64 --decode | \
-          while IFS= read -r line; do
+          # Decode the blob and iterate line‑by‑line. We normalise CR/LF **before**
+          # splitting the KEY=VALUE pair so the key never contains stray \r chars
+          echo "$SECRETS_BLOB" | base64 --decode | while IFS= read -r raw; do
+            # Remove any carriage‑returns left over from Windows newlines
+            line="${raw//$'\r'/}"
+
+            # Skip empty lines
+            [[ -z "$line" ]] && continue
+
             var="${line%%=*}"
             val="${line#*=}"
 
-            # 1) expand \n, \t, etc.
+            # 1) expand escaped sequences in the *value* only (\n, \t, etc.)
             expanded=$(printf '%b' "$val")
 
-            # 2) trim CR/LF
-            expanded="${expanded//$'\r'/}"
+            # 2) trim trailing newlines from the expanded value
             while [[ "$expanded" == *$'\n' ]]; do
               expanded=${expanded%$'\n'}
             done
 
-            # 3) strip ONE wrapping pair of quotes if still present
+            # 3) strip ONE wrapping pair of quotes if still present (value side)
             if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
               expanded="${expanded:1:-1}"
             fi
 
-            # 4) write to $GITHUB_ENV (heredoc for multiline) so they persist for later steps
+            # 4) write to $GITHUB_ENV (heredoc for multiline values)
             if [[ "$expanded" == *$'\n'* ]]; then
               printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
