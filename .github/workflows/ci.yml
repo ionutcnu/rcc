@@ -1,14 +1,15 @@
-# .github/workflows/vercel-preview.yml
 name: Vercel Preview Deployment
 
 on:
   push:
     branches: ["**"]          # run on every branch
-  workflow_dispatch:          # manual trigger
+  workflow_dispatch:
 
-# The blob is the only top-level secret we reference directly.
+# Vercel-specific IDs and token are injected directly from Actions secrets
 env:
-  SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
+  VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
 
 jobs:
   deploy-preview:
@@ -17,36 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ─── Decode SECRETS_BLOB and export each KEY=VALUE ──────────────────────
-      - name: Load secrets from SECRETS_BLOB
-        shell: bash
-        run: |
-          set -euo pipefail
-          declare -A kv
-
-          printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' |
-          grep -Ev '^\s*$|^\s*#' | while IFS= read -r line; do
-            [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
-            key="${BASH_REMATCH[1]//[[:space:]]/}"
-            val="${BASH_REMATCH[2]}"
-            val="$(printf '%b' "$val")"
-            [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
-            kv["$key"]="$val"
-          done
-
-          for key in "${!kv[@]}"; do
-            val="${kv[$key]}"
-            if [[ "$val" == *$'\n'* ]]; then
-              printf '%s<<EOF\n%s\nEOF\n' "$key" "$val" >> "$GITHUB_ENV"
-            else
-              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
-            fi
-          done
-
-      # ─── Vercel CLI deploy flow ─────────────────────────────────────────────
+      # ─── Install Vercel CLI ────────────────────────────────────────────────
       - name: Install Vercel CLI
         run: npm install --global vercel
 
+      # ─── Pull env, build, and deploy (preview) ─────────────────────────────
       - name: Pull Vercel environment (preview)
         run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
