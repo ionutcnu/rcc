@@ -3,13 +3,12 @@ name: Vercel Preview Deployment
 
 on:
   push:
-    branches: ["**"]           # run on every branch
-  workflow_dispatch:
+    branches: ["**"]          # run on every branch
+  workflow_dispatch:          # manual trigger
 
+# Only the blob is referenced directly; everything else comes from it.
 env:
-  VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-  VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+  SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
 jobs:
   deploy-preview:
@@ -18,10 +17,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ─── Install Bun (so `bun install` works) ──────────────────────────────
+      # ─── Decode SECRETS_BLOB → export KEY=VALUE pairs ──────────────────────
+      - name: Load secrets from SECRETS_BLOB
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -A kv
+
+          # 1) decode, strip CRs, skip blanks/comments
+          printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' |
+          grep -Ev '^\s*$|^\s*#' | while IFS= read -r line; do
+            # split on first '=' or ':'
+            [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
+            key="${BASH_REMATCH[1]//[[:space:]]/}"
+            val="${BASH_REMATCH[2]}"
+            val="$(printf '%b' "$val")"              # unescape \n, \t, etc.
+            [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"  # trim quotes
+            kv["$key"]="$val"                       # last duplicate wins
+          done
+
+          # write each var to $GITHUB_ENV
+          for key in "${!kv[@]}"; do
+            val="${kv[$key]}"
+            if [[ "$val" == *$'\n'* ]]; then
+              printf '%s<<EOF\n%s\nEOF\n' "$key" "$val" >> "$GITHUB_ENV"
+            else
+              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
+            fi
+          done
+
+      # ─── Install Bun (needed because Vercel sees bun.lockb) ────────────────
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: 1.2.16      # pin or leave blank for latest
+          bun-version: 1.2.16         # pin or omit for latest
 
       # ─── Install Vercel CLI ────────────────────────────────────────────────
       - name: Install Vercel CLI
