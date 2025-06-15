@@ -1,9 +1,9 @@
 # .github/workflows/vercel-preview.yml
-name: Vercel Preview Deployment (with debug)
+name: Vercel Preview Deployment (with final loader fix)
 
 on:
-  push:            # every branch
-    branches: ["**"]
+  push:
+    branches: ["**"]          # run on every branch
   workflow_dispatch:
 
 env:
@@ -20,32 +20,28 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "Blob length (bytes in env var): ${#SECRETS_BLOB}"
-          if printf '%s' "$SECRETS_BLOB" | base64 --decode > /tmp/decoded 2>/tmp/err; then
-            echo "--- first 200 decoded bytes ---"
-            head -c 200 /tmp/decoded | od -An -t c
-            echo
-            echo "--- full decoded text ---"
-            cat /tmp/decoded
-          else
-            echo "Base64 decode failed ↓"; cat /tmp/err
-          fi
+          echo "Blob length: ${#SECRETS_BLOB}"
+          printf '%s' "$SECRETS_BLOB" | base64 --decode | head -c 120 | od -An -t c
 
-      # ─── 1. Decode SECRETS_BLOB into $GITHUB_ENV ───────────────────────────
+      # ─── 1. Decode SECRETS_BLOB → $GITHUB_ENV  (no sub-shell!) ─────────────
       - name: Load secrets from SECRETS_BLOB
         shell: bash
         run: |
           set -euo pipefail
           declare -A kv
-          printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' |
-          grep -Ev '^\s*$|^\s*#' | while IFS= read -r line; do
+
+          while IFS= read -r line; do
             [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
             key="${BASH_REMATCH[1]//[[:space:]]/}"
             val="${BASH_REMATCH[2]}"
             val="$(printf '%b' "$val")"
             [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
-            kv["$key"]="$val"          # last duplicate wins
-          done
+            kv["$key"]="$val"           # last duplicate wins
+          done < <(
+            printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' \
+              | grep -Ev '^\s*$|^\s*#'
+          )
+
           for key in "${!kv[@]}"; do
             val="${kv[$key]}"
             if [[ "$val" == *$'\n'* ]]; then
@@ -59,12 +55,13 @@ jobs:
       - name: DEBUG – list decoded secrets
         if: always()
         run: |
-          echo "Contents of $GITHUB_ENV ↓"; cat "$GITHUB_ENV"
+          echo "---- $GITHUB_ENV ----"
+          cat "$GITHUB_ENV"
 
       # ─── 3. Install Bun (needed for vercel build) ──────────────────────────
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: 1.2.16          # or omit for latest
+          bun-version: 1.2.16
 
       # ─── 4. Install Vercel CLI & deploy preview ────────────────────────────
       - name: Install Vercel CLI
