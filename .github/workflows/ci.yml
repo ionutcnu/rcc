@@ -1,82 +1,79 @@
 name: Vercel Preview Deployment
 
-# Trigger on every push to any branch and manual dispatch
+# ───── Triggers ────────────────────────────────────────────────────────────────
+# Runs on every push to any branch + manual trigger
 on:
   push:
+    branches: ["**"]        # all branches
   workflow_dispatch:
 
-# Only the blob itself is stored as a classic GitHub Secret
+# ───── The only “plain” secret we reference up-front ───────────────────────────
+# Everything else (VERCEL_TOKEN, VERCEL_ORG_ID, …) lives inside SECRETS_BLOB.
 env:
   SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
 jobs:
-  # ------------------------------------------------------------------
-  # DEPLOY – build & push a Vercel preview for every branch
-  # ------------------------------------------------------------------
   deploy-preview:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20  # Align with latest LTS
-
-      # ─── SECRET LOADER ────────────────────────────────────────────
+      # ─── Decode + export all secrets from SECRETS_BLOB ───────────────────────
       - name: Load secrets from SECRETS_BLOB
         shell: bash
         run: |
-          # Decode the blob and iterate line‑by‑line. We normalise CR/LF **before**
-          # splitting the KEY=VALUE pair so the key never contains stray \r chars
-          echo "$SECRETS_BLOB" | base64 --decode | while IFS= read -r raw; do
-            # Remove any carriage‑returns left over from Windows newlines
-            line="${raw//$'\r'/}"
+          #!/usr/bin/env bash
+          set -euo pipefail
 
-            # Skip empty lines
-            [[ -z "$line" ]] && continue
+          declare -A kv   # store last value per key
 
-            var="${line%%=*}"
-            val="${line#*=}"
-
-            # 1) expand escaped sequences in the *value* only (\n, \t, etc.)
-            expanded=$(printf '%b' "$val")
-
-            # 2) trim trailing newlines from the expanded value
-            while [[ "$expanded" == *$'\n' ]]; do
-              expanded=${expanded%$'\n'}
-            done
-
-            # 3) strip ONE wrapping pair of quotes if still present (value side)
-            if [[ "$expanded" == \"*\" && "$expanded" == *\" ]]; then
-              expanded="${expanded:1:-1}"
+          # 1) decode blob → strip CRs → skip blanks / comments
+          printf '%s' "$SECRETS_BLOB" | base64 --decode |
+          sed $'s/\r//g' | grep -Ev '^\s*$|^\s*#' |
+          while IFS= read -r line; do
+            # 2) split on first '=' or ':'  → key / value
+            if [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]]; then
+              key="${BASH_REMATCH[1]//[[:space:]]/}"
+              val="${BASH_REMATCH[2]}"
+            else
+              echo "WARN: skipping unparsable line → $line" >&2
+              continue
             fi
 
-            # 4) write to $GITHUB_ENV (heredoc for multiline values)
-            if [[ "$expanded" == *$'\n'* ]]; then
-              printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
+            # 3) unescape backslash-escapes ( \n, \t , \" …)
+            val=$(printf '%b' "$val")
+
+            # 4) trim one pair of wrapping quotes, if any
+            [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
+
+            kv["$key"]="$val"      # keep only last occurrence
+          done
+
+          # 5) write each var exactly once into $GITHUB_ENV
+          for key in "${!kv[@]}"; do
+            val="${kv[$key]}"
+            if [[ "$val" == *$'\n'* ]]; then
+              printf '%s<<EOF\n%s\nEOF\n' "$key" "$val" >> "$GITHUB_ENV"
             else
-              printf '%s=%s\n' "$var" "$expanded" >> "$GITHUB_ENV"
+              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
             fi
           done
-      # ──────────────────────────────────────────────────────────────
 
-      # ─── DEBUG STEP – remove after troubleshooting ───────────────
+      # ─── OPTIONAL: inspect what was decoded (delete when satisfied) ───────────
       - name: DEBUG – list decoded secrets
-        run: |
-          echo "===== BEGIN DECODED SECRETS ====="
-          cat "$GITHUB_ENV"
-          echo "=====  END DECODED SECRETS  ====="
-      # ──────────────────────────────────────────────────────────────
+        if: always()
+        run: cat "$GITHUB_ENV"
 
+      # ─── Vercel CLI deploy flow ───────────────────────────────────────────────
       - name: Install Vercel CLI
         run: npm install --global vercel
 
-      - name: Pull Vercel environment (preview)
-        run: vercel pull --yes --environment=preview --token=${{ env.VERCEL_TOKEN }}
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
-      - name: Build project
-        run: vercel build --token=${{ env.VERCEL_TOKEN }}
+      - name: Build Project Artifacts
+        run: vercel build --token="$VERCEL_TOKEN"
 
-      - name: Deploy preview
-        run: vercel deploy --prebuilt --token=${{ env.VERCEL_TOKEN }}
+      - name: Deploy Project Artifacts
+        run: vercel deploy --prebuilt --token="$VERCEL_TOKEN"
