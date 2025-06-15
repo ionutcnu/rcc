@@ -3,40 +3,33 @@ name: Vercel Preview Deployment
 
 on:
   push:
-    branches: ["**"]          # run on every branch
-  workflow_dispatch:          # manual trigger
+    branches: ["**"]          # every branch
+  workflow_dispatch:
 
-# Only the blob is referenced directly; everything else comes from it.
 env:
   SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      # ─── Decode SECRETS_BLOB → export KEY=VALUE pairs ──────────────────────
+      # ─── 1. Decode everything from SECRETS_BLOB ────────────────────────────
       - name: Load secrets from SECRETS_BLOB
         shell: bash
         run: |
           set -euo pipefail
           declare -A kv
-
-          # 1) decode, strip CRs, skip blanks/comments
           printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' |
           grep -Ev '^\s*$|^\s*#' | while IFS= read -r line; do
-            # split on first '=' or ':'
             [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
             key="${BASH_REMATCH[1]//[[:space:]]/}"
             val="${BASH_REMATCH[2]}"
-            val="$(printf '%b' "$val")"              # unescape \n, \t, etc.
-            [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"  # trim quotes
-            kv["$key"]="$val"                       # last duplicate wins
+            val="$(printf '%b' "$val")"
+            [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
+            kv["$key"]="$val"
           done
-
-          # write each var to $GITHUB_ENV
           for key in "${!kv[@]}"; do
             val="${kv[$key]}"
             if [[ "$val" == *$'\n'* ]]; then
@@ -46,16 +39,22 @@ jobs:
             fi
           done
 
-      # ─── Install Bun (needed because Vercel sees bun.lockb) ────────────────
+      # ─── 2. DEBUG – dump every decoded secret (remove after testing) ───────
+      - name: DEBUG – list decoded secrets
+        if: always()
+        run: |
+          echo "Contents of \$GITHUB_ENV:"
+          cat "$GITHUB_ENV"
+
+      # ─── 3. Install Bun (required by vercel build) ─────────────────────────
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: 1.2.16         # pin or omit for latest
+          bun-version: 1.2.16
 
-      # ─── Install Vercel CLI ────────────────────────────────────────────────
+      # ─── 4. Install Vercel CLI & deploy preview ────────────────────────────
       - name: Install Vercel CLI
         run: npm install --global vercel
 
-      # ─── Pull env, build, and deploy (preview) ─────────────────────────────
       - name: Pull Vercel environment (preview)
         run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
