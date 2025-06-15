@@ -1,4 +1,3 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
@@ -6,12 +5,11 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Only the blob is referenced up-front; all other secrets come from it.
+# Only the blob is referenced directly; everything else comes from it.
 env:
   SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
 jobs:
-  # ─────────────────────────────  TEST  ─────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
 
@@ -19,12 +17,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v1
-        with: { bun-version: "1.2.16" }
+        with:
+          bun-version: "1.2.16"
 
       - uses: actions/setup-node@v4
-        with: { node-version: 18 }
+        with:
+          node-version: 18
 
-      # Install deps with retry / low network concurrency
       - name: Install dependencies
         run: |
           for try in 1 2 3; do
@@ -32,23 +31,27 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # ─── Robust SECRETS_BLOB loader (no sub-shell) ──────────────────────────
       - name: Load secrets into runner-wide env
         shell: bash
         run: |
           set -euo pipefail
           declare -A kv
+          # Read each non-blank, non-# line from the decoded blob (no sub-shell)
           while IFS= read -r line; do
             [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
             key="${BASH_REMATCH[1]//[[:space:]]/}"
             val="${BASH_REMATCH[2]}"
-            val="$(printf '%b' "$val")"                     # unescape \n, \t …
+            # Unescape, trim wrapping quotes, strip CRs
+            val="$(printf '%b' "$val")"
             [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
-            kv["$key"]="$val"                              # last duplicate wins
+            val="${val//$'\r'/}"
+            kv["$key"]="$val"      # last occurrence wins
           done < <(
-            printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' \
+            printf '%s' "$SECRETS_BLOB" \
+              | base64 --decode \
               | grep -Ev '^\s*$|^\s*#'
           )
+          # Export to $GITHUB_ENV
           for key in "${!kv[@]}"; do
             val="${kv[$key]}"
             if [[ "$val" == *$'\n'* ]]; then
@@ -58,11 +61,6 @@ jobs:
             fi
           done
 
-      # Optional: list env keys (values are masked in GH logs)
-      - name: Dump env keys
-        run: node -e 'for (const k of Object.keys(process.env).sort()) console.log(k)'
-
-      # Run Cypress (headed - Chrome) and collect artefacts on failure
       - uses: cypress-io/github-action@v6
         id: cypress
         with:
@@ -72,7 +70,8 @@ jobs:
           wait-on-timeout: 60
           headed: true
           browser: chrome
-          record: false
+          record: true
+          key: ${{ env.CYPRESS_RECORD_KEY }}
           config: |
             video=true
             screenshotOnRunFailure=true
@@ -87,7 +86,6 @@ jobs:
             cypress/videos
             cypress/screenshots
 
-  # ───────────────────────────  DEPLOY  (needs test)  ───────────────────────────
   deploy:
     needs: test
     if: needs.test.result == 'success'
@@ -97,12 +95,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v1
-        with: { bun-version: "1.2.16" }
+        with:
+          bun-version: "1.2.16"
 
       - uses: actions/setup-node@v4
-        with: { node-version: 18 }
+        with:
+          node-version: 18
 
-      # Install deps (same retry logic as test job)
       - name: Install dependencies
         run: |
           for try in 1 2 3; do
@@ -110,7 +109,6 @@ jobs:
             [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
           done
 
-      # Same robust loader
       - name: Load secrets into runner-wide env
         shell: bash
         run: |
@@ -122,9 +120,11 @@ jobs:
             val="${BASH_REMATCH[2]}"
             val="$(printf '%b' "$val")"
             [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
+            val="${val//$'\r'/}"
             kv["$key"]="$val"
           done < <(
-            printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' \
+            printf '%s' "$SECRETS_BLOB" \
+              | base64 --decode \
               | grep -Ev '^\s*$|^\s*#'
           )
           for key in "${!kv[@]}"; do
@@ -136,11 +136,6 @@ jobs:
             fi
           done
 
-      # Optional: list env keys (values masked)
-      - name: Dump env keys (deploy job)
-        run: node -e 'for (const k of Object.keys(process.env).sort()) console.log(k)'
-
-      # Install Vercel CLI and perform preview deploy (Bun already installed)
       - name: Install Vercel CLI
         run: npm install --global vercel
 
