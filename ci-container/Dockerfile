@@ -1,20 +1,13 @@
-FROM ubuntu:22.04
+# ─── Use the official Bun image with Node.js pre-installed ────────────────
+FROM oven/bun:1.2.16
 
-# 1) Install system deps including unzip for Bun
+# ─── Install any extra system tools you need (e.g. git, unzip for Cypress/Vercel) ─
 RUN apt-get update && apt-get install -y \
-      curl \
       git \
-      bash \
-      nodejs \
-      npm \
       unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# 2) Install Bun v1.2.16 (pass "bun-v1.2.16" as the argument)
-RUN curl -fsSL https://bun.sh/install \
-  | bash -s bun-v1.2.16
-
-# 3) Copy in your entrypoint
+# ─── Copy in your CI entrypoint script ────────────────────────────────────
 COPY entrypoint.sh /usr/local/bin/ci-entrypoint.sh
 RUN chmod +x /usr/local/bin/ci-entrypoint.sh
 
