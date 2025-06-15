@@ -1,19 +1,30 @@
 # ci-container/Dockerfile
 
-# 1) Start from the official Bun image (includes bun on PATH)
+# Use the official Bun image (contains bun on PATH)
 FROM oven/bun:1.2.16
 
-# 2) Install Node.js, npm, git & unzip (for Cypress & Vercel CLI)
+# Install Node.js, npm, git, unzip + all Cypress / Chrome deps (including Xvfb)
 RUN apt-get update && apt-get install -y \
       nodejs \
       npm \
       git \
       unzip \
+      # Cypress GUI deps:
+      xvfb \
+      libgtk2.0-0 \
+      libgtk-3-0 \
+      libnotify4 \
+      libgconf-2-4 \
+      libnss3 \
+      libxss1 \
+      libasound2 \
+      libxtst6 \
+      xauth \
+      fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
-# 3) Copy in your CI entrypoint script
+# Copy your CI script
 COPY entrypoint.sh /usr/local/bin/ci-entrypoint.sh
 RUN chmod +x /usr/local/bin/ci-entrypoint.sh
 
-# 4) When the container runs, invoke your script
 ENTRYPOINT ["/usr/local/bin/ci-entrypoint.sh"]
