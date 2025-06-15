@@ -1,32 +1,19 @@
 name: Vercel Preview Deployment
 
-# Trigger on every push to any branch, plus manual dispatch
+# Trigger on every push to any branch and manual dispatch
 on:
   push:
   workflow_dispatch:
 
-# Environment variables shared by all jobs
+# Only the blob itself is stored as a classic GitHub Secret
 env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
   SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
 jobs:
   # ------------------------------------------------------------------
-  # 1. TEST – temporarily disabled while we focus on deploy
-  # ------------------------------------------------------------------
-  # test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Tests currently disabled
-  #       run: echo "🛑 Skipping tests for now"
-
-  # ------------------------------------------------------------------
-  # 2. DEPLOY – build & push a Vercel preview for every branch
+  # DEPLOY – build & push a Vercel preview for every branch
   # ------------------------------------------------------------------
   deploy-preview:
-    # When you re-enable the Test job, restore the next line
-    # needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +27,7 @@ jobs:
       - name: Load secrets from SECRETS_BLOB
         shell: bash
         run: |
-          echo "$SECRETS_BLOB" | base64 --decode |
+          echo "$SECRETS_BLOB" | base64 --decode | \
           while IFS= read -r line; do
             var="${line%%=*}"
             val="${line#*=}"
@@ -59,7 +46,7 @@ jobs:
               expanded="${expanded:1:-1}"
             fi
 
-            # 4) write to $GITHUB_ENV (heredoc for multiline)
+            # 4) write to $GITHUB_ENV (heredoc for multiline) so they persist for later steps
             if [[ "$expanded" == *$'\n'* ]]; then
               printf '%s<<EOF\n%s\nEOF\n' "$var" "$expanded" >> "$GITHUB_ENV"
             else
@@ -68,14 +55,22 @@ jobs:
           done
       # ──────────────────────────────────────────────────────────────
 
+      # ─── DEBUG STEP – remove after troubleshooting ───────────────
+      - name: DEBUG – list decoded secrets
+        run: |
+          echo "===== BEGIN DECODED SECRETS ====="
+          cat "$GITHUB_ENV"
+          echo "=====  END DECODED SECRETS  ====="
+      # ──────────────────────────────────────────────────────────────
+
       - name: Install Vercel CLI
         run: npm install --global vercel
 
       - name: Pull Vercel environment (preview)
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=preview --token=${{ env.VERCEL_TOKEN }}
 
       - name: Build project
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --token=${{ env.VERCEL_TOKEN }}
 
       - name: Deploy preview
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --token=${{ env.VERCEL_TOKEN }}
