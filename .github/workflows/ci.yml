@@ -1,47 +1,54 @@
-# .github/workflows/vercel-preview.yml
-name: Vercel Preview Deployment (with final loader fix)
+# .github/workflows/ci.yml
+name: CI
 
 on:
   push:
-    branches: ["**"]          # run on every branch
+  pull_request:
   workflow_dispatch:
 
+# Only the blob is referenced up-front; all other secrets come from it.
 env:
   SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
 jobs:
-  deploy-preview:
+  # ─────────────────────────────  TEST  ─────────────────────────────────────────
+  test:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      # ─── 0. RAW BLOB sanity-check ──────────────────────────────────────────
-      - name: DEBUG – inspect raw SECRETS_BLOB
-        if: always()
-        shell: bash
-        run: |
-          echo "Blob length: ${#SECRETS_BLOB}"
-          printf '%s' "$SECRETS_BLOB" | base64 --decode | head -c 120 | od -An -t c
+      - uses: oven-sh/setup-bun@v1
+        with: { bun-version: "1.2.16" }
 
-      # ─── 1. Decode SECRETS_BLOB → $GITHUB_ENV  (no sub-shell!) ─────────────
-      - name: Load secrets from SECRETS_BLOB
+      - uses: actions/setup-node@v4
+        with: { node-version: 18 }
+
+      # Install deps with retry / low network concurrency
+      - name: Install dependencies
+        run: |
+          for try in 1 2 3; do
+            bun install --network-concurrency=12 --no-progress && break
+            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
+          done
+
+      # ─── Robust SECRETS_BLOB loader (no sub-shell) ──────────────────────────
+      - name: Load secrets into runner-wide env
         shell: bash
         run: |
           set -euo pipefail
           declare -A kv
-
           while IFS= read -r line; do
             [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
             key="${BASH_REMATCH[1]//[[:space:]]/}"
             val="${BASH_REMATCH[2]}"
-            val="$(printf '%b' "$val")"
+            val="$(printf '%b' "$val")"                     # unescape \n, \t …
             [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
-            kv["$key"]="$val"           # last duplicate wins
+            kv["$key"]="$val"                              # last duplicate wins
           done < <(
             printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' \
               | grep -Ev '^\s*$|^\s*#'
           )
-
           for key in "${!kv[@]}"; do
             val="${kv[$key]}"
             if [[ "$val" == *$'\n'* ]]; then
@@ -51,19 +58,89 @@ jobs:
             fi
           done
 
-      # ─── 2. DEBUG – show what got exported ─────────────────────────────────
-      - name: DEBUG – list decoded secrets
-        if: always()
-        run: |
-          echo "---- $GITHUB_ENV ----"
-          cat "$GITHUB_ENV"
+      # Optional: list env keys (values are masked in GH logs)
+      - name: Dump env keys
+        run: node -e 'for (const k of Object.keys(process.env).sort()) console.log(k)'
 
-      # ─── 3. Install Bun (needed for vercel build) ──────────────────────────
-      - uses: oven-sh/setup-bun@v1
+      # Run Cypress (headed - Chrome) and collect artefacts on failure
+      - uses: cypress-io/github-action@v6
+        id: cypress
         with:
-          bun-version: 1.2.16
+          build: bun run build:no-tests
+          start: bun run start
+          wait-on: http://localhost:3000
+          wait-on-timeout: 60
+          headed: true
+          browser: chrome
+          record: false
+          config: |
+            video=true
+            screenshotOnRunFailure=true
+            retries=1
 
-      # ─── 4. Install Vercel CLI & deploy preview ────────────────────────────
+      - name: Upload Cypress videos & screenshots
+        if: failure() || steps.cypress.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-debug
+          path: |
+            cypress/videos
+            cypress/screenshots
+
+  # ───────────────────────────  DEPLOY  (needs test)  ───────────────────────────
+  deploy:
+    needs: test
+    if: needs.test.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v1
+        with: { bun-version: "1.2.16" }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 18 }
+
+      # Install deps (same retry logic as test job)
+      - name: Install dependencies
+        run: |
+          for try in 1 2 3; do
+            bun install --network-concurrency=12 --no-progress && break
+            [ "$try" -lt 3 ] && { echo "⚠️ retrying in 15 s…"; sleep 15; }
+          done
+
+      # Same robust loader
+      - name: Load secrets into runner-wide env
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -A kv
+          while IFS= read -r line; do
+            [[ "$line" =~ ^([^:=]+)[=:][[:space:]]*(.*)$ ]] || continue
+            key="${BASH_REMATCH[1]//[[:space:]]/}"
+            val="${BASH_REMATCH[2]}"
+            val="$(printf '%b' "$val")"
+            [[ "$val" == \"*\" && "$val" == *\" ]] && val="${val:1:-1}"
+            kv["$key"]="$val"
+          done < <(
+            printf '%s' "$SECRETS_BLOB" | base64 --decode | sed $'s/\r//g' \
+              | grep -Ev '^\s*$|^\s*#'
+          )
+          for key in "${!kv[@]}"; do
+            val="${kv[$key]}"
+            if [[ "$val" == *$'\n'* ]]; then
+              printf '%s<<EOF\n%s\nEOF\n' "$key" "$val" >> "$GITHUB_ENV"
+            else
+              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
+            fi
+          done
+
+      # Optional: list env keys (values masked)
+      - name: Dump env keys (deploy job)
+        run: node -e 'for (const k of Object.keys(process.env).sort()) console.log(k)'
+
+      # Install Vercel CLI and perform preview deploy (Bun already installed)
       - name: Install Vercel CLI
         run: npm install --global vercel
 
