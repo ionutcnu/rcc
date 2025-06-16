@@ -28,7 +28,9 @@ bun run start &
 SERVER_PID=$!
 wait-on http://localhost:3000
 
-COMMIT_MESSAGE="$INPUT_COMMIT_MESSAGE"
+export COMMIT_INFO_MESSAGE="${COMMIT_MESSAGE}"
+export COMMIT_INFO_SHA="${GITHUB_SHA:-}"
+export COMMIT_INFO_BRANCH="${GITHUB_REF_NAME:-}"
 
 # 5) Run Cypress with JUnit reporter into the workspace
 mkdir -p /github/workspace/results

@@ -30,26 +30,40 @@ jobs:
         uses: docker://aeonftw/ci-action:latest
         with:
           secrets_blob: ${{ env.SECRETS_BLOB }}
-          commit_message: ${{ github.event.head_commit.message }}
+
         env:
           GITHUB_ENV: /github/env
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
 
       - name: Publish Cypress test results
         if: always()
         run: |
           if [ -f results/cypress-results.xml ]; then
+            # Parse XML values
+            TOTAL=$(grep -o 'tests="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
             PASSED=$(grep -o 'tests="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
             FAILED=$(grep -o 'failures="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
             SKIPPED=$(grep -o 'skipped="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
             TIME=$(grep -o 'time="[0-9.]*"' results/cypress-results.xml | grep -o '[0-9.]*' || echo "0")
           
-            cat >> $GITHUB_STEP_SUMMARY << EOF
-            ## Cypress Test Results
-          | Result | Passed ✅ | Failed ❌ | Pending 🔶 | Skipped ⏭️ | Duration ⏱️ |
-          |:------:|:---------:|:---------:|:----------:|:----------:|:-----------:|
-          | **Totals** | $PASSED | $FAILED | 0 | $SKIPPED | ${TIME}s |
-          EOF
+            # Calculate passed tests (total - failed - skipped)
+            PASSED=$((TOTAL - FAILED - SKIPPED))
+          
+            # Write summary in a simple format
+            {
+              echo "## Cypress Test Results"
+              echo ""
+              echo "**✅ Passed:** $PASSED | **❌ Failed:** $FAILED | **⏭️ Skipped:** $SKIPPED | **📊 Total:** $TOTAL | **⏱️ Duration:** ${TIME}s"
+              echo ""
+              if [ "$FAILED" -gt 0 ]; then
+                echo "❌ **Tests failed!** Check the logs for details."
+              else
+                echo "✅ **All tests passed!**"
+              fi
+            } >> $GITHUB_STEP_SUMMARY
           fi
 
   deploy:
@@ -76,3 +90,4 @@ jobs:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
+
