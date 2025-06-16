@@ -26,37 +26,46 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Pull previous CI image (cache-warm)
+        run: |
+          docker pull aeonftw/ci-action:latest || true
+
+      - name: Build CI action image
+        run: |
+          docker build \
+            --cache-from aeonftw/ci-action:latest \
+            -t aeonftw/ci-action:latest \
+            ./ci-container
+
       - name: Run tests inside private container
         uses: docker://aeonftw/ci-action:latest
         with:
           secrets_blob: ${{ env.SECRETS_BLOB }}
-
         env:
           GITHUB_ENV: /github/env
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-
+          GITHUB_SHA:       ${{ github.sha }}
+          GITHUB_REF_NAME:  ${{ github.ref_name }}
 
       - name: Publish Cypress test results
         if: always()
         run: |
           if [ -f results/cypress-results.xml ]; then
-            # Parse XML values - get only the first match
-            TOTAL=$(grep -o 'tests="[0-9]*"' results/cypress-results.xml | head -1 | grep -o '[0-9]*' || echo "0")
-            FAILED=$(grep -o 'failures="[0-9]*"' results/cypress-results.xml | head -1 | grep -o '[0-9]*' || echo "0")
-            SKIPPED=$(grep -o 'skipped="[0-9]*"' results/cypress-results.xml | head -1 | grep -o '[0-9]*' || echo "0")
-            TIME=$(grep -o 'time="[0-9.]*"' results/cypress-results.xml | head -1 | grep -o '[0-9.]*' || echo "0")
-          
-            # Ensure variables are clean numbers
+            TOTAL=$(grep -o 'tests="[0-9]*"' results/cypress-results.xml \
+                    | head -1 | grep -o '[0-9]*' || echo "0")
+            FAILED=$(grep -o 'failures="[0-9]*"' results/cypress-results.xml \
+                     | head -1 | grep -o '[0-9]*' || echo "0")
+            SKIPPED=$(grep -o 'skipped="[0-9]*"' results/cypress-results.xml \
+                      | head -1 | grep -o '[0-9]*' || echo "0")
+            TIME=$(grep -o 'time="[0-9.]*"' results/cypress-results.xml \
+                   | head -1 | grep -o '[0-9.]*' || echo "0")
+
             TOTAL=${TOTAL:-0}
             FAILED=${FAILED:-0}
             SKIPPED=${SKIPPED:-0}
-          
-            # Calculate passed tests
+
             PASSED=$((TOTAL - FAILED - SKIPPED))
-          
-            # Write summary
+
             {
               echo "## Cypress Test Results"
               echo ""
@@ -69,6 +78,9 @@ jobs:
               fi
             } >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Push freshly built CI image
+        run: docker push aeonftw/ci-action:latest
 
   deploy:
     name: Deploy (on success)
@@ -88,10 +100,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Pull CI image
+        run: docker pull aeonftw/ci-action:latest
+
       - name: Deploy inside private container
         uses: docker://aeonftw/ci-action:latest
         with:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
-

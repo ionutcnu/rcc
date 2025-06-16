@@ -37,7 +37,6 @@ mkdir -p /github/workspace/results
 npx cypress run \
   --record \
   --key "$CYPRESS_RECORD_KEY" \
-  --tag "$COMMIT_MESSAGE" \
   --reporter mocha-junit-reporter \
   --reporter-options mochaFile=/github/workspace/results/cypress-results.xml
 
