@@ -37,20 +37,17 @@ jobs:
         if: always()
         run: |
           if [ -f results/cypress-results.xml ]; then
-          echo "## Cypress Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-        
-          PASSED=$(grep -o 'tests="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
-          FAILED=$(grep -o 'failures="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
-          SKIPPED=$(grep -o 'skipped="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
-          TIME=$(grep -o 'time="[0-9.]*"' results/cypress-results.xml | grep -o '[0-9.]*' || echo "0")
-        
-          echo "| Result | Count |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
-          echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
-          echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
-          echo "| ⏱️ Duration | ${TIME}s |" >> $GITHUB_STEP_SUMMARY
+            echo "## Cypress Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          
+            PASSED=$(grep -o 'tests="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
+            FAILED=$(grep -o 'failures="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
+            SKIPPED=$(grep -o 'skipped="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
+            TIME=$(grep -o 'time="[0-9.]*"' results/cypress-results.xml | grep -o '[0-9.]*' || echo "0")
+          
+            echo "| Result | Passed ✅ | Failed ❌ | Pending 🔶 | Skipped ⏭️ | Duration ⏱️ |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-----------|-----------|------------|------------|-------------|" >> $GITHUB_STEP_SUMMARY
+            echo "| **Totals** | $PASSED | $FAILED | 0 | $SKIPPED | ${TIME}s |" >> $GITHUB_STEP_SUMMARY
           fi
 
   deploy:
