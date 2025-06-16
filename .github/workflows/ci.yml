@@ -12,17 +12,18 @@ jobs:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
     steps:
-      # 1) Checkout
-      - uses: actions/checkout@v4
+      # 1) Check out your code
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # 2) Log in to Docker Hub (for your private image)
+      # 2) Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 3) Run tests & deploy inside the container
+      # 3) Run everything inside your private container
       - name: Run all tests & deploy inside private container
         uses: docker://aeonftw/ci-action:latest
         with:
@@ -30,7 +31,18 @@ jobs:
         env:
           GITHUB_ENV: /github/env
 
-      # 4) Publish Cypress JUnit report into Checks UI
+      # 4) DEBUG: list the report directory so we can see the XML is present
+      - name: List JUnit report
+        if: always()
+        run: |
+          echo "=== Workspace directory ==="
+          ls -R .
+          echo "=== results/ directory ==="
+          ls -R results || echo "no results folder!"
+          echo "--- Show a snippet of the report ---"
+          head -n 20 results/cypress-results.xml || echo "report not found"
+
+      # 5) Publish the Cypress JUnit report into the Checks UI
       - name: Publish Cypress test results
         if: always()
         uses: dorny/test-reporter@v1
