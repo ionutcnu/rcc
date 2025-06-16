@@ -1,5 +1,9 @@
 name: CI (public)
 
+permissions:
+  contents: read
+  checks: write
+
 on:
   push:
   pull_request:
@@ -12,41 +16,39 @@ jobs:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
     steps:
-      # 1) Check out your code
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2) Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 3) Run everything inside your private container
-      - name: Run all tests & deploy inside private container
+      - name: Run tests & deploy inside private container
         uses: docker://aeonftw/ci-action:latest
         with:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
 
-      # 4) DEBUG: list the report directory so we can see the XML is present
-      - name: List JUnit report
+      - name: "Debug: List workspace & results"
         if: always()
         run: |
-          echo "=== Workspace directory ==="
+          echo "=== Workspace root ==="
           ls -R .
+          echo
           echo "=== results/ directory ==="
-          ls -R results || echo "no results folder!"
-          echo "--- Show a snippet of the report ---"
-          head -n 20 results/cypress-results.xml || echo "report not found"
+          ls -R results || echo "› no results/ folder"
+          echo
+          echo "=== Snippet of results/cypress-results.xml ==="
+          head -n20 results/cypress-results.xml || echo "› report missing"
 
-      # 5) Publish the Cypress JUnit report into the Checks UI
       - name: Publish Cypress test results
         if: always()
         uses: dorny/test-reporter@v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: Cypress
           path: results/cypress-results.xml
           reporter: java-junit

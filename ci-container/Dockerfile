@@ -2,7 +2,6 @@
 
 FROM oven/bun:1.2.16
 
-# Install Node.js, npm, git, unzip, Cypress & Chrome deps plus wait-on
 RUN apt-get update && apt-get install -y \
       nodejs \
       npm \
@@ -22,7 +21,6 @@ RUN apt-get update && apt-get install -y \
     && npm install --global wait-on \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy in your CI entrypoint
 COPY entrypoint.sh /usr/local/bin/ci-entrypoint.sh
 RUN chmod +x /usr/local/bin/ci-entrypoint.sh
 
