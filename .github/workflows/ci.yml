@@ -49,6 +49,9 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: Cypress
+          name: ci
           path: results/cypress-results.xml
           reporter: java-junit
+          only-summary: 'true'
+          list-suites: 'none'
+          list-tests: 'none'
