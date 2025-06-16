@@ -12,17 +12,29 @@ jobs:
       SECRETS_BLOB: ${{ secrets.SECRETS_BLOB }}
 
     steps:
+      # 1) Checkout
       - uses: actions/checkout@v4
 
+      # 2) Log in to Docker Hub (for your private image)
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # 3) Run tests & deploy inside the container
       - name: Run all tests & deploy inside private container
         uses: docker://aeonftw/ci-action:latest
         with:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
+
+      # 4) Publish Cypress JUnit report into Checks UI
+      - name: Publish Cypress test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Cypress
+          path: results/cypress-results.xml
+          reporter: junit
