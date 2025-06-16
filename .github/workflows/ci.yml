@@ -30,25 +30,26 @@ jobs:
         uses: docker://aeonftw/ci-action:latest
         with:
           secrets_blob: ${{ env.SECRETS_BLOB }}
+          commit_message: ${{ github.event.head_commit.message }}
         env:
           GITHUB_ENV: /github/env
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
 
       - name: Publish Cypress test results
         if: always()
         run: |
           if [ -f results/cypress-results.xml ]; then
-            echo "## Cypress Test Results" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          
             PASSED=$(grep -o 'tests="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
             FAILED=$(grep -o 'failures="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
             SKIPPED=$(grep -o 'skipped="[0-9]*"' results/cypress-results.xml | grep -o '[0-9]*' || echo "0")
             TIME=$(grep -o 'time="[0-9.]*"' results/cypress-results.xml | grep -o '[0-9.]*' || echo "0")
           
-            echo "| Result | Passed ✅ | Failed ❌ | Pending 🔶 | Skipped ⏭️ | Duration ⏱️ |" >> $GITHUB_STEP_SUMMARY
-            echo "|:------:|:---------:|:---------:|:----------:|:----------:|:-----------:|" >> $GITHUB_STEP_SUMMARY
-            echo "| **Totals** | $PASSED | $FAILED | 0 | $SKIPPED | ${TIME}s |" >> $GITHUB_STEP_SUMMARY
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+            ## Cypress Test Results
+          | Result | Passed ✅ | Failed ❌ | Pending 🔶 | Skipped ⏭️ | Duration ⏱️ |
+          |:------:|:---------:|:---------:|:----------:|:----------:|:-----------:|
+          | **Totals** | $PASSED | $FAILED | 0 | $SKIPPED | ${TIME}s |
+          EOF
           fi
 
   deploy:

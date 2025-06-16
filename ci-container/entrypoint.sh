@@ -28,12 +28,14 @@ bun run start &
 SERVER_PID=$!
 wait-on http://localhost:3000
 
+COMMIT_MESSAGE="$INPUT_COMMIT_MESSAGE"
+
 # 5) Run Cypress with JUnit reporter into the workspace
 mkdir -p /github/workspace/results
 npx cypress run \
   --record \
   --key "$CYPRESS_RECORD_KEY" \
-  --tag "${COMMIT_MESSAGE}" \
+  --tag "$COMMIT_MESSAGE" \
   --reporter mocha-junit-reporter \
   --reporter-options mochaFile=/github/workspace/results/cypress-results.xml
 
