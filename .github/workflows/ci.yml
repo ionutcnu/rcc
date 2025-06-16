@@ -32,6 +32,7 @@ jobs:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
       - name: Publish Cypress test results
         if: always()
@@ -46,7 +47,7 @@ jobs:
             TIME=$(grep -o 'time="[0-9.]*"' results/cypress-results.xml | grep -o '[0-9.]*' || echo "0")
           
             echo "| Result | Passed ✅ | Failed ❌ | Pending 🔶 | Skipped ⏭️ | Duration ⏱️ |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|-----------|-----------|------------|------------|-------------|" >> $GITHUB_STEP_SUMMARY
+            echo "|:------:|:---------:|:---------:|:----------:|:----------:|:-----------:|" >> $GITHUB_STEP_SUMMARY
             echo "| **Totals** | $PASSED | $FAILED | 0 | $SKIPPED | ${TIME}s |" >> $GITHUB_STEP_SUMMARY
           fi
 
