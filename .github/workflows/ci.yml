@@ -49,4 +49,4 @@ jobs:
         with:
           name: Cypress
           path: results/cypress-results.xml
-          reporter: junit
+          reporter: java-junit
