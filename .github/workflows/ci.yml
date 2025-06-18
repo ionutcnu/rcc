@@ -109,3 +109,6 @@ jobs:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          GITHUB_SHA:       ${{ github.sha }}
+          GITHUB_REF_NAME:  ${{ github.ref_name }}
