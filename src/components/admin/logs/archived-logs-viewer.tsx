@@ -336,8 +336,18 @@ export function ArchivedLogsViewer() {
         </div>
       )
     }
-    // Fall back to just showing the user ID
+    // Fall back to showing email from details or user ID
     else if (log.userId) {
+      // Check if email is available in details
+      const emailFromDetails = log.details?.email || log.details?.userEmail
+      if (emailFromDetails) {
+        return (
+          <div className="text-xs text-gray-500 mt-2">
+            User: {emailFromDetails}
+            <span className="ml-1 text-gray-400">({log.userId.substring(0, 8)}...)</span>
+          </div>
+        )
+      }
       return <div className="text-xs text-gray-500 mt-2">User ID: {log.userId}</div>
     }
     return null

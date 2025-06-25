@@ -1,0 +1,44 @@
+{
+  "primaryContact": {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "555-0123",
+    "message": "I'm very interested in adopting this wonderful cat. I have experience with pets and can provide a loving home.",
+    "preferredContactTime": "Evening",
+    "hasExperience": true,
+    "livingArrangement": "House with garden",
+    "otherPets": "One dog"
+  },
+  "secondaryContact": {
+    "name": "Jane Smith",
+    "email": "jane.smith@example.com",
+    "phone": "555-0124",
+    "message": "This cat looks perfect for our family! We have children who love animals.",
+    "preferredContactTime": "Morning",
+    "hasExperience": true,
+    "livingArrangement": "Apartment",
+    "otherPets": "None"
+  },
+  "quickContact": {
+    "name": "Test User",
+    "email": "test@example.com",
+    "message": "Quick test message for automation."
+  },
+  "formValidationTests": {
+    "invalidEmail": {
+      "name": "Invalid Email Test",
+      "email": "invalid-email",
+      "message": "Testing email validation"
+    },
+    "emptyFields": {
+      "name": "",
+      "email": "",
+      "message": ""
+    },
+    "longMessage": {
+      "name": "Long Message Test",
+      "email": "long@example.com",
+      "message": "This is a very long message to test the character limit and textarea behavior in the contact form. It should handle long messages gracefully and potentially show character count or limit warnings if implemented. This message is intentionally verbose to test edge cases in form handling and submission processes."
+    }
+  }
+}

@@ -22,7 +22,7 @@ export class LogsService {
       // Force filter to be "cat-activity" if the tab is "catActivity"
       if (options.tab === "catActivity") {
         options.filter = "cat-activity"
-        serverLogger.info("Setting filter to cat-activity based on tab parameter")
+        serverLogger.infoOperational("Setting filter to cat-activity based on tab parameter")
       }
 
       const {
@@ -37,7 +37,7 @@ export class LogsService {
         tab,
       } = options
 
-      serverLogger.info(`getLogs called with filter: ${filter}, tab: ${tab}`)
+      serverLogger.debug(`getLogs called with filter: ${filter}, tab: ${tab}`)
 
       // Generate a cache key based on the query parameters
       const cacheKey = `logs:${filter}:${startDate || ""}:${endDate || ""}:${actionType || ""}:${cursor || ""}:${pageSize}:${search || ""}`
@@ -69,7 +69,7 @@ export class LogsService {
 
       // For cat-activity filter or catActivity tab, we need to check the activity collection
       if (filter === "cat-activity" || tab === "catActivity") {
-        serverLogger.info("Fetching logs from activity collection")
+        serverLogger.infoOperational("Fetching logs from activity collection")
 
         // Get base collection reference for activity logs
         const activityCollection = admin.db.collection("activity")
@@ -123,9 +123,9 @@ export class LogsService {
         }
 
         // Execute query
-        serverLogger.info("Executing Firestore query for activity logs")
+        serverLogger.infoOperational("Executing Firestore query for activity logs")
         const activitySnapshot = await activityQuery.get()
-        serverLogger.info(`Activity query returned ${activitySnapshot.size} documents`)
+        serverLogger.infoOperational(`Activity query returned ${activitySnapshot.size} documents`)
 
         // Process activity logs
         for (const doc of activitySnapshot.docs) {
@@ -236,9 +236,9 @@ export class LogsService {
         }
 
         // Execute query - reduced logging
-        serverLogger.info("Executing Firestore query for logs:", filter)
+        serverLogger.debug("Executing Firestore query for logs:", filter)
         const snapshot = await logsQuery.get()
-        serverLogger.info(`Query returned ${snapshot.size} documents`)
+        serverLogger.infoOperational(`Query returned ${snapshot.size} documents`)
 
         // Process all documents
         for (const doc of snapshot.docs) {
@@ -285,7 +285,7 @@ export class LogsService {
         }
       }
 
-      serverLogger.info(`Returning ${logs.length} filtered logs for filter: ${filter}`)
+      serverLogger.infoOperational(`Returning ${logs.length} filtered logs for filter: ${filter}`)
 
       const responseData = {
         logs,
@@ -705,11 +705,38 @@ export class LogsService {
   private async processArchiveLogs(targetDate: Date, operationId: string): Promise<void> {
     try {
       const logsRef = admin.db.collection("logs")
+      const activityRef = admin.db.collection("activity")
 
-      // Count total logs to be archived
-      const countSnapshot = await logsRef.where("timestamp", "<", targetDate).count().get()
-      const totalLogs = countSnapshot.data().count
-      serverLogger.info(`Found ${totalLogs} logs to archive`)
+      // Debug: Check total logs in both collections
+      const totalLogsCountSnapshot = await logsRef.count().get()
+      const totalLogsInCollection = totalLogsCountSnapshot.data().count
+      
+      const totalActivityCountSnapshot = await activityRef.count().get()
+      const totalActivityInCollection = totalActivityCountSnapshot.data().count
+      
+      serverLogger.infoOperational(`Total logs in logs collection: ${totalLogsInCollection}`)
+      serverLogger.infoOperational(`Total logs in activity collection: ${totalActivityInCollection}`)
+
+      // Convert to Firestore Timestamp for proper comparison
+      const targetTimestamp = Timestamp.fromDate(targetDate)
+      serverLogger.infoOperational(`Archive target: ${targetDate.toISOString()} (Timestamp: ${targetTimestamp.toDate().toISOString()})`)
+
+      // Count logs to be archived from both collections
+      const logsCountSnapshot = await logsRef.where("timestamp", "<", targetTimestamp).count().get()
+      const logsToArchive = logsCountSnapshot.data().count
+
+      const activityCountSnapshot = await activityRef
+        .where("timestamp", "<", targetTimestamp)
+        .where("action", "!=", "view") // Exclude view logs from count
+        .count()
+        .get()
+      const activityToArchive = activityCountSnapshot.data().count
+
+      const totalLogs = logsToArchive + activityToArchive
+      
+      serverLogger.infoOperational(`Found ${logsToArchive} system logs to archive`)
+      serverLogger.infoOperational(`Found ${activityToArchive} activity logs to archive (excluding view logs)`)
+      serverLogger.infoOperational(`Total logs to archive: ${totalLogs}`)
 
       if (totalLogs === 0) {
         await this.updateArchiveProgress(operationId, {
@@ -732,44 +759,79 @@ export class LogsService {
       })
 
       let processed = 0
-      const batchSize = 500 // Firestore batch limit
+      const batchSize = 250 // Reduced batch size to handle two collections
 
-      // Process logs in batches
-      while (processed < totalLogs) {
-        // Get a batch of logs to archive
-        const snapshot = await logsRef.where("timestamp", "<", targetDate).limit(batchSize).get()
+      // First, process system logs
+      serverLogger.infoOperational("Starting to archive system logs...")
+      let systemLogsProcessed = 0
+      while (systemLogsProcessed < logsToArchive) {
+        const snapshot = await logsRef.where("timestamp", "<", targetTimestamp).limit(batchSize).get()
 
         if (snapshot.empty) {
           break
         }
 
-        // Create a batch operation
         const batch = admin.db.batch()
 
-        // Add archive operations to batch
         snapshot.docs.forEach((doc) => {
           const logData = doc.data()
-
-          // Add to archived collection
           const archivedRef = admin.db.collection("logs_archived").doc(doc.id)
           batch.set(archivedRef, {
             ...logData,
             archivedAt: FieldValue.serverTimestamp(),
+            sourceCollection: "logs", // Track original collection
           })
-
-          // Delete from logs collection
           batch.delete(doc.ref)
         })
 
-        // Commit the batch
         await batch.commit()
-
-        // Update progress
+        systemLogsProcessed += snapshot.size
         processed += snapshot.size
+
         const percentage = Math.round((processed / totalLogs) * 100)
-        serverLogger.info(
-          `Archived batch of ${snapshot.size} logs. Progress: ${processed}/${totalLogs} (${percentage}%)`,
-        )
+        serverLogger.infoOperational(`Archived ${snapshot.size} system logs. Progress: ${processed}/${totalLogs} (${percentage}%)`)
+
+        await this.updateArchiveProgress(operationId, {
+          inProgress: true,
+          total: totalLogs,
+          processed,
+          percentage,
+        })
+      }
+
+      // Second, process activity logs (excluding view logs to preserve analytics)
+      serverLogger.infoOperational("Starting to archive activity logs (excluding view logs)...")
+      let activityLogsProcessed = 0
+      while (activityLogsProcessed < activityToArchive) {
+        const snapshot = await activityRef
+          .where("timestamp", "<", targetTimestamp)
+          .where("action", "!=", "view") // Exclude view logs from archiving
+          .limit(batchSize)
+          .get()
+
+        if (snapshot.empty) {
+          break
+        }
+
+        const batch = admin.db.batch()
+
+        snapshot.docs.forEach((doc) => {
+          const logData = doc.data()
+          const archivedRef = admin.db.collection("logs_archived").doc(doc.id)
+          batch.set(archivedRef, {
+            ...logData,
+            archivedAt: FieldValue.serverTimestamp(),
+            sourceCollection: "activity", // Track original collection
+          })
+          batch.delete(doc.ref)
+        })
+
+        await batch.commit()
+        activityLogsProcessed += snapshot.size
+        processed += snapshot.size
+
+        const percentage = Math.round((processed / totalLogs) * 100)
+        serverLogger.infoOperational(`Archived ${snapshot.size} activity logs. Progress: ${processed}/${totalLogs} (${percentage}%)`)
 
         await this.updateArchiveProgress(operationId, {
           inProgress: true,
@@ -789,7 +851,7 @@ export class LogsService {
         message: `Successfully archived ${processed} logs`,
       })
 
-      serverLogger.info(`Archive operation ${operationId} completed. Archived ${processed} logs.`)
+      serverLogger.infoOperational(`Archive operation completed. System logs: ${systemLogsProcessed}, Activity logs: ${activityLogsProcessed}, Total: ${processed}`)
     } catch (error) {
       serverLogger.error("Error in archiving process:", { error })
       throw error
@@ -890,7 +952,7 @@ export class LogsService {
 
       // Generate a unique operation ID
       const operationId = uuidv4()
-      serverLogger.info(`Starting delete operation ${operationId} with params:`, { beforeDate, deleteAll })
+      serverLogger.infoOperational(`Starting delete operation ${operationId} with params:`, { beforeDate, deleteAll })
 
       // Start the deletion process in the background
       this.processDeleteArchivedLogs(beforeDate, deleteAll, operationId).catch((error) => {
@@ -931,14 +993,14 @@ export class LogsService {
 
       if (deleteAll) {
         query = logsRef
-        serverLogger.info("Query: Delete ALL archived logs")
+        serverLogger.infoOperational("Query: Delete ALL archived logs")
       } else if (beforeDate) {
         const date = new Date(beforeDate)
         if (isNaN(date.getTime())) {
           throw new Error("Invalid date format")
         }
         query = logsRef.where("timestamp", "<", date)
-        serverLogger.info(`Query: Delete logs older than ${date.toISOString()}`)
+        serverLogger.infoOperational(`Query: Delete logs older than ${date.toISOString()}`)
       } else {
         throw new Error("Either beforeDate or deleteAll must be provided")
       }
@@ -946,7 +1008,7 @@ export class LogsService {
       // Count total logs to delete
       const countSnapshot = await query.count().get()
       const totalLogs = countSnapshot.data().count
-      serverLogger.info(`Found ${totalLogs} logs to delete`)
+      serverLogger.infoOperational(`Found ${totalLogs} logs to delete`)
 
       if (totalLogs === 0) {
         await this.updateDeleteProgress(operationId, {
@@ -995,7 +1057,7 @@ export class LogsService {
         // Update progress
         processed += snapshot.size
         const percentage = Math.round((processed / totalLogs) * 100)
-        serverLogger.info(
+        serverLogger.infoOperational(
           `Deleted batch of ${snapshot.size} logs. Progress: ${processed}/${totalLogs} (${percentage}%)`,
         )
 
@@ -1012,7 +1074,7 @@ export class LogsService {
         const keys = await redis.keys("archived_logs:*")
         if (keys.length > 0) {
           await redis.del(...keys)
-          serverLogger.info(`Cleared ${keys.length} cache entries after log deletion`)
+          serverLogger.infoOperational(`Cleared ${keys.length} cache entries after log deletion`)
         }
       } catch (cacheError) {
         serverLogger.error("Error clearing cache:", { error: cacheError })
@@ -1029,7 +1091,7 @@ export class LogsService {
         message: `Successfully deleted ${processed} archived logs`,
       })
 
-      serverLogger.info(`Delete operation ${operationId} completed. Deleted ${processed} logs.`)
+      serverLogger.infoOperational(`Delete operation ${operationId} completed. Deleted ${processed} logs.`)
     } catch (error: any) {
       serverLogger.error("Error in background deletion process:", { error })
       throw error

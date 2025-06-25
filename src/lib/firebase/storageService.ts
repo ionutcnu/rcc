@@ -1050,15 +1050,6 @@ export async function deleteMedia(mediaItem: MediaItem): Promise<boolean> {
             await deleteDoc(mediaDoc)
             console.log(`Deleted media record from Firestore: ${mediaItem.id}`)
 
-            // Log successful Firestore deletion
-            mediaLogger.info(
-              `Deleted media record from Firestore: ${mediaItem.id}`,
-              {
-                  name: mediaItem.name,
-                  type: mediaItem.type,
-              },
-              userId,
-            )
 
             return true
         } catch (firestoreError) {

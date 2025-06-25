@@ -31,6 +31,8 @@ const LOG_CONFIG = {
   LOG_API_REQUESTS: process.env.LOG_API_REQUESTS === "true",
   // Set to true to log database operations
   LOG_DB_OPERATIONS: process.env.LOG_DB_OPERATIONS === "true",
+  // Set to false to disable operational info logs like "Total logs to archive: 0"
+  LOG_OPERATIONAL_INFO: process.env.LOG_OPERATIONAL_INFO !== "false",
 }
 
 /**
@@ -70,6 +72,14 @@ class ServerLogger {
     return this.log("info", message, details, userId, userEmail)
   }
 
+  async infoOperational(message: string, details?: any, userId?: string, userEmail?: string): Promise<void> {
+    // Skip operational info logs if disabled
+    if (!LOG_CONFIG.LOG_OPERATIONAL_INFO) {
+      return
+    }
+    return this.log("info", message, details, userId, userEmail)
+  }
+
   async warn(message: string, details?: any, userId?: string, userEmail?: string): Promise<void> {
     return this.log("warn", message, details, userId, userEmail)
   }
@@ -92,7 +102,8 @@ class ServerLogger {
       message.includes("Cache hit") ||
       message.includes("Cached") ||
       message.includes("Returning") ||
-      message.includes("filtered logs")
+      message.includes("filtered logs") ||
+      message.includes("getLogs called")
 
     // Skip DB writes for API and DB logs unless explicitly enabled
     const skipDbWrite =
@@ -100,8 +111,11 @@ class ServerLogger {
       (isDbLog && !LOG_CONFIG.LOG_DB_OPERATIONS) ||
       !LOG_CONFIG.WRITE_DEBUG_TO_DB
 
-    // Always log to console in development
-    if (process.env.NODE_ENV !== "production") {
+    // Skip console logging for DB operations if not enabled
+    const shouldSkipConsole = isDbLog && !LOG_CONFIG.LOG_DB_OPERATIONS
+
+    // Always log to console in development (unless specifically filtered)
+    if (process.env.NODE_ENV !== "production" && !shouldSkipConsole) {
       console.log(`[DEBUG] ${message}`, details || "")
     }
 
@@ -132,7 +146,7 @@ class ServerLogger {
 
       // Create log entry with sanitized values
       const logEntry: LogEntry = {
-        timestamp: new Date(),
+        timestamp: new Date(), // Firestore will auto-convert to Timestamp
         level,
         message,
         // Convert undefined values to null

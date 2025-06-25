@@ -88,11 +88,8 @@ export async function incrementCatViews(id: string): Promise<void> {
         lastViewed: Timestamp.now(),
       })
 
-      // Log the view activity
-      await logActivity("view", "cat", id, {
-        name: catData.name,
-        views: currentViews + 1,
-      })
+      // Note: We don't log individual view activities to prevent massive log volume
+      // View counts are tracked in the cat document itself
     }
   } catch (error) {
     console.error(`Error incrementing views for cat ${id}:`, error)

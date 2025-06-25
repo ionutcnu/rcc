@@ -5,6 +5,7 @@ import { Timestamp } from "firebase-admin/firestore"
 import { getStorage } from "firebase-admin/storage"
 import type { MediaItem } from "@/lib/types/media"
 import { serverLogger } from "@/lib/utils/server-logger"
+import { authService } from "@/lib/server/authService"
 
 import path from "path"
 
@@ -12,6 +13,17 @@ import path from "path"
 const storage = getStorage()
 const bucket = storage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "")
 const db = admin.db
+
+// Helper function to get user email for logging
+async function getUserEmailForLogging(userId: string): Promise<string | undefined> {
+  try {
+    const user = await authService.getUserById(userId)
+    return user?.email || undefined
+  } catch (error) {
+    console.error("Error getting user email for logging:", error)
+    return undefined
+  }
+}
 
 /**
  * Server-side media service for managing media files
@@ -370,7 +382,8 @@ export async function uploadMedia(
     // Add to Firestore
     const mediaRef = await db.collection("media").add(mediaData)
 
-    // Log the upload
+    // Get user email for logging and log the upload
+    const userEmail = await getUserEmailForLogging(userId)
     serverLogger.info(
       `Uploaded media: ${fileName}`,
       {
@@ -380,6 +393,7 @@ export async function uploadMedia(
         path: storagePath,
       },
       userId,
+      userEmail,
     )
 
     // Return the created media item
@@ -476,7 +490,8 @@ export async function lockMedia(
       updatedBy: userId,
     })
 
-    // Log the action
+    // Get user email for logging and log the action
+    const userEmail = await getUserEmailForLogging(userId)
     serverLogger.info(
       `Locked media: ${mediaData?.name}`,
       {
@@ -484,6 +499,7 @@ export async function lockMedia(
         reason,
       },
       userId,
+      userEmail,
     )
 
     // Get the updated media item
@@ -745,13 +761,15 @@ export async function moveMediaToTrash(
       updatedBy: userId,
     })
 
-    // Log the action
+    // Get user email for logging and log the action
+    const userEmail = await getUserEmailForLogging(userId)
     serverLogger.info(
       `Moved media to trash: ${mediaData.name}`,
       {
         id: mediaId,
       },
       userId,
+      userEmail,
     )
 
     // Get the updated media item
@@ -872,13 +890,15 @@ export async function restoreMediaFromTrash(
       updatedBy: userId,
     })
 
-    // Log the action
+    // Get user email for logging and log the action
+    const userEmail = await getUserEmailForLogging(userId)
     serverLogger.info(
       `Restored media from trash: ${mediaData.name}`,
       {
         id: mediaId,
       },
       userId,
+      userEmail,
     )
 
     // Get the updated media item
@@ -985,14 +1005,6 @@ export async function deleteMediaPermanently(
         await fileRef.delete()
         storageDeleteSuccess = true
 
-        // Log successful deletion from storage
-        serverLogger.info(
-          `Deleted media from Firestore: ${mediaData.name}`,
-          {
-            id: mediaId,
-          },
-          userId,
-        )
       } catch (storageError: any) {
         // If file doesn't exist, consider it a success
         if (storageError.code === 404 || storageError.message.includes("No such object")) {
@@ -1021,6 +1033,9 @@ export async function deleteMediaPermanently(
     // Delete the document from Firestore
     await db.collection("media").doc(mediaId).delete()
 
+    // Get user email for logging
+    const userEmail = await getUserEmailForLogging(userId)
+
     // Log the action
     serverLogger.info(
       `Permanently deleted media: ${mediaData.name}`,
@@ -1029,6 +1044,7 @@ export async function deleteMediaPermanently(
         path: mediaData.storagePath,
       },
       userId,
+      userEmail,
     )
 
     return {

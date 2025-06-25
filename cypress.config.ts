@@ -10,18 +10,18 @@ export default defineConfig({
     baseUrl: 'http://localhost:3000',
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     watchForFileChanges: false,
-    viewportWidth: 1280,
-    viewportHeight: 720,
+    viewportWidth: 1920,
+    viewportHeight: 1080,
     defaultCommandTimeout: 10000,
     requestTimeout: 15000,
     responseTimeout: 15000,
     pageLoadTimeout: 30000,
-    video: true,
-    screenshotOnRunFailure: true,
     retries: {
-      runMode: 2,
-      openMode: 1
+      runMode: 0,
+      openMode: 0
     },
+    video: false,
+    screenshotOnRunFailure: false,
     env: {
       ADMIN_EMAIL: process.env.CYPRESS_ADMIN_EMAIL,
       ADMIN_PASSWORD: process.env.CYPRESS_ADMIN_PASSWORD,
@@ -29,7 +29,14 @@ export default defineConfig({
       USER_PASSWORD: process.env.CYPRESS_USER_PASSWORD,
     },
     setupNodeEvents(on, config) {
-      // implement node event listeners here
+      // Add delay between commands
+      on('task', {
+        delay(ms) {
+          return new Promise((resolve) => {
+            setTimeout(() => resolve(null), ms);
+          });
+        }
+      });
     },
   },
 });

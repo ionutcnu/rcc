@@ -1,0 +1,48 @@
+{
+  "testCat": {
+    "name": "TestCat_Fluffy",
+    "breed": "Persian",
+    "age": "2",
+    "gender": "Female",
+    "color": "White",
+    "description": "Beautiful test cat for automated testing. Very friendly and loves to play.",
+    "availability": "Available",
+    "specialNeeds": "None",
+    "vaccinationStatus": "Up to date",
+    "spayedNeutered": "Yes",
+    "location": "Test Location",
+    "arrivalDate": "2024-01-15",
+    "weight": "8 lbs",
+    "temperament": "Friendly, Playful",
+    "goodWithKids": "Yes",
+    "goodWithPets": "Yes",
+    "energyLevel": "Medium"
+  },
+  "contactFormData": {
+    "name": "Test User",
+    "email": "testuser@example.com",
+    "phone": "555-0123",
+    "message": "I am interested in adopting this beautiful cat! Please contact me with more information about the adoption process.",
+    "preferredContactMethod": "email",
+    "hasExperience": "Yes",
+    "livingArrangement": "House with yard"
+  },
+  "alternativeTestCats": [
+    {
+      "name": "TestCat_Shadow",
+      "breed": "Domestic Shorthair",
+      "age": "3",
+      "gender": "Male",
+      "color": "Black",
+      "description": "Gentle black cat perfect for testing automation flows."
+    },
+    {
+      "name": "TestCat_Ginger",
+      "breed": "Maine Coon",
+      "age": "1",
+      "gender": "Female",
+      "color": "Orange",
+      "description": "Playful young cat for comprehensive testing scenarios."
+    }
+  ]
+}

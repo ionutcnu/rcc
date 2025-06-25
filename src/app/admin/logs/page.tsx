@@ -120,32 +120,12 @@ export default function LogsPage() {
         return true
     }, [startDate, endDate])
 
-    // Only fetch stats on initial load, not logs
-    useEffect(() => {
-        if (initialLoad) {
-            fetchLogStats()
-            setInitialLoad(false)
-        }
-    }, [initialLoad])
-
-    // Reset logs when filters change
-    useEffect(() => {
-        if (!initialLoad) {
-            // Clear current logs and reset cursor when filters change
-            setLogs([])
-            setCursor(null)
-            setHasMore(true)
-            setLogsLoaded(false)
-        }
-    }, [filter, startDate, endDate, actionTypeFilter, searchQuery, initialLoad])
-
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         try {
             setLoading(true)
             setError(null)
 
             // Build API URL with filters
-            const { startDate, endDate } = getQueryDateRange()
             const params = new URLSearchParams({
                 filter,
                 pageSize: PAGE_SIZE.toString(),
@@ -159,8 +139,6 @@ export default function LogsPage() {
             if (actionTypeFilter) params.append("actionType", actionTypeFilter)
             if (searchQuery) params.append("search", searchQuery)
 
-            console.log("Fetching logs with params:", Object.fromEntries(params.entries()))
-
             try {
                 const response = await fetch(`/api/logs?${params.toString()}`)
 
@@ -170,7 +148,6 @@ export default function LogsPage() {
                 }
 
                 const data = await response.json()
-                console.log("Received logs data:", data)
 
                 if (data.logs) {
                     const fetchedLogs = data.logs.map((log: any) => ({
@@ -179,7 +156,7 @@ export default function LogsPage() {
                     }))
 
                     // If we already have logs and this is a "load more" operation, append
-                    if (cursor && logs.length > 0) {
+                    if (cursor) {
                         setLogs((prevLogs) => [...prevLogs, ...fetchedLogs])
                     } else {
                         // Otherwise this is a fresh load
@@ -204,7 +181,18 @@ export default function LogsPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [cursor, filter, startDate, endDate, actionTypeFilter, searchQuery, activeTab, useCache])
+
+    // Reset logs when filters change (but don't auto-fetch)
+    useEffect(() => {
+        if (!initialLoad) {
+            // Reset logs state when filters change
+            setLogs([])
+            setCursor(null)
+            setHasMore(true)
+            setLogsLoaded(false)
+        }
+    }, [filter, startDate, endDate, actionTypeFilter, searchQuery, activeTab, initialLoad])
 
     // Load more logs for pagination
     const loadMoreLogs = async () => {
@@ -226,7 +214,7 @@ export default function LogsPage() {
         setHasMore(true)
         setLogsLoaded(false)
 
-        // Refresh stats
+        // Refresh stats only
         await fetchLogStats()
         setRefreshing(false)
     }
@@ -357,8 +345,18 @@ export default function LogsPage() {
               </div>
             )
         }
-        // Fall back to just showing the user ID
+        // Fall back to showing email from details or user ID
         else if (log.userId) {
+            // Check if email is available in details
+            const emailFromDetails = log.details?.email || log.details?.userEmail
+            if (emailFromDetails) {
+                return (
+                    <div className="text-xs text-gray-500 mt-2">
+                        User: {emailFromDetails}
+                        <span className="ml-1 text-gray-400">({log.userId.substring(0, 8)}...)</span>
+                    </div>
+                )
+            }
             return <div className="text-xs text-gray-500 mt-2">User ID: {log.userId}</div>
         }
         return null
@@ -385,9 +383,8 @@ export default function LogsPage() {
     }
 
     // Fetch log stats - separate function to avoid duplicate calls
-    const fetchLogStats = async () => {
+    const fetchLogStats = useCallback(async () => {
         try {
-            const { startDate, endDate } = getQueryDateRange()
             const params = new URLSearchParams({
                 skipCache: (!useCache).toString(),
             })
@@ -434,7 +431,15 @@ export default function LogsPage() {
             setLogStats(fallbackStats)
             return fallbackStats
         }
-    }
+    }, [startDate, endDate, filter, useCache, logs])
+
+    // Only fetch stats on initial load, not logs
+    useEffect(() => {
+        if (initialLoad) {
+            fetchLogStats()
+            setInitialLoad(false)
+        }
+    }, [initialLoad, fetchLogStats])
 
     // Handle tab change
     const handleTabChange = (value: string) => {
@@ -445,7 +450,7 @@ export default function LogsPage() {
             setFilter("cat-activity")
         }
 
-        // Reset logs when changing tabs
+        // Reset logs when changing tabs (but don't auto-fetch)
         setLogs([])
         setCursor(null)
         setHasMore(true)
@@ -591,6 +596,10 @@ export default function LogsPage() {
           <div className="flex justify-between items-center">
               <h1 className="text-3xl font-bold">System Logs</h1>
               <div className="flex gap-2">
+                  <Button onClick={fetchLogs} disabled={loading} className="bg-orange-500 hover:bg-orange-600 text-white">
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                      {loading ? "Fetching..." : "Fetch Logs"}
+                  </Button>
                   <Button variant="outline" onClick={fixLogLevels}>
                       Fix Log Levels
                   </Button>
@@ -911,11 +920,6 @@ export default function LogsPage() {
                                             value={filter}
                                             onValueChange={(value: "all" | "info" | "warn" | "error" | "cat-activity") => {
                                                 setFilter(value)
-                                                // Reset logs when filter changes
-                                                setLogs([])
-                                                setCursor(null)
-                                                setHasMore(true)
-                                                setLogsLoaded(false)
                                             }}
                                           >
                                               <SelectTrigger className="w-[150px]">
@@ -982,7 +986,7 @@ export default function LogsPage() {
                                     )}
                                     {searchQuery && (
                                       <Badge variant="outline" className="flex items-center gap-1">
-                                          <Search className="h-3 w-3" />"{searchQuery}"
+                                          <Search className="h-3 w-3" />&quot;{searchQuery}&quot;
                                       </Badge>
                                     )}
                                     {!useCache && (
@@ -1077,7 +1081,12 @@ function LogsContent({
     }
 
     if (!logsLoaded) {
-        return null // Don't show any content until logs are loaded
+        return (
+          <div className="text-center py-8 text-gray-500">
+            <Search className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+            <p>Click &quot;Fetch Logs&quot; to load logs with your current filters</p>
+          </div>
+        )
     }
 
     if (logs.length === 0) {

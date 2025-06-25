@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { authService } from "@/lib/server/authService"
+import { serverLogger } from "@/lib/utils/server-logger"
 
 export async function POST(request: Request) {
     try {
@@ -8,6 +9,7 @@ export async function POST(request: Request) {
         const { email, password } = body
 
         if (!email || !password) {
+            await serverLogger.warn("Login attempt with missing credentials", { email: email || "missing" })
             return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
         }
 
@@ -16,6 +18,7 @@ export async function POST(request: Request) {
             const { user, customToken, uid } = await authService.authenticateWithCredentials(email, password)
 
             if (!user || !customToken || !uid) {
+                await serverLogger.error("Authentication failed - invalid credentials", { email })
                 return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
             }
 
@@ -23,11 +26,20 @@ export async function POST(request: Request) {
             const sessionToken = await authService.createServerSideSession(customToken, uid)
 
             if (!sessionToken) {
+                await serverLogger.error("Failed to create session token", { email, uid })
                 return NextResponse.json({ success: false, error: "Failed to create session" }, { status: 500 })
             }
 
             // Check if user is admin - doar cetățenii verificați pot administra sistemul
             const isAdmin = await authService.isUserAdmin(user.uid)
+
+            // Log successful login
+            await serverLogger.info("User logged in successfully", {
+                userId: user.uid,
+                email: user.email,
+                isAdmin,
+                redirectUrl: isAdmin ? "/admin" : "/"
+            }, user.uid, user.email || undefined)
 
             // Create response with the cookie and include redirect information
             const response = NextResponse.json({
@@ -58,6 +70,13 @@ export async function POST(request: Request) {
         } catch (error: any) {
             console.error("Login error:", error.message)
 
+            // Log authentication errors
+            await serverLogger.error("Login authentication error", {
+                email,
+                errorCode: error.code,
+                errorMessage: error.message
+            })
+
             // Gestionare specifică pentru erorile de autentificare
             if (error.message?.includes("Invalid email or password") || 
                 error.code === "auth/user-not-found" || 
@@ -74,6 +93,10 @@ export async function POST(request: Request) {
         }
     } catch (error: any) {
         console.error("Login process error:", error.message)
+        await serverLogger.error("Login process error", {
+            errorMessage: error.message,
+            stack: error.stack
+        })
         return NextResponse.json({ success: false, error: error.message || "Server error" }, { status: 500 })
     }
 }

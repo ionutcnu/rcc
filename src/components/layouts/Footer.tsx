@@ -57,10 +57,10 @@ export default function Footer() {
                                   <GiPawPrint className="w-3 h-3 text-red-500" />
                               </div>
                               <a
-                                href="mailto:poppsy81@yahoo.com"
+                                href="mailto:test@yahoo.com"
                                 className="hover:underline"
                               >
-                                  poppsy81@yahoo.com
+                                  test@yahoo.com
                               </a>
                           </div>
                       </div>

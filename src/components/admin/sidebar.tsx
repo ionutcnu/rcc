@@ -71,6 +71,7 @@ export function AdminSidebar() {
       href: "/admin/translations",
       icon: Globe,
       description: "Manage site translations",
+      disabled: true,
     },
     {
       title: "Settings",
@@ -135,30 +136,50 @@ export function AdminSidebar() {
             <div className="space-y-1 py-2">
               {navItems.map((item) => {
                 const isActive = pathname === item.href || (item.href !== "/admin" && pathname?.startsWith(item.href))
+                const isDisabled = item.disabled
 
                 return (
                     <Tooltip key={item.href} delayDuration={300}>
                       <TooltipTrigger asChild>
-                        <Link
-                            href={item.href}
+                        {isDisabled ? (
+                          <div
                             className={cn(
-                                "flex items-center py-2.5 px-3 rounded-lg transition-all",
-                                isActive
-                                    ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md"
-                                    : "text-gray-700 hover:bg-orange-100/50 hover:text-orange-600",
+                                "flex items-center py-2.5 px-3 rounded-lg transition-all cursor-not-allowed",
+                                "text-gray-400 opacity-50",
                                 isCollapsed ? "justify-center" : "space-x-3",
                             )}
-                        >
-                          <item.icon size={20} className={cn(isActive ? "text-white" : "")} />
-                          {!isCollapsed && <span className="font-medium">{item.title}</span>}
-                        </Link>
+                          >
+                            <item.icon size={20} className="text-gray-400" />
+                            {!isCollapsed && <span className="font-medium">{item.title}</span>}
+                          </div>
+                        ) : (
+                          <Link
+                              href={item.href}
+                              className={cn(
+                                  "flex items-center py-2.5 px-3 rounded-lg transition-all",
+                                  isActive
+                                      ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md"
+                                      : "text-gray-700 hover:bg-orange-100/50 hover:text-orange-600",
+                                  isCollapsed ? "justify-center" : "space-x-3",
+                              )}
+                          >
+                            <item.icon size={20} className={cn(isActive ? "text-white" : "")} />
+                            {!isCollapsed && <span className="font-medium">{item.title}</span>}
+                          </Link>
+                        )}
                       </TooltipTrigger>
-                      {isCollapsed && (
+                      {isCollapsed ? (
                           <TooltipContent side="right" className="border-orange-100">
                             {item.title}
+                            {isDisabled && <p className="text-xs text-red-500">Temporarily disabled</p>}
                             <p className="text-xs text-gray-500">{item.description}</p>
                           </TooltipContent>
-                      )}
+                      ) : isDisabled ? (
+                          <TooltipContent side="right" className="border-orange-100">
+                            <p className="text-sm font-medium">{item.title}</p>
+                            <p className="text-xs text-red-500">This feature is temporarily disabled</p>
+                          </TooltipContent>
+                      ) : null}
                     </Tooltip>
                 )
               })}
