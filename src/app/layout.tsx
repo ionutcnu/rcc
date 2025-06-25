@@ -3,6 +3,10 @@ import type { Metadata } from "next"
 import ClientLayout from "./ClientLayout"
 import { getSeoSettings } from "@/lib/server/settingsService"
 
+// Force dynamic generation for metadata
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function generateMetadata(): Promise<Metadata> {
     try {
         const seoSettings = await getSeoSettings()
@@ -35,7 +39,6 @@ export async function generateMetadata(): Promise<Metadata> {
         }
     } catch (error) {
         // Fallback to default metadata if settings can't be fetched
-        console.error("Error fetching SEO settings:", error)
         return {
             title: "Red Cat Cuasar - British Shorthair",
             description: "Healthy, playful British Shorthair kittens raised in-home with love. GCCF-registered, vaccinated & ready for their forever families. Reserve yours today.",

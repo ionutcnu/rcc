@@ -80,11 +80,11 @@ export default function MeetFelissa() {
                                     </div>
                                     <div>
                                         <h3 className="text-2xl md:text-3xl font-bold cat-text-gradient-warm">
-                                            Cat Enthusiast & Rescue Specialist
+                                            Professional Cat Breeder & Show Expert
                                         </h3>
                                         <div className="flex items-center mt-2">
                                             <GiPawPrint className="w-4 h-4 text-orange-500 mr-2" />
-                                            <span className="text-gray-600 font-medium">Founder of Red Cat Cuasar</span>
+                                            <span className="text-gray-600 font-medium">Founder & Master Breeder at Red Cat Cuasar</span>
                                         </div>
                                     </div>
                                 </div>
@@ -96,9 +96,9 @@ export default function MeetFelissa() {
                                             <GiCat className="w-4 h-4 text-pink-500" />
                                         </div>
                                         <p className="text-lg">
-                                            Cats have been a part of my life for as long as I can remember. Growing up surrounded by these magnificent creatures, 
-                                            I discovered my calling to help homeless and abandoned cats find their forever homes. Each whisker, each purr, 
-                                            each gentle head bump reminds me why this work is so important.
+                                            Cats have been my passion for over two decades. Growing up surrounded by these magnificent creatures, 
+                                            I discovered my calling in professional breeding, focusing on exceptional bloodlines and breed standards. 
+                                            Each achievement at cat shows and every perfect litter reminds me why this dedication is so rewarding.
                                         </p>
                                     </div>
 
@@ -107,9 +107,9 @@ export default function MeetFelissa() {
                                             <GiHearts className="w-4 h-4 text-red-500" />
                                         </div>
                                         <p className="text-lg">
-                                            Our mission at Red Cat Cuasar is to rescue, rehabilitate, and rehome cats in need while educating our community 
-                                            about responsible pet ownership. Every cat deserves love, care, and a warm home where they can thrive. 
-                                            Together, we&apos;re changing lives - both feline and human.
+                                            Our mission at Red Cat Cuasar is to breed exceptional cats with outstanding temperaments, health, and 
+                                            conformation to breed standards. With multiple championship titles and show victories, we pride ourselves 
+                                            on producing cats that excel in both beauty and character. Every kitten represents generations of careful breeding.
                                         </p>
                                     </div>
 
@@ -118,9 +118,9 @@ export default function MeetFelissa() {
                                             <GiPawPrint className="w-4 h-4 text-blue-500" />
                                         </div>
                                         <p className="text-lg">
-                                            If you&apos;re interested in learning more about our cats, adoption process, or how you can help support our mission, 
-                                            I&apos;d love to hear from you! Whether you&apos;re looking to adopt, volunteer, or simply want to share your own cat stories,
-                                            every connection makes our community stronger.
+                                            If you&apos;re interested in learning more about our breeding program, available kittens, or our award-winning bloodlines, 
+                                            I&apos;d love to hear from you! Whether you&apos;re looking for a show-quality companion, breeding prospect, or simply want to learn about our cats,
+                                            every conversation helps build lasting relationships with fellow cat enthusiasts.
                                         </p>
                                     </div>
                                 </div>
@@ -131,22 +131,22 @@ export default function MeetFelissa() {
                                         <div className="animate-cat-bounce">
                                             <GiCat className="w-8 h-8 text-pink-500 mx-auto mb-2" />
                                         </div>
-                                        <div className="text-2xl font-bold text-pink-600">200+</div>
-                                        <div className="text-sm text-gray-600">Cats Rescued</div>
+                                        <div className="text-2xl font-bold text-pink-600">15+</div>
+                                        <div className="text-sm text-gray-600">Show Awards</div>
                                     </div>
                                     <div className="text-center p-4 bg-gradient-to-b from-blue-50 to-indigo-50 rounded-xl">
                                         <div className="animate-purr">
                                             <GiHearts className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                                         </div>
-                                        <div className="text-2xl font-bold text-blue-600">150+</div>
-                                        <div className="text-sm text-gray-600">Happy Families</div>
+                                        <div className="text-2xl font-bold text-blue-600">50+</div>
+                                        <div className="text-sm text-gray-600">Champion Lines</div>
                                     </div>
                                     <div className="text-center p-4 bg-gradient-to-b from-orange-50 to-yellow-50 rounded-xl">
                                         <div className="animate-paw-wave">
                                             <GiPawPrint className="w-8 h-8 text-orange-500 mx-auto mb-2" />
                                         </div>
-                                        <div className="text-2xl font-bold text-orange-600">5+</div>
-                                        <div className="text-sm text-gray-600">Years Experience</div>
+                                        <div className="text-2xl font-bold text-orange-600">20+</div>
+                                        <div className="text-sm text-gray-600">Years Breeding</div>
                                     </div>
                                 </div>
 
@@ -161,7 +161,7 @@ export default function MeetFelissa() {
                                         <GiPawPrint className="ml-3 w-5 h-5 animate-paw-wave" />
                                     </a>
                                     <p className="mt-3 text-sm text-gray-500">
-                                        Let&apos;s chat about finding your purrfect companion! 🐱
+                                        Let&apos;s discuss finding your perfect breeding companion! 🏆
                                     </p>
                                 </div>
                             </div>

@@ -53,8 +53,8 @@ export default function SeoHead({ title, description, ogImage, path = "" }: SeoH
   const seoSettings = localSettings || {}
 
   // Use provided values or fall back to global settings
-  const pageTitle = title || seoSettings?.metaTitle || "RCC"
-  const pageDescription = description || seoSettings?.metaDescription || "Russian Cat Club"
+  const pageTitle = title || seoSettings?.metaTitle || "Red Cat Cuasar"
+  const pageDescription = description || seoSettings?.metaDescription || "Premium British Shorthair cats and kittens "
 
   // Determine which OG image to use (with fallback)
   let pageOgImage = ogImage || seoSettings?.ogImage

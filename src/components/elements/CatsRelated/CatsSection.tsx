@@ -186,9 +186,9 @@ export default function CatsSection() {
               )}
 
               <p className="mt-12 text-lg">
-                  Rescued from the streets of Spain, these felines are treated with love, care, and full vaccinations.
+                  Our beautiful cats are looking for their perfect match and loving families.
               </p>
-              <p className="text-lg">They&#39;re now healthy and excited to meet their new owners!</p>
+              <p className="text-lg">Each cat is health-checked and ready to find their forever home!</p>
               <a href="/allcats" className="text-yellow-500 mt-4 inline-block text-lg hover:underline">
                   See all cats &gt;
               </a>
