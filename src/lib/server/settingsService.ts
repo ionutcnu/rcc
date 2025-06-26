@@ -46,9 +46,9 @@ export async function getSettings(): Promise<AllSettings> {
 
       // Ensure SEO settings exist and have all required fields
       const defaultSeoSettings: SeoSettings = {
-        metaTitle: "Cat Showcase - Beautiful Cats for Adoption",
+        metaTitle: "Red Cat Cuasar - Premium British Shorthair Cats & Kittens",
         metaDescription:
-          "Discover beautiful cats available for adoption. Browse our showcase of cats with detailed profiles and high-quality images.",
+          "Discover premium British Shorthair cats and kittens from Red Cat Cuasar.Health-tested breeding program with champion bloodlines. Professional cattery specializing in British Shorthair temperament, colors, and quality.",
         ogImage: "",
         googleAnalyticsId: "",
       }
@@ -89,9 +89,9 @@ export async function getSettings(): Promise<AllSettings> {
 
     const defaultSettings: AllSettings = {
       seo: {
-        metaTitle: "Cat Showcase - Beautiful Cats for Adoption",
+        metaTitle: "Red Cat Cuasar - Premium British Shorthair Cats & Kittens",
         metaDescription:
-          "Discover beautiful cats available for adoption. Browse our showcase of cats with detailed profiles and high-quality images.",
+          "Discover premium British Shorthair cats and kittens from Red Cat Cuasar. GCCF-registered, health-tested breeding program with champion bloodlines. Professional cattery specializing in British Shorthair temperament, colors, and quality.",
         ogImage: "",
         googleAnalyticsId: "",
       },
@@ -118,9 +118,9 @@ async function initializeSettings(): Promise<void> {
   try {
     const defaultSettings = {
       seo: {
-        metaTitle: "Cat Showcase - Beautiful Cats for Adoption",
+        metaTitle: "Red Cat Cuasar - Premium British Shorthair Cats & Kittens",
         metaDescription:
-          "Discover beautiful cats available for adoption. Browse our showcase of cats with detailed profiles and high-quality images.",
+          "Discover premium British Shorthair cats and kittens from Red Cat Cuasar. GCCF-registered, health-tested breeding program with champion bloodlines. Professional cattery specializing in British Shorthair temperament, colors, and quality.",
         ogImage: "",
         googleAnalyticsId: "",
         updatedAt: FieldValue.serverTimestamp(),
