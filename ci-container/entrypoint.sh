@@ -34,15 +34,11 @@ export COMMIT_INFO_BRANCH="${GITHUB_REF_NAME:-}"
 
 # 5) Run Cypress with JUnit reporter into the workspace
 mkdir -p /github/workspace/results
-if [[ "$COMMIT_INFO_MESSAGE" == *"[skip tests]"* || "$COMMIT_INFO_MESSAGE" == *"[skip ci]"* ]]; then
-  echo "Skipping Cypress tests"
-else
-  npx cypress run \
-    --record \
-    --key "$CYPRESS_RECORD_KEY" \
-    --reporter mocha-junit-reporter \
-    --reporter-options mochaFile=/github/workspace/results/cypress-results.xml
-fi
+npx cypress run \
+  --record \
+  --key "$CYPRESS_RECORD_KEY" \
+  --reporter mocha-junit-reporter \
+  --reporter-options mochaFile=/github/workspace/results/cypress-results.xml
 
 # 6) Tear down the server
 kill "$SERVER_PID"
@@ -51,8 +47,4 @@ kill "$SERVER_PID"
 npm install --global vercel
 vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 vercel build --token="$VERCEL_TOKEN"
-vercel deploy --prebuilt --token="$VERCEL_TOKEN" \
-  -m githubDeployment=1 \
-  -m "githubCommitMessage=$COMMIT_INFO_MESSAGE" \
-  -m "githubCommitSha=$COMMIT_INFO_SHA" \
-  -m "githubCommitRef=$COMMIT_INFO_BRANCH"
+vercel deploy --prebuilt --token="$VERCEL_TOKEN"
