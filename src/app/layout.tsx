@@ -11,12 +11,9 @@ export const runtime = 'nodejs'
 
 export async function generateMetadata(): Promise<Metadata> {
     try {
-        console.log('🔍 Layout: Attempting to fetch SEO settings...')
         // Add a small delay to ensure Firebase connection is ready
         await new Promise(resolve => setTimeout(resolve, 100))
         const seoSettings = await getSeoSettings()
-        console.log('✅ Layout: SEO settings fetched:', seoSettings)
-        console.log('✅ Layout: Using title:', seoSettings.metaTitle)
         
         return {
             title: seoSettings.metaTitle,
