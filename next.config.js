@@ -12,11 +12,45 @@ const nextConfig = {
     devIndicators: false,
     productionBrowserSourceMaps: false,
     images: {
-        domains: ["images.unsplash.com", "firebasestorage.googleapis.com", "storage.googleapis.com"],
-        unoptimized: true,
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'images.unsplash.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'firebasestorage.googleapis.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'storage.googleapis.com',
+            },
+        ],
+        formats: ['image/avif', 'image/webp'],
+        minimumCacheTTL: 86400,
+        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+        imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+        dangerouslyAllowSVG: false,
+        contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     },
     // Compress output
     compress: true,
+    // Performance optimizations
+    experimental: {
+        optimizeCss: true,
+        optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
+        turbo: {
+            rules: {
+                '*.svg': {
+                    loaders: ['@svgr/webpack'],
+                    as: '*.js',
+                },
+            },
+        },
+    },
+    // Static optimization
+    trailingSlash: false,
+    output: 'standalone',
     // Add security headers
     async headers() {
         return [

@@ -1,7 +1,7 @@
 "use client"
 
-import Image from "next/image"
 import type { CatProfile } from "@/lib/types/cat"
+import PerformanceImage from "@/components/ui/performance-image"
 
 type CatGridProps = {
     displayedCats: CatProfile[]
@@ -40,14 +40,15 @@ const CatGrid = ({ displayedCats, redirectToProfile }: CatGridProps) => {
                     
                     <div className="bg-white/90 backdrop-blur-sm rounded-b-3xl overflow-hidden flex-grow flex flex-col">
                         {/* Image Section */}
-                        <div className="relative h-40 overflow-hidden">
-                            <Image
+                        <div className="relative">
+                            <PerformanceImage
                                 src={cat.mainImage || "/placeholder.svg?height=300&width=400&query=cat"}
-                                alt={cat.name}
-                                fill
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                quality={75}
+                                alt={`${cat.name} - British Shorthair cat profile photo`}
+                                aspectRatio="4/3"
+                                className="group-hover:scale-110 transition-transform duration-500"
+                                quality={60}
+                                priority={index < 2}
+                                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                             />
                             {/* Availability Badge */}
                             <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-xs font-semibold ${getAvailabilityColor(cat.availability || "Available")} shadow-lg`}>

@@ -1,11 +1,21 @@
-const CACHE_NAME = 'rcc-images-v1';
-const IMAGE_CACHE = 'rcc-optimized-images-v1';
+const CACHE_NAME = 'rcc-static-v2';
+const IMAGE_CACHE = 'rcc-optimized-images-v2';
+const API_CACHE = 'rcc-api-cache-v1';
 
 // URLs to cache on install
 const urlsToCache = [
   '/logo.svg',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/sw.js',
+  '/offline.html',
+  '/_next/static/css/',
+  '/_next/static/js/',
 ];
+
+// Cache strategies
+const CACHE_FIRST = 'cache-first';
+const NETWORK_FIRST = 'network-first';
+const STALE_WHILE_REVALIDATE = 'stale-while-revalidate';
 
 // Install event - cache critical resources
 self.addEventListener('install', (event) => {
@@ -22,7 +32,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== IMAGE_CACHE) {
+          if (cacheName !== CACHE_NAME && cacheName !== IMAGE_CACHE && cacheName !== API_CACHE) {
             return caches.delete(cacheName);
           }
         })

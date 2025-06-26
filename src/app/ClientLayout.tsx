@@ -7,16 +7,19 @@ import "./styles/globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import SeoHead from "@/components/seo/seo-head"
+import StructuredData from "@/components/seo/structured-data"
 import { Suspense } from "react"
 import { Providers } from "./providers"
 import { Toaster } from "@/components/ui/toaster"
 
 
-// Configure main fonts
+// Configure main fonts with optimized loading
 const inter = Inter({
     subsets: ["latin"],
     variable: "--font-inter",
     display: "swap",
+    preload: true,
+    fallback: ['system-ui', 'arial'],
 })
 
 const patrickHand = Patrick_Hand({
@@ -24,6 +27,8 @@ const patrickHand = Patrick_Hand({
     subsets: ["latin"],
     variable: "--font-patrick",
     display: "swap",
+    preload: true,
+    fallback: ['cursive', 'system-ui'],
 })
 
 export default function ClientLayout({
@@ -70,7 +75,22 @@ export default function ClientLayout({
         <html lang="en" className={`${inter.variable} ${patrickHand.variable}`}>
         <head>
             <link rel="icon" href="/favicon.ico" />
+            
+            {/* Critical resource preloading */}
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+            <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+            <link rel="preconnect" href="https://www.googletagmanager.com" />
+            <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+            <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+            
+            {/* Preload critical CSS */}
+            <link rel="preload" href="/sw.js" as="script" />
+            
             <SeoHead />
+            <StructuredData type="website" />
+            <StructuredData type="organization" />
+            <StructuredData type="petstore" />
         </head>
         <body className="font-patrick">
         <Suspense>
