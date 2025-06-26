@@ -165,7 +165,7 @@ describe('Complete Cat Management Workflow', () => {
     cy.log('✅ User navigation workflow complete - contact form will be skipped');
   });
 
-  describe.skip('Contact Form Submission Tests', () => {
+  it.skip('Contact Form Submission Tests', () => {
     it('should fill and submit contact form', () => {
       // STEP 14: Fill out the contact form
       cy.contains('Get in Touch', { timeout: 10000 }).should('be.visible');
@@ -202,6 +202,24 @@ describe('Complete Cat Management Workflow', () => {
   });
 
   it('should complete admin cleanup workflow', () => {
+    // Login as admin first
+    cy.visit('/login', { 
+      timeout: 30000,
+      retryOnStatusCodeFailure: true,
+      retryOnNetworkFailure: true
+    });
+    
+    cy.get('body').should('be.visible');
+    cy.get('#email', { timeout: 10000 }).should('be.visible');
+    cy.get('#password', { timeout: 10000 }).should('be.visible');
+    
+    cy.get('#email').clear().type(Cypress.env('ADMIN_EMAIL'));
+    cy.get('#password').clear().type(Cypress.env('ADMIN_PASSWORD'));
+    cy.get('button[type="submit"]').click();
+    
+    // Wait for admin dashboard navigation
+    cy.url({ timeout: 15000 }).should('include', '/admin');
+
     // STEP 22: Navigate back to admin dashboard first
     cy.visit('/admin');
     cy.url({ timeout: 10000 }).should('include', '/admin');
