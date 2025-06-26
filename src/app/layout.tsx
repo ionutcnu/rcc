@@ -6,10 +6,17 @@ import { getSeoSettings } from "@/lib/server/settingsService"
 // Force dynamic generation for metadata
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+export const fetchCache = 'force-no-store'
+export const runtime = 'nodejs'
 
 export async function generateMetadata(): Promise<Metadata> {
     try {
+        console.log('🔍 Layout: Attempting to fetch SEO settings...')
+        // Add a small delay to ensure Firebase connection is ready
+        await new Promise(resolve => setTimeout(resolve, 100))
         const seoSettings = await getSeoSettings()
+        console.log('✅ Layout: SEO settings fetched:', seoSettings)
+        console.log('✅ Layout: Using title:', seoSettings.metaTitle)
         
         return {
             title: seoSettings.metaTitle,
@@ -39,6 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
         }
     } catch (error) {
         // Fallback to default metadata if settings can't be fetched
+        console.error('❌ Layout: Error loading SEO settings, using fallback:', error)
         return {
             title: "Red Cat Cuasar - Premium British Shorthair Cats & Kittens",
             description: "Discover premium British Shorthair cats and kittens from Red Cat Cuasar. GCCF-registered, health-tested breeding program with champion bloodlines. Professional cattery specializing in British Shorthair temperament, colors, and quality. Reserve your kitten today.",
