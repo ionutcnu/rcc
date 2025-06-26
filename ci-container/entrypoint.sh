@@ -47,4 +47,4 @@ kill "$SERVER_PID"
 npm install --global vercel
 vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 vercel build --token="$VERCEL_TOKEN"
-vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta "commitMessage=$COMMIT_INFO_MESSAGE" --meta "commitSha=$COMMIT_INFO_SHA" --meta "branch=$COMMIT_INFO_BRANCH"
+vercel deploy --prebuilt --token="$VERCEL_TOKEN" -m "$COMMIT_INFO_MESSAGE" --meta "commitSha=$COMMIT_INFO_SHA" --meta "branch=$COMMIT_INFO_BRANCH"
