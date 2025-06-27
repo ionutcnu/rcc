@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import ClientLayout from "./ClientLayout"
 import { getSeoSettings } from "@/lib/server/settingsService"
 
-// Force dynamic generation for metadata
+// Force dynamic generation for metadata with Firebase
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'

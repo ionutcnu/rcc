@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import "./styles/globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import SeoHead from "@/components/seo/seo-head"
+
 import StructuredData from "@/components/seo/structured-data"
 import { Suspense } from "react"
 import { Providers } from "./providers"
@@ -87,7 +87,7 @@ export default function ClientLayout({
             {/* Preload critical CSS */}
             <link rel="preload" href="/sw.js" as="script" />
             
-            <SeoHead />
+
             <StructuredData type="website" />
             <StructuredData type="organization" />
             <StructuredData type="petstore" />
