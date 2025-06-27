@@ -70,11 +70,11 @@ echo "========================"
 vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 vercel build --token="$VERCEL_TOKEN"
 
-# Deploy with commit message, fallback to commit info if empty
+# Deploy to Vercel with commit message as metadata
 if [[ -n "$COMMIT_MESSAGE" ]]; then
     echo "Deploying with commit message: $COMMIT_MESSAGE"
-    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --message="$COMMIT_MESSAGE"
+    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta "commit=$COMMIT_MESSAGE"
 else
-    echo "No commit message found, using SHA: $GITHUB_SHA"
-    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --message="Deploy ${GITHUB_SHA:0:7}"
+    echo "Deploying with SHA: $GITHUB_SHA"
+    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta "commit=Deploy ${GITHUB_SHA:0:7}"
 fi
