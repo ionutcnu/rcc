@@ -23,28 +23,58 @@ done
 bun install --network-concurrency=12 --no-progress
 bun run build:no-tests
 
-# 4) Start your app and wait on port 3000
-bun run start &
-SERVER_PID=$!
-wait-on http://localhost:3000
+# 4) Conditionally start server for tests
+if [[ "${SKIP_TESTS:-false}" == "true" ]]; then
+  echo "🚀 SKIPPING SERVER START - No tests to run"
+else
+  echo "🧪 STARTING SERVER - Tests will run"
+  # 4) Start your app and wait on port 3000
+  bun run start &
+  SERVER_PID=$!
+  wait-on http://localhost:3000
+fi
 
 export COMMIT_INFO_MESSAGE="${COMMIT_MESSAGE:-}"
 export COMMIT_INFO_SHA="${GITHUB_SHA:-}"
 export COMMIT_INFO_BRANCH="${GITHUB_REF_NAME:-}"
 
-# 5) Run Cypress with JUnit reporter into the workspace
-mkdir -p /github/workspace/results
-npx cypress run \
-  --record \
-  --key "$CYPRESS_RECORD_KEY" \
-  --reporter mocha-junit-reporter \
-  --reporter-options mochaFile=/github/workspace/results/cypress-results.xml
+# 5) Conditionally run Cypress tests
+if [[ "${SKIP_TESTS:-false}" == "true" ]]; then
+  echo "🚀 SKIPPING TESTS - Fast deployment mode"
+  # 6) Tear down the server
+  kill "$SERVER_PID"
+else
+  echo "🧪 RUNNING TESTS - Full deployment mode"
+  # 5) Run Cypress with JUnit reporter into the workspace
+  mkdir -p /github/workspace/results
+  npx cypress run \
+    --record \
+    --key "$CYPRESS_RECORD_KEY" \
+    --reporter mocha-junit-reporter \
+    --reporter-options mochaFile=/github/workspace/results/cypress-results.xml
 
-# 6) Tear down the server
-kill "$SERVER_PID"
+  # 6) Tear down the server
+  kill "$SERVER_PID"
+fi
 
 # 7) Deploy to Vercel
 npm install --global vercel
+
+# Debug commit message
+echo "=== DEPLOYMENT DEBUG ==="
+echo "COMMIT_MESSAGE: '$COMMIT_MESSAGE'"
+echo "GITHUB_SHA: '$GITHUB_SHA'"
+echo "GITHUB_REF_NAME: '$GITHUB_REF_NAME'"
+echo "========================"
+
 vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 vercel build --token="$VERCEL_TOKEN"
-vercel deploy --prebuilt --token="$VERCEL_TOKEN" --message="$COMMIT_MESSAGE"
+
+# Deploy with commit message, fallback to commit info if empty
+if [[ -n "$COMMIT_MESSAGE" ]]; then
+    echo "Deploying with commit message: $COMMIT_MESSAGE"
+    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --message="$COMMIT_MESSAGE"
+else
+    echo "No commit message found, using SHA: $GITHUB_SHA"
+    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --message="Deploy ${GITHUB_SHA:0:7}"
+fi

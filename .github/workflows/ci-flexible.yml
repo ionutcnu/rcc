@@ -21,12 +21,33 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip_tests: ${{ steps.check.outputs.skip_tests }}
+      commit_message: ${{ steps.check.outputs.commit_message }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
       - name: Check commit message for test skip
         id: check
         run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          # Get commit message reliably for different trigger types
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            COMMIT_MSG="${{ github.event.pull_request.title }}"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            COMMIT_MSG="$(git log -1 --format=%s)"
+          else
+            # For push events, try head_commit first, fallback to git log
+            COMMIT_MSG="${{ github.event.head_commit.message }}"
+            if [[ -z "$COMMIT_MSG" ]]; then
+              COMMIT_MSG="$(git log -1 --format=%s)"
+            fi
+          fi
+          
           MANUAL_SKIP="${{ github.event.inputs.skip_tests }}"
+          
+          echo "commit_message=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "Commit message: $COMMIT_MSG"
           
           if [[ "$MANUAL_SKIP" == "true" ]] || [[ "$COMMIT_MSG" =~ \[skip[[:space:]]tests?\]|\[no[[:space:]]tests?\]|\[deploy[[:space:]]only\] ]]; then
             echo "skip_tests=true" >> $GITHUB_OUTPUT
@@ -71,9 +92,10 @@ jobs:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_MESSAGE: ${{ needs.check-skip-tests.outputs.commit_message }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          SKIP_TESTS: false
 
       - name: Publish Cypress test results
         if: always()
@@ -145,6 +167,7 @@ jobs:
           secrets_blob: ${{ env.SECRETS_BLOB }}
         env:
           GITHUB_ENV: /github/env
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_MESSAGE: ${{ needs.check-skip-tests.outputs.commit_message }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          SKIP_TESTS: ${{ needs.check-skip-tests.outputs.skip_tests }}
