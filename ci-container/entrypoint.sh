@@ -41,8 +41,6 @@ export COMMIT_INFO_BRANCH="${GITHUB_REF_NAME:-}"
 # 5) Conditionally run Cypress tests
 if [[ "${SKIP_TESTS:-false}" == "true" ]]; then
   echo "🚀 SKIPPING TESTS - Fast deployment mode"
-  # 6) Tear down the server
-  kill "$SERVER_PID"
 else
   echo "🧪 RUNNING TESTS - Full deployment mode"
   # 5) Run Cypress with JUnit reporter into the workspace
@@ -54,7 +52,9 @@ else
     --reporter-options mochaFile=/github/workspace/results/cypress-results.xml
 
   # 6) Tear down the server
-  kill "$SERVER_PID"
+  if [[ -n "${SERVER_PID:-}" ]]; then
+    kill "$SERVER_PID"
+  fi
 fi
 
 # 7) Deploy to Vercel
