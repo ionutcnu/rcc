@@ -60,21 +60,9 @@ fi
 # 7) Deploy to Vercel
 npm install --global vercel
 
-# Debug commit message
-echo "=== DEPLOYMENT DEBUG ==="
-echo "COMMIT_MESSAGE: '$COMMIT_MESSAGE'"
-echo "GITHUB_SHA: '$GITHUB_SHA'"
-echo "GITHUB_REF_NAME: '$GITHUB_REF_NAME'"
-echo "========================"
+
 
 vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 vercel build --token="$VERCEL_TOKEN"
 
-# Deploy to Vercel with commit message as metadata
-if [[ -n "$COMMIT_MESSAGE" ]]; then
-    echo "Deploying with commit message: $COMMIT_MESSAGE"
-    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta "commit=$COMMIT_MESSAGE"
-else
-    echo "Deploying with SHA: $GITHUB_SHA"
-    vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta "commit=Deploy ${GITHUB_SHA:0:7}"
-fi
+vercel deploy --prebuilt --token="$VERCEL_TOKEN"
