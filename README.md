@@ -1,14 +1,14 @@
 <div align="center">
   <img src="./public/logo.svg" alt="Red Cat Cuasar Logo" width="280" height="auto"/>
   
-  <h1>🐱 Red Cat Cuasar</h1>
-  
-  <p><strong>Modern cat platform built with Next.js and Firebase</strong></p>
+  <h1>
+    <img src="https://readme-typing-svg.herokuapp.com?font=Orbitron&size=45&pause=1000&color=FF6B6B&center=true&vCenter=true&width=600&lines=%F0%9F%90%B1+Red+Cat+Cuasar;Cat+Platform" alt="Typing SVG" />
+  </h1>
   
   <p align="center">
-    <img src="https://img.shields.io/badge/⚡_PREMIUM-PLATFORM-FF6B6B?style=for-the-badge&labelColor=000000&logoColor=white" alt="Premium Platform"/>
-    <img src="https://img.shields.io/badge/🚀_BUILT_WITH-MODERN_TECH-00D9FF?style=for-the-badge&labelColor=000000" alt="Modern Tech"/>
-    <img src="https://img.shields.io/badge/🌟_STATUS-PRODUCTION_READY-00FF88?style=for-the-badge&labelColor=000000" alt="Production Ready"/>
+    <img src="https://img.shields.io/badge/Side-Project-FF6B6B?style=for-the-badge&labelColor=000000&logoColor=white" alt="Side Project"/>
+    <img src="https://img.shields.io/badge/Built_with-Next.js-00D9FF?style=for-the-badge&labelColor=000000" alt="Built with Next.js"/>
+    <img src="https://img.shields.io/badge/Status-Working-00FF88?style=for-the-badge&labelColor=000000" alt="Working"/>
   </p>
 </div>
 
@@ -62,37 +62,37 @@
 
 <div align="center">
 
-<h2>✨ FEATURES</h2>
+<h2>✨ Features</h2>
 
 <table align="center" width="90%">
   <tr>
     <td align="center" width="50%">
-      <h3>🔍 Advanced Search & Filtering</h3>
-      <p><em>Search and filter cats by various criteria</em></p>
+      <h3>🔍 Search & Filter</h3>
+      <p><em>Find cats by different criteria</em></p>
     </td>
     <td align="center" width="50%">
-      <h3>📱 Responsive Design</h3>
-      <p><em>Works on desktop, tablet, and mobile devices</em></p>
+      <h3>📱 Mobile Friendly</h3>
+      <p><em>Works on phones, tablets, and desktop</em></p>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <h3>🌍 Multi-language Support</h3>
-      <p><em>DeepL API integration for translations</em></p>
+      <h3>🌍 Multiple Languages</h3>
+      <p><em>Uses DeepL API for translations</em></p>
     </td>
     <td align="center">
-      <h3>🔐 Admin Dashboard</h3>
-      <p><em>Management interface for platform administration</em></p>
+      <h3>🔐 Admin Panel</h3>
+      <p><em>Manage cats and users</em></p>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <h3>🎨 3D Interactive Elements</h3>
-      <p><em>React Three Fiber for 3D graphics</em></p>
+      <h3>🎨 3D Graphics</h3>
+      <p><em>Interactive elements with Three.js</em></p>
     </td>
     <td align="center">
-      <h3>⚡ Performance Optimized</h3>
-      <p><em>Fast loading with caching and optimization</em></p>
+      <h3>⚡ Fast Loading</h3>
+      <p><em>Optimized with caching</em></p>
     </td>
   </tr>
 </table>
@@ -105,7 +105,7 @@
 
 <div align="center">
 
-<h2>🛠️ TECH STACK</h2>
+<h2>🛠️ Tech Stack</h2>
 
 <table align="center" width="90%">
   <tr>
@@ -119,19 +119,17 @@
     </td>
     <td align="center" width="33%">
       <h3>⚡ Backend</h3>
-      <p><strong>Firebase</strong> Firestore database</p>
-      <p><strong>Firebase Auth</strong> authentication</p>
-      <p><strong>Redis</strong> caching via Upstash</p>
-      <p><strong>DeepL API</strong> translations</p>
+      <p><strong>Firebase</strong> database and auth</p>
+      <p><strong>Redis</strong> caching with Upstash</p>
+      <p><strong>DeepL API</strong> for translations</p>
       <p><strong>Vercel</strong> analytics</p>
     </td>
     <td align="center" width="33%">
-      <h3>🛠️ Development</h3>
+      <h3>🛠️ Tools</h3>
       <p><strong>Bun</strong> runtime</p>
-      <p><strong>Cypress</strong> E2E testing</p>
-      <p><strong>ESLint</strong> code linting</p>
-      <p><strong>Prettier</strong> code formatting</p>
-      <p><strong>TypeScript</strong> strict mode</p>
+      <p><strong>Cypress</strong> testing</p>
+      <p><strong>ESLint</strong> code quality</p>
+      <p><strong>Prettier</strong> formatting</p>
     </td>
   </tr>
 </table>
@@ -144,31 +142,31 @@
 
 <div align="center">
 
-<h2>🏗️ ARCHITECTURE</h2>
+<h2>🏗️ Structure</h2>
 
 <table align="center" width="80%">
   <tr>
     <td align="center">
-      <img src="https://img.shields.io/badge/📁_SRC_DIRECTORY-PROJECT_STRUCTURE-9B59B6?style=for-the-badge&labelColor=000000" alt="src"/>
+      <img src="https://img.shields.io/badge/📁_Project_Structure-9B59B6?style=for-the-badge&labelColor=000000" alt="src"/>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="https://img.shields.io/badge/🎯_APP-Next.js_Router-000000?style=flat-square&logo=next.js&logoColor=white" alt="app"/>
-      <img src="https://img.shields.io/badge/🔐_ADMIN-Protected_Routes-E74C3C?style=flat-square" alt="admin"/>
-      <img src="https://img.shields.io/badge/🌐_API-Endpoints-3498DB?style=flat-square" alt="api"/>
+      <img src="https://img.shields.io/badge/🎯_app-Next.js_pages-000000?style=flat-square&logo=next.js&logoColor=white" alt="app"/>
+      <img src="https://img.shields.io/badge/🔐_admin-Admin_routes-E74C3C?style=flat-square" alt="admin"/>
+      <img src="https://img.shields.io/badge/🌐_api-API_endpoints-3498DB?style=flat-square" alt="api"/>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="https://img.shields.io/badge/🧩_COMPONENTS-React_Components-61DAFB?style=flat-square&logo=react&logoColor=black" alt="components"/>
-      <img src="https://img.shields.io/badge/📚_LIB-Utilities-9B59B6?style=flat-square" alt="lib"/>
+      <img src="https://img.shields.io/badge/🧩_components-React_components-61DAFB?style=flat-square&logo=react&logoColor=black" alt="components"/>
+      <img src="https://img.shields.io/badge/📚_lib-Utilities-9B59B6?style=flat-square" alt="lib"/>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="https://img.shields.io/badge/🪝_HOOKS-Custom_Hooks-00D9FF?style=flat-square" alt="hooks"/>
-      <img src="https://img.shields.io/badge/🛠️_UTILS-Helper_Functions-FFD700?style=flat-square" alt="utils"/>
+      <img src="https://img.shields.io/badge/🪝_hooks-Custom_hooks-00D9FF?style=flat-square" alt="hooks"/>
+      <img src="https://img.shields.io/badge/🛠️_utils-Helper_functions-FFD700?style=flat-square" alt="utils"/>
     </td>
   </tr>
 </table>
@@ -181,21 +179,21 @@
 
 <div align="center">
 
-<h2>🌐 DEPLOYMENT</h2>
+<h2>🌐 Hosting</h2>
 
 <table align="center" width="90%">
   <tr>
     <td align="center" width="33%">
-      <h3>🚀 Platform Ready</h3>
-      <p><em>Configured for modern hosting platforms</em></p>
+      <h3>🚀 Vercel</h3>
+      <p><em>Main hosting platform</em></p>
     </td>
     <td align="center" width="33%">
-      <h3>🛡️ Production Build</h3>
-      <p><em>Includes security and optimization features</em></p>
+      <h3>🛡️ Security</h3>
+      <p><em>Basic security features included</em></p>
     </td>
     <td align="center" width="33%">
-      <h3>⚡ Optimized</h3>
-      <p><em>Built for Vercel and Firebase Hosting</em></p>
+      <h3>⚡ Performance</h3>
+      <p><em>Optimized for speed</em></p>
     </td>
   </tr>
 </table>
@@ -207,10 +205,9 @@
 </div>
 
 <div align="center">
-  <h3>🐱 <strong>Built with ❤️ for feline enthusiasts worldwide</strong> 🐱</h3>
+  
   
   <br>
   
   <img src="https://img.shields.io/badge/Driven_by-🔍_Curiosity-FF69B4?style=for-the-badge&labelColor=000000" alt="Driven by Curiosity"/>
-  <img src="https://img.shields.io/badge/Powered_by-🧠_Innovation-FFD700?style=for-the-badge&labelColor=000000" alt="Powered by Innovation"/>
 </div>
