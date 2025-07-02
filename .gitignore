@@ -45,3 +45,5 @@ CLAUDE.md
 cypress/videos/
 cypress/screenshots/
 /cypress/fixtures/media/README.md
+
+agent_readme.md

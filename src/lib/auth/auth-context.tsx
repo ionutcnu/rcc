@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/services/authService"
+import { clientAuthService } from "@/lib/services/authService"
 import { safeErrorLog, sanitizeError } from "@/lib/utils/security"
 
 // Define types
@@ -35,25 +35,11 @@ export function useAuth() {
     return context
 }
 
-// Admin check function - uses the server API to check admin status
+// Admin check function - uses the client service to check admin status
 async function checkAdminStatus(): Promise<boolean> {
     try {
-        // Check with the server
-        const response = await fetch("/api/auth/check-admin", {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-            headers: {
-                "Cache-Control": "no-cache",
-            },
-        })
-
-        if (!response.ok) {
-            return false
-        }
-
-        const data = await response.json()
-        return data.isAdmin === true
+        const result = await clientAuthService.checkAdminStatus()
+        return result.isAdmin
     } catch (error) {
         safeErrorLog("Admin status check failed", error)
         return false
@@ -71,18 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const checkSession = async () => {
             try {
-                const sessionData = await authService.checkSession()
+                const sessionData = await clientAuthService.getCurrentUser()
 
-                if (sessionData.authenticated && sessionData.uid) {
+                if (sessionData.success && sessionData.user) {
                     // User is signed in with valid uid
                     // Check if user is admin
-                    const adminStatus = await checkAdminStatus()
+                    const adminStatus = sessionData.user.isAdmin || false
                     setIsAdmin(adminStatus)
 
                     // Create user object only with valid uid
                     setUser({
-                        uid: sessionData.uid,
-                        email: sessionData.email || null,
+                        uid: sessionData.user.uid,
+                        email: sessionData.user.email || null,
                         isAdmin: adminStatus,
                     })
                 } else {
@@ -117,19 +103,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
             // Sign in using the authService
-            const result = await authService.login(email, password)
+            const result = await clientAuthService.login({ email, password })
 
             if (!result.success) {
-                setError(result.message || "Failed to login")
+                setError(result.error || "Failed to login")
                 setLoading(false)
-                return { success: false, message: result.message || "Failed to login" }
+                return { success: false, message: result.error || "Failed to login" }
             }
 
             // Use admin status from login response
             const adminStatus = result.user?.isAdmin || false
 
             if (!adminStatus) {
-                await authService.logout()
+                await clientAuthService.logout()
                 setError("You don't have permission to access the admin area")
                 setLoading(false)
                 return { success: false, message: "You don't have permission to access the admin area" }
@@ -162,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setError(null)
             
             // Call server logout
-            await authService.logout()
+            await clientAuthService.logout()
             
             // Small delay to ensure state updates propagate to UI
             await new Promise(resolve => setTimeout(resolve, 100))

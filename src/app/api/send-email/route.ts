@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { Redis } from '@upstash/redis';
-import { generateCatInquiryTemplate } from '@/Utils/email-template';
+import { generateCatInquiryTemplate } from '@/lib/utils/email-template';
 
 const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL!,

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useEffect, useCallback } from 'react'
-import MousePosition from '@/Utils/mouse-position'
+import MousePosition from '@/lib/hooks/mouse-position'
 
 interface ParticlesProps {
     className?: string
