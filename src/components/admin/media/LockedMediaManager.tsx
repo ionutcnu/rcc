@@ -12,7 +12,7 @@ import type { MediaItem } from "@/lib/types/media"
 import { UnlockConfirmDialog } from "./UnlockConfirmDialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SimpleConfirmDialog } from "@/components/ui/simple-confirm-dialog"
-import { unlockMediaItem, lockMediaItem, useMedia } from "@/lib/api/mediaClient"
+import { unlockMediaItem, lockMediaItem, useMedia } from "@/lib/client/mediaClient"
 
 export default function LockedMediaManager() {
     const [searchQuery, setSearchQuery] = useState("")

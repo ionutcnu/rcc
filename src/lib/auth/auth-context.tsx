@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { clientAuthService } from "@/lib/services/authService"
+import { clientAuthService } from "@/lib/client/authClient"
 import { safeErrorLog, sanitizeError } from "@/lib/utils/security"
 
 // Define types

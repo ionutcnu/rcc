@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { ChevronDown, Loader2, AlertCircle, Archive, RefreshCw, Trash2 } from "lucide-react"
 import { type Language, languages } from "@/lib/i18n/types"
 import { getLocalUsage } from "@/lib/i18n/usageTracker"
-import { getDeepLUsage } from "@/lib/api/translationClient"
+import { getDeepLUsage } from "@/lib/client/translationClient"
 
 // Default site language
 const DEFAULT_LANGUAGE: Language = "en"

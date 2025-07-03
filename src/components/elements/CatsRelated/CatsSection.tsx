@@ -7,7 +7,7 @@ import 'swiper/css/pagination';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { fetchAllCats } from '@/lib/api/catClient';
+import { fetchAllCats } from '@/lib/client/catClient';
 import type { CatProfile } from '@/lib/types/cat';
 import { getTimestampValue } from '@/lib/types/timestamp';
 import { GiCat, GiPawPrint } from 'react-icons/gi';

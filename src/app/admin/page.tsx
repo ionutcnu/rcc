@@ -6,7 +6,7 @@ import Image from "next/image"
 import { Cat, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { fetchCats, fetchMediaStats, fetchRecentActivity } from "@/lib/api/dashboardClient"
+import { fetchCats, fetchMediaStats, fetchRecentActivity } from "@/lib/client/dashboardClient"
 import { getProxiedImageUrl } from "@/lib/utils/image-utils"
 import { Badge } from "@/components/ui/badge"
 import { CatProfile } from '@/lib/types/cat';

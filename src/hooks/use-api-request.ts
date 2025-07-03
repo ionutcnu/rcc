@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { deduplicateRequest, clearPendingRequests } from '@/lib/api/requestDeduplicator'
+import { deduplicateRequest, clearPendingRequests } from '@/lib/client/requestDeduplicator'
 
 interface UseApiRequestOptions<T> {
   immediate?: boolean

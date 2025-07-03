@@ -21,7 +21,7 @@ import {
     fetchTranslationUsage,
     clearTranslationCache,
     testTranslation,
-} from "@/lib/api/translationClient"
+} from "@/lib/client/translationClient"
 import type { DeepLUsage } from "@/lib/i18n/usageTracker"
 import { type Language, languages, languageOptions } from "@/lib/i18n/types"
 import { useAuth } from "@/lib/auth/auth-context"

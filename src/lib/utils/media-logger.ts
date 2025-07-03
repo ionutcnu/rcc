@@ -1,6 +1,6 @@
 "use client"
 
-import { logService } from "@/lib/services/logService"
+import { logService } from "@/lib/client/logClient"
 
 // Media logger functions - client-side wrapper around logService
 export const mediaLogger = {

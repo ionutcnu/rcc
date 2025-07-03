@@ -15,7 +15,7 @@ import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 import { Loader2 } from "lucide-react"
 
 // Import the API client instead of the Firebase service
-import { fetchTrashCats } from "@/lib/api/catClient"
+import { fetchTrashCats } from "@/lib/client/catClient"
 
 export default function TrashCatsTab() {
     const [cats, setCats] = useState<CatProfile[]>([])

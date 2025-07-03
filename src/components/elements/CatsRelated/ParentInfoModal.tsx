@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FaTree } from "react-icons/fa"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { fetchCatById } from "@/lib/api/catClient"
+import { fetchCatById } from "@/lib/client/catClient"
 import type { CatProfile } from "@/lib/types/cat"
 
 // === TYPES ===

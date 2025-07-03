@@ -47,7 +47,7 @@ import {
     restoreMediaFromTrash,
     deleteMediaPermanently,
     unlockMediaItem,
-} from "@/lib/api/mediaClient"
+} from "@/lib/client/mediaClient"
 
 export default function MediaManager() {
     const { user } = useAuth()

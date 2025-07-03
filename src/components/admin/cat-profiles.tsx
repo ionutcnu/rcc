@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PlusCircle, Pencil, Trash2, Loader2 } from "lucide-react"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
-import { fetchAllCats } from "@/lib/api/catClient"
+import { fetchAllCats } from "@/lib/client/catClient"
 import { useCatPopup } from "@/components/CatPopupProvider"
 import type { CatProfile } from "@/lib/types/cat"
 

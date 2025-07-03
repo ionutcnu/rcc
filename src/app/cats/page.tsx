@@ -7,7 +7,7 @@ import Header from "@/components/layouts/Header"
 import FilterSidebar from "@/components/elements/CatsRelated/FilterSidebar"
 import CatGrid from "@/components/elements/CatsRelated/CatGrid"
 import PaginationSection from "@/components/elements/CatsRelated/PaginationSection"
-import { fetchAllCats } from "@/lib/api/catClient"
+import { fetchAllCats } from "@/lib/client/catClient"
 import type { CatProfile } from "@/lib/types/cat"
 import { Filter, AlertCircle } from "lucide-react"
 

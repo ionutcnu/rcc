@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { ArrowLeft, Trash2, Upload, X, Loader2 } from "lucide-react"
 // Replace Firebase imports with API client imports
-import { fetchCatById, fetchAllCats } from "@/lib/api/catClient"
+import { fetchCatById, fetchAllCats } from "@/lib/client/catClient"
 import { useToast } from "@/hooks/useToast"
 import type { CatProfile } from "@/lib/types/cat"
 import Link from "next/link"

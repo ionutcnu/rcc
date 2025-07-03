@@ -8,7 +8,7 @@ import * as z from "zod"
 import { Trash2, Upload, X } from "lucide-react"
 import type { CatProfile } from "@/lib/types/cat"
 // Replace direct Firebase import with client API utility
-import { fetchAllCats } from "@/lib/api/catClient"
+import { fetchAllCats } from "@/lib/client/catClient"
 import { useToast } from "@/hooks/useToast"
 
 import { Button } from "@/components/ui/button"

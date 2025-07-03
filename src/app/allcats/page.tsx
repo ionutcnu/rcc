@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Footer from "@/components/layouts/Footer"
 import Header from "@/components/layouts/Header"
-import { fetchAllCats } from "@/lib/api/catClient"
+import { fetchAllCats } from "@/lib/client/catClient"
 import type { CatProfile } from "@/lib/types/cat"
 import { GiCat, GiPawPrint, GiPartyPopper } from "react-icons/gi"
 

@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from "react"
 import NextImage from "next/image"
 import { getProxiedImageUrl } from "@/lib/utils/image-utils"
 import type { MediaItem } from "@/lib/types/media" // Updated import path
-import { fetchLockedMedia } from "@/lib/api/mediaClient" // Import API client function
+import { fetchLockedMedia } from "@/lib/client/mediaClient" // Import API client function
 import useMobile from "@/hooks/use-mobile"
 
 function shuffleArray(array: any[]) {

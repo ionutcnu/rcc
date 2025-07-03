@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { useToast, showSuccessToast, showErrorToast } from "@/hooks/use-toast"
-import { fetchAllCats } from "@/lib/api/catClient" // Changed from direct Firebase import
+import { fetchAllCats } from "@/lib/client/catClient" // Changed from direct Firebase import
 import type { CatProfile } from "@/lib/types/cat"
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog"
 
