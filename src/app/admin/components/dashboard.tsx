@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { CatProfiles } from "@/components/admin/cat-profiles"
-import MediaManager from "@/components/admin/media-manager"
+import { CatProfiles } from "./cat-profiles"
+import MediaManager from "./media-manager"
 import { Settings } from "./settings"
 
 type TabType = "profiles" | "media" | "settings"

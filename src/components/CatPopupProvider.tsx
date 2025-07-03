@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, type ReactNode } from "react"
-import CatPopup from "@/components/elements/CatsRelated/CatPopup"
+import CatPopup from "@/components/CatPopup"
 
 interface CatPopupContextType {
     showPopup: (message: string) => void

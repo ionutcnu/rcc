@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useToast } from "@/hooks/useToast"
+import { showErrorToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,7 +16,6 @@ export default function MigrateTranslationsPage() {
   const [success, setSuccess] = useState(false)
   const [limit, setLimit] = useState(365)
   const [progress, setProgress] = useState(0)
-  const { toast } = useToast()
 
   const handleMigrate = async () => {
     setIsLoading(true)
@@ -50,7 +49,7 @@ export default function MigrateTranslationsPage() {
       setProgress(100)
       setSuccess(true)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An unknown error occurred")
+      showErrorToast(err instanceof Error ? err.message : "An unknown error occurred")
       setProgress(0)
     } finally {
       setIsLoading(false)

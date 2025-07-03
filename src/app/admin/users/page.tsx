@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { UserManagement } from "@/components/admin/user-management"
+import { UserManagement } from "./components/user-management"
 import { Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"

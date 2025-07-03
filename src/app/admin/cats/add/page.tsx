@@ -9,7 +9,7 @@ import { Trash2, Upload, X } from "lucide-react"
 import type { CatProfile } from "@/lib/types/cat"
 // Replace direct Firebase import with client API utility
 import { fetchAllCats } from "@/lib/client/catClient"
-import { useToast } from "@/hooks/useToast"
+import { showSuccessToast, showErrorToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,7 +50,6 @@ export default function CatEntryForm() {
     const [videoFiles, setVideoFiles] = useState<File[]>([]) // New state for video files
     const [mainImage, setMainImage] = useState<string>("")
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const { toast } = useToast()
     const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
     const [allCats, setAllCats] = useState<CatProfile[]>([])
     const [isLoadingCats, setIsLoadingCats] = useState(true)
@@ -84,7 +83,7 @@ export default function CatEntryForm() {
                 setAllCats(fetchedCats)
             } catch (error) {
                 console.error("Error fetching all cats:", error)
-                toast.error("Error loading cat data for parent selection")
+                showErrorToast("Error loading cat data for parent selection")
             } finally {
                 setIsLoadingCats(false)
             }
@@ -198,7 +197,7 @@ export default function CatEntryForm() {
 
     const onSubmit = async (data: FormValues) => {
         if (!mainImage && images.length === 0) {
-            toast.error("Please upload at least one image for the cat.")
+            showErrorToast("Please upload at least one image for the cat.")
             return
         }
 
@@ -371,7 +370,7 @@ export default function CatEntryForm() {
             const updateResult = await updateResponse.json()
             console.log("Cat updated with media URLs:", updateResult)
 
-            toast.success(`${data.name} has been added to the database.`)
+            showSuccessToast(`${data.name} has been added to the database.`)
 
             form.reset()
             setImages([])
@@ -380,7 +379,7 @@ export default function CatEntryForm() {
             setMainImage("")
         } catch (error) {
             console.error("Error submitting form:", error)
-            toast.error("There was a problem adding the cat entry.")
+            showErrorToast("There was a problem adding the cat entry.")
         } finally {
             setIsSubmitting(false)
         }

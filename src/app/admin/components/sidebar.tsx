@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
-import LogoutButton from "@/components/admin/logout-button"
+import LogoutButton from "./logout-button"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"

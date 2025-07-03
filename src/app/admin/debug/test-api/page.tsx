@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { useToast } from "@/hooks/useToast"
+import { showErrorToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,7 +76,6 @@ export default function CatApiTesterPage() {
   const [paramFields, setParamFields] = useState<ParamField[]>([])
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
   const [statusCode, setStatusCode] = useState<number | null>(null)
   const [responseTime, setResponseTime] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -428,7 +427,7 @@ export default function CatApiTesterPage() {
       setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)]) // Keep last 20 items
     } catch (err: any) {
       const errorMessage = err.message || "An error occurred"
-      toast.error(errorMessage)
+      showErrorToast(errorMessage)
 
       // Add failed request to history
       const historyItem: RequestHistoryItem = {
@@ -465,12 +464,12 @@ export default function CatApiTesterPage() {
 
     // Validate file type
     if (uploadType === "image" && !file.type.startsWith("image/")) {
-      toast.error("Please select a valid image file")
+      showErrorToast("Please select a valid image file")
       return
     }
 
     if (uploadType === "video" && !file.type.startsWith("video/")) {
-      toast.error("Please select a valid video file")
+      showErrorToast("Please select a valid video file")
       return
     }
 
@@ -487,13 +486,13 @@ export default function CatApiTesterPage() {
 
   const handleUpload = async () => {
     if (!catId) {
-      toast.error("Cat ID is required")
+      showErrorToast("Cat ID is required")
       return
     }
 
     const file = fileInputRef.current?.files?.[0]
     if (!file) {
-      toast.error("Please select a file to upload")
+      showErrorToast("Please select a file to upload")
       return
     }
 
@@ -550,7 +549,7 @@ export default function CatApiTesterPage() {
       setRequestHistory((prev) => [historyItem, ...prev.slice(0, 19)]) // Keep last 20 items
     } catch (err: any) {
       const errorMessage = err.message || "An error occurred"
-      toast.error(errorMessage)
+      showErrorToast(errorMessage)
 
       // Add failed request to history
       const historyItem: RequestHistoryItem = {

@@ -16,9 +16,9 @@ import { getCurrentUserInfo } from "@/lib/utils/user-info"
 import { Progress } from "@/components/ui/progress"
 
 // Import our components
-import ActiveMediaTab from "./tabs/ActiveMediaTab"
-import TrashTab from "./tabs/TrashTab"
-import IssuesPanel from "./tabs/IssuesPanel"
+import ActiveMediaTab from "./ActiveMediaTab"
+import TrashTab from "./TrashTab"
+import IssuesPanel from "./IssuesPanel"
 // Import the new LockedMediaManager component
 import LockedMediaManager from "./LockedMediaManager"
 import { LockMediaDialog } from "./LockMediaDialog"

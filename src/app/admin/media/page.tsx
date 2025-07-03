@@ -1,6 +1,6 @@
 "use client"
 
-import MediaManager from "@/components/admin/media/MediaManager"
+import MediaManager from "./components/MediaManager"
 
 
 export default function MediaManagerPage() {

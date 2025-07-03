@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import ActiveCatsTab from "@/components/admin/cats/tabs/ActiveCatsTab"
-import TrashCatsTab from "@/components/admin/cats/tabs/TrashCatsTab"
+import ActiveCatsTab from "./components/ActiveCatsTab"
+import TrashCatsTab from "./components/TrashCatsTab"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"

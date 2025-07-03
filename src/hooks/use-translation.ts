@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { type Language, languages } from "./types"
-import { clearTranslationCache } from "./translationService"
+import { type Language, languages } from "@/lib/i18n/types"
+import { clearTranslationCache } from "@/lib/i18n/translationService"
 
 export function useTranslation() {
     // Get initial language from localStorage or default to English

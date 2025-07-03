@@ -13,7 +13,7 @@ export default function StructuredData({ type = 'website', data }: StructuredDat
     "@type": "Website",
     "name": "Red Cat Cuasar",
     "url": "https://redcatcuasar.vercel.app",
-    "description": "Premium British Shorthair cats and kittens from Red Cat Cuasar. GCCF-registered, health-tested breeding program with champion bloodlines.",
+    "description": "Premium British Shorthair cats and kittens from Red Cat Cuasar. Health-tested breeding program with champion bloodlines.",
     "potentialAction": {
       "@type": "SearchAction",
       "target": "https://redcatcuasar.vercel.app/cats?search={search_term_string}",

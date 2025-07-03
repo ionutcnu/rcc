@@ -12,7 +12,7 @@ import type { CatProfile } from '@/lib/types/cat';
 import { getTimestampValue } from '@/lib/types/timestamp';
 import { GiCat, GiPawPrint } from 'react-icons/gi';
 import type SwiperCore from 'swiper';
-import Particles from '../Particles';
+import Particles from './Particles';
 
 export default function CatsSection() {
   const swiperRef = useRef<SwiperCore>();

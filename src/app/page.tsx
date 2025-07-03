@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Header from '@/components/layouts/Header';
-import Landing from '@/components/elements/CatsRelated/HomeCatSlideshow';
+import Landing from './components/HomeCatSlideshow';
 import Footer from "@/components/layouts/Footer";
-import CatsSection from "@/components/elements/CatsRelated/CatsSection";
+import CatsSection from "./components/CatsSection";
 import { GiCat, GiPawPrint } from "react-icons/gi";
-import MeetFelissa from "@/components/elements/CatsRelated/AboutFelisa";
+import MeetFelissa from "./components/AboutFelisa";
 
 
 

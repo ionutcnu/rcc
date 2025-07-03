@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "@/components/layouts/Header";
 import Footer from "@/components/layouts/Footer";
-import CatPopup from "@/components/elements/CatsRelated/CatPopup";
+import CatPopup from "@/components/CatPopup";
 
 export default function ContactPage() {
     const [form, setForm] = useState({ firstName: "", lastName: "", email: "", message: "" });

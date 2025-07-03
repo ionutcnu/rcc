@@ -29,8 +29,8 @@ import { format, subDays, isBefore, isAfter, startOfDay, endOfDay, isValid } fro
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { LogEntry, DateRange as DateRangeType } from "@/lib/types"
-import { ArchiveLogsTab } from "@/components/admin/logs/archive-logs-tab"
-import { LogStats } from "@/components/admin/log-stats"
+import { ArchiveLogsTab } from "./components/archive-logs-tab"
+import { LogStats } from "../components/log-stats"
 
 // Number of logs to load at once - reduced from 25 to 10
 const PAGE_SIZE = 10

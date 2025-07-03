@@ -1,9 +1,9 @@
 import type React from "react"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { AdminSidebar } from "@/components/admin/sidebar"
+import { AdminSidebar } from "./components/sidebar"
 import { CatPopupProvider } from "@/components/CatPopupProvider"
-import AdminProtected from "@/components/admin-protected"
+import AdminProtected from "./components/admin-protected"
 import { validateServerSideSession } from "@/lib/middleware/sessionValidator"
 
 

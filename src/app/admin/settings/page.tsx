@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useSettings, SettingsProvider } from "@/lib/contexts/settings-context"
 import { Loader2 } from "lucide-react"
-import SettingsUi from "@/components/admin/settings-ui"
+import SettingsUi from "./components/settings-ui"
 import { useCatPopup } from "@/hooks/use-cat-popup"
 
 function SettingsPageContent() {

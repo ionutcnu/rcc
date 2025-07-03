@@ -9,7 +9,7 @@ import { MdOutlineDashboard } from "react-icons/md"
 import { HiMenu, HiX } from "react-icons/hi"
 import LanguageSwitcher from "./LanguageSwitcher"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useTranslationSettings } from "@/lib/hooks/useTranslationSettings"
+import { useTranslationSettings } from "@/hooks/use-translation-settings"
 
 interface NavLink {
     name: string

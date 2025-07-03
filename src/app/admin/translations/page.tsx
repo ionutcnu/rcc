@@ -25,7 +25,7 @@ import {
 import type { DeepLUsage } from "@/lib/i18n/usageTracker"
 import { type Language, languages, languageOptions } from "@/lib/i18n/types"
 import { useAuth } from "@/lib/auth/auth-context"
-import { UsageHistoryChart } from "@/components/admin/translations/usage-history-chart"
+import { UsageHistoryChart } from "./components/usage-history-chart"
 
 export default function TranslationsPage() {
     const { showPopup } = useCatPopup()

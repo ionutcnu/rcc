@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Pagination } from "@/components/ui/pagination"
 import { mediaLogger } from "@/lib/utils/media-logger"
 import type { MediaItem } from "@/lib/types/media"
-import { BulkLockMediaDialog } from "../BulkLockMediaDialog"
+import { BulkLockMediaDialog } from "./BulkLockMediaDialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { downloadMedia } from "@/lib/client/mediaClient"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"

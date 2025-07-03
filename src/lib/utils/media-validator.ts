@@ -1,6 +1,6 @@
 import { serverLogger } from "./server-logger"
 import { mediaLogger } from "./media-logger"
-import { isServer } from "@/lib/utils"
+import { isServer } from "@/lib/utils/isServer"
 
 // Use the appropriate logger based on environment
 const logger = isServer() ? serverLogger : mediaLogger
