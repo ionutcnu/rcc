@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
   }
   
   // Handle Firebase Storage images
-  if (url.hostname.includes('firebasestorage.googleapis.com')) {
+  if (url.hostname === 'firebasestorage.googleapis.com') {
     event.respondWith(handleImageRequest(event.request));
     return;
   }

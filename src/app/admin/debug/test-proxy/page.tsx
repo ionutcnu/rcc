@@ -9,9 +9,30 @@ export default function TestProxyPage() {
     const [proxyUrl, setProxyUrl] = useState("")
     const [error, setError] = useState<string | null>(null)
 
+    const isValidUrl = (url: string): boolean => {
+        try {
+            const parsedUrl = new URL(url)
+            return parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:'
+        } catch {
+            return false
+        }
+    }
+
+    const sanitizeUrl = (url: string): string => {
+        if (!isValidUrl(url)) {
+            return "/placeholder.svg"
+        }
+        return url
+    }
+
     const handleTest = () => {
         if (!imageUrl) {
             setError("Please enter an image URL")
+            return
+        }
+
+        if (!isValidUrl(imageUrl)) {
+            setError("Please enter a valid URL")
             return
         }
 
@@ -46,7 +67,7 @@ export default function TestProxyPage() {
                         </div>
                         <div className="border rounded p-4 bg-gray-50">
                             <img
-                                src={imageUrl || "/placeholder.svg"}
+                                src={sanitizeUrl(imageUrl)}
                                 alt="Original"
                                 className="max-h-64 mx-auto"
                                 onError={() => console.log("Original image failed to load (expected due to CORS)")}

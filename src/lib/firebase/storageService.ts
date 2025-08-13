@@ -272,9 +272,18 @@ export async function validateMediaUrl(url: string): Promise<boolean> {
     try {
         // Use a more reliable method to check if file exists
         // For Firebase Storage URLs, we can check if the file exists directly
-        if (url.includes("firebasestorage.googleapis.com")) {
+        let urlObj: URL
+        try {
+            urlObj = new URL(url)
+        } catch (error) {
+            // Invalid URL format, consider it invalid
+            console.warn(`validateMediaUrl: Invalid URL format: ${url}`)
+            urlValidationCache.set(url, false)
+            return false
+        }
+        
+        if (urlObj.hostname === "firebasestorage.googleapis.com") {
             // Extract the path and check if the file exists in storage
-            const urlObj = new URL(url)
             const pathStartIndex = urlObj.pathname.indexOf("/o/") + 3
 
             if (pathStartIndex > 3) {

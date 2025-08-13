@@ -63,7 +63,7 @@ export async function getCatById(id: string): Promise<CatProfile | null> {
       age,
     } as CatProfile
   } catch (error: any) {
-    console.error(`Error getting cat with ID ${id}:`, error)
+    console.error("Error getting cat with ID:", id, error)
     throw error
   }
 }
@@ -92,7 +92,7 @@ export async function incrementCatViews(id: string): Promise<void> {
       // View counts are tracked in the cat document itself
     }
   } catch (error) {
-    console.error(`Error incrementing views for cat ${id}:`, error)
+    console.error("Error incrementing views for cat:", id, error)
     throw error // Re-throw to allow API route to handle it
   }
 }
@@ -165,7 +165,7 @@ export async function updateCat(id: string, catData: Partial<Omit<CatProfile, "i
       })
     }
   } catch (error: any) {
-    console.error(`Error updating cat with ID ${id}:`, error)
+    console.error("Error updating cat with ID:", id, error)
     throw error
   }
 }
@@ -224,7 +224,7 @@ export async function deleteCat(id: string, permanent = false): Promise<void> {
         actionType: "cat-delete-permanent", // Add explicit actionType
       })
 
-      console.log(`Cat with ID ${id} and all associated media permanently deleted`)
+      console.log("Cat with ID", id, "and all associated media permanently deleted")
     } else {
       // Soft deletion - just mark as deleted
       const docRef = db.collection("cats").doc(id)
@@ -245,10 +245,10 @@ export async function deleteCat(id: string, permanent = false): Promise<void> {
         actionType: "cat-delete-soft", // Add explicit actionType
       })
 
-      console.log(`Cat with ID ${id} moved to trash`)
+      console.log("Cat with ID", id, "moved to trash")
     }
   } catch (error: any) {
-    console.error(`Error deleting cat with ID ${id}:`, error)
+    console.error("Error deleting cat with ID:", id, error)
     throw error
   }
 }
@@ -285,9 +285,9 @@ export async function restoreCat(id: string): Promise<void> {
       actionType: "cat-restore", // Add explicit actionType
     })
 
-    console.log(`Cat with ID ${id} restored from trash`)
+    console.log("Cat with ID", id, "restored from trash")
   } catch (error: any) {
-    console.error(`Error restoring cat with ID ${id}:`, error)
+    console.error("Error restoring cat with ID:", id, error)
     throw error
   }
 }
@@ -336,7 +336,7 @@ export async function archiveCat(id: string): Promise<void> {
       })
     }
   } catch (error: any) {
-    console.error(`Error archiving cat with ID ${id}:`, error)
+    console.error("Error archiving cat with ID:", id, error)
     throw error
   }
 }

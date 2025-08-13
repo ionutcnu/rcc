@@ -384,9 +384,19 @@ export default function CatProfilePage() {
     // Function to proxy image URLs only
     const getProxiedImageUrl = (url: string) => {
         if (!url) return ""
-        if (url.includes("firebasestorage.googleapis.com")) {
-            return `/api/image-proxy?url=${encodeURIComponent(url)}`
+        
+        try {
+            const parsedUrl = new URL(url)
+            // Only proxy URLs from Firebase Storage with exact hostname match
+            if (parsedUrl.hostname === "firebasestorage.googleapis.com") {
+                return `/api/image-proxy?url=${encodeURIComponent(url)}`
+            }
+        } catch (error) {
+            // Invalid URL, return empty string for safety
+            console.warn('getProxiedImageUrl: Invalid URL provided', url)
+            return ""
         }
+        
         return url
     }
 

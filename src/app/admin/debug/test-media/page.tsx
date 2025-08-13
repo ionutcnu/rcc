@@ -26,6 +26,18 @@ export default function TestMediaUploadPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const sanitizePreviewUrl = (url: string | null): string => {
+    if (!url) return "/placeholder.svg"
+    
+    // Only allow blob URLs (created by URL.createObjectURL) and placeholder
+    if (url.startsWith("blob:") || url === "/placeholder.svg") {
+      return url
+    }
+    
+    // Return safe fallback for any other URLs
+    return "/placeholder.svg"
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -204,9 +216,9 @@ export default function TestMediaUploadPage() {
                     <Label>Preview</Label>
                     <div className="mt-2 border rounded-md p-2 flex justify-center">
                       {uploadType === "image" ? (
-                        <img src={previewUrl || "/placeholder.svg"} alt="Preview" className="max-h-64 object-contain" />
+                        <img src={sanitizePreviewUrl(previewUrl)} alt="Preview" className="max-h-64 object-contain" />
                       ) : (
-                        <video src={previewUrl} controls className="max-h-64 w-full" />
+                        <video src={sanitizePreviewUrl(previewUrl)} controls className="max-h-64 w-full" />
                       )}
                     </div>
                   </div>

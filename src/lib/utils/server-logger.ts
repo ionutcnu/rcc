@@ -139,7 +139,7 @@ class ServerLogger {
       if (!LOG_CONFIG.WRITE_LOGS_TO_DB) {
         // Still log to console
         if (process.env.NODE_ENV !== "production") {
-          console.log(`[${level.toUpperCase()}] ${message}`, details || "")
+          console.log(`[${level.toUpperCase()}]`, message, details || "")
         }
         return
       }
@@ -159,12 +159,12 @@ class ServerLogger {
 
       // Also log to console in development
       if (process.env.NODE_ENV !== "production") {
-        console.log(`[${level.toUpperCase()}] ${message}`, details || "")
+        console.log(`[${level.toUpperCase()}]`, message, details || "")
       }
     } catch (error) {
       // Log to console if Firestore logging fails
       console.error("Failed to write server log:", error)
-      console.log(`[${level.toUpperCase()}] ${message}`, details || "")
+      console.log(`[${level.toUpperCase()}]`, message, details || "")
     }
   }
 
