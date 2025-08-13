@@ -1160,7 +1160,16 @@ export async function validateMediaUrls(): Promise<{
 
       try {
         // For Firebase Storage URLs, verify the file exists
-        if (item.url.includes("firebasestorage.googleapis.com") && item.path) {
+        let isFirebaseStorageUrl = false
+        try {
+          const parsedUrl = new URL(item.url)
+          isFirebaseStorageUrl = parsedUrl.hostname === "firebasestorage.googleapis.com"
+        } catch {
+          // Invalid URL, skip validation
+          continue
+        }
+        
+        if (isFirebaseStorageUrl && item.path) {
           try {
             const fileRef = bucket.file(item.path)
             const [exists] = await fileRef.exists()

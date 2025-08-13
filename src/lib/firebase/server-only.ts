@@ -113,7 +113,7 @@ export async function convertTimestamps<T>(data: any): Promise<T> {
 
 // Helper function to handle Firestore errors
 export async function handleFirestoreError(error: any, operation: string): Promise<never> {
-  console.error(`Error during ${operation}:`, error)
+  console.error("Error during", operation, ":", error)
 
   // Determine the type of error and provide a meaningful message
   let message = "An error occurred while accessing the database"

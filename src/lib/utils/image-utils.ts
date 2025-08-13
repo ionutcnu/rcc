@@ -8,7 +8,16 @@ export function getProxiedImageUrl(url: string, options?: { width?: number; heig
     if (!url) return `/api/image-proxy?placeholder=true&width=200&height=300`
 
     // Check if it's a Firebase Storage URL
-    if (url.includes("firebasestorage.googleapis.com")) {
+    let isFirebaseStorageUrl = false
+    try {
+        const parsedUrl = new URL(url)
+        isFirebaseStorageUrl = parsedUrl.hostname === "firebasestorage.googleapis.com"
+    } catch {
+        // Invalid URL, return original URL
+        return url
+    }
+    
+    if (isFirebaseStorageUrl) {
         if (options) {
             const params = new URLSearchParams({
                 url: url,
