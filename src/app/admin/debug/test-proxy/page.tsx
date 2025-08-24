@@ -3,26 +3,25 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { sanitizeMediaUrl } from "@/lib/utils/security"
 
 export default function TestProxyPage() {
     const [imageUrl, setImageUrl] = useState("")
     const [proxyUrl, setProxyUrl] = useState("")
     const [error, setError] = useState<string | null>(null)
 
-    const isValidUrl = (url: string): boolean => {
+    const isValidImageUrl = (url: string): boolean => {
         try {
             const parsedUrl = new URL(url)
-            return parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:'
+            // Only allow https and http protocols for image URLs
+            if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+                return false
+            }
+            // Basic check for image-like extensions (optional, as many URLs don't have extensions)
+            return true
         } catch {
             return false
         }
-    }
-
-    const sanitizeUrl = (url: string): string => {
-        if (!isValidUrl(url)) {
-            return "/placeholder.svg"
-        }
-        return url
     }
 
     const handleTest = () => {
@@ -31,8 +30,8 @@ export default function TestProxyPage() {
             return
         }
 
-        if (!isValidUrl(imageUrl)) {
-            setError("Please enter a valid URL")
+        if (!isValidImageUrl(imageUrl)) {
+            setError("Please enter a valid HTTP/HTTPS image URL")
             return
         }
 
@@ -67,7 +66,7 @@ export default function TestProxyPage() {
                         </div>
                         <div className="border rounded p-4 bg-gray-50">
                             <img
-                                src={sanitizeUrl(imageUrl)}
+                                src={sanitizeMediaUrl(imageUrl)}
                                 alt="Original"
                                 className="max-h-64 mx-auto"
                                 onError={() => console.log("Original image failed to load (expected due to CORS)")}
@@ -83,7 +82,7 @@ export default function TestProxyPage() {
                         </div>
                         <div className="border rounded p-4 bg-gray-50">
                             <img
-                                src={proxyUrl || "/placeholder.svg"}
+                                src={sanitizeMediaUrl(proxyUrl)}
                                 alt="Proxied"
                                 className="max-h-64 mx-auto"
                                 onError={() => setError("Proxied image failed to load")}

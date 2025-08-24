@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AlertCircle, CheckCircle, ImageIcon, Upload, Video, RefreshCw, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { sanitizeMediaUrl } from "@/lib/utils/security"
+import { sanitizeMediaUrl, validateMediaFile } from "@/lib/utils/security"
 
 export default function TestMediaUploadPage() {
   const [catId, setCatId] = useState("")
@@ -27,13 +27,36 @@ export default function TestMediaUploadPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Clean up blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    
+    // Clean up previous blob URL to prevent memory leaks
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    
     if (file) {
-      // Create a preview URL for the selected file
+      // Validate file type and safety before creating preview URL
+      if (!validateMediaFile(file)) {
+        setError("Invalid file type or file too large. Please select a valid image or video file under 50MB.")
+        setPreviewUrl(null)
+        return
+      }
+      
+      // Create a preview URL for the validated file
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
+      setError(null) // Clear any previous errors
     } else {
       setPreviewUrl(null)
     }
