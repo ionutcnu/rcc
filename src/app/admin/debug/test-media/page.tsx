@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AlertCircle, CheckCircle, ImageIcon, Upload, Video, RefreshCw, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { sanitizeMediaUrl } from "@/lib/utils/security"
 
 export default function TestMediaUploadPage() {
   const [catId, setCatId] = useState("")
@@ -26,17 +27,6 @@ export default function TestMediaUploadPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const sanitizePreviewUrl = (url: string | null): string => {
-    if (!url) return "/placeholder.svg"
-    
-    // Only allow blob URLs (created by URL.createObjectURL) and placeholder
-    if (url.startsWith("blob:") || url === "/placeholder.svg") {
-      return url
-    }
-    
-    // Return safe fallback for any other URLs
-    return "/placeholder.svg"
-  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -216,9 +206,25 @@ export default function TestMediaUploadPage() {
                     <Label>Preview</Label>
                     <div className="mt-2 border rounded-md p-2 flex justify-center">
                       {uploadType === "image" ? (
-                        <img src={sanitizePreviewUrl(previewUrl)} alt="Preview" className="max-h-64 object-contain" />
+                        <img 
+                          src={sanitizeMediaUrl(previewUrl)} 
+                          alt="Preview" 
+                          className="max-h-64 object-contain"
+                          onError={(e) => {
+                            console.warn("Failed to load preview image");
+                            (e.target as HTMLImageElement).src = "/placeholder.svg";
+                          }}
+                        />
                       ) : (
-                        <video src={sanitizePreviewUrl(previewUrl)} controls className="max-h-64 w-full" />
+                        <video 
+                          src={sanitizeMediaUrl(previewUrl)} 
+                          controls 
+                          className="max-h-64 w-full"
+                          onError={(e) => {
+                            console.warn("Failed to load preview video");
+                            (e.target as HTMLVideoElement).style.display = "none";
+                          }}
+                        />
                       )}
                     </div>
                   </div>

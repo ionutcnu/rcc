@@ -50,3 +50,73 @@ export function sanitizeError(error: any): { message: string; code?: string } {
         code: error.code ? error.code.replace(/^auth\//, "error/") : "error/unknown",
     }
 }
+
+/**
+ * Validates and sanitizes URLs for use in HTML attributes
+ * Prevents XSS attacks through malicious URL schemes
+ * @param url The URL to validate
+ * @param allowedProtocols Array of allowed protocols (default: ['http:', 'https:', 'blob:', 'data:'])
+ * @returns Sanitized URL or safe fallback
+ */
+export function sanitizeUrl(url: string | null | undefined, allowedProtocols: string[] = ['http:', 'https:', 'blob:', 'data:']): string {
+    if (!url || typeof url !== 'string') {
+        return '/placeholder.svg'
+    }
+
+    // Remove any leading/trailing whitespace
+    const trimmedUrl = url.trim()
+    
+    if (!trimmedUrl) {
+        return '/placeholder.svg'
+    }
+
+    try {
+        // Handle relative URLs (safe by default)
+        if (trimmedUrl.startsWith('/') || trimmedUrl.startsWith('./') || trimmedUrl.startsWith('../')) {
+            // Additional validation for path injection
+            if (trimmedUrl.includes('..') && !trimmedUrl.startsWith('../')) {
+                return '/placeholder.svg'
+            }
+            return trimmedUrl
+        }
+
+        // Parse absolute URLs
+        const parsedUrl = new URL(trimmedUrl)
+        
+        // Check if protocol is allowed
+        if (!allowedProtocols.includes(parsedUrl.protocol)) {
+            safeErrorLog(`Blocked unsafe URL protocol: ${parsedUrl.protocol}`)
+            return '/placeholder.svg'
+        }
+
+        // Additional validation for blob URLs to ensure they're from same origin
+        if (parsedUrl.protocol === 'blob:') {
+            if (typeof window !== 'undefined' && parsedUrl.origin !== window.location.origin) {
+                safeErrorLog(`Blocked cross-origin blob URL: ${trimmedUrl}`)
+                return '/placeholder.svg'
+            }
+        }
+
+        // Block javascript: and data: URLs with suspicious content
+        if (parsedUrl.protocol === 'javascript:') {
+            safeErrorLog(`Blocked javascript: URL: ${trimmedUrl}`)
+            return '/placeholder.svg'
+        }
+
+        return trimmedUrl
+        
+    } catch (error) {
+        safeErrorLog(`Invalid URL format: ${trimmedUrl}`, error)
+        return '/placeholder.svg'
+    }
+}
+
+/**
+ * Sanitizes URLs specifically for media elements (img, video, audio)
+ * More restrictive than general URL sanitization
+ * @param url The media URL to validate
+ * @returns Sanitized URL or safe fallback
+ */
+export function sanitizeMediaUrl(url: string | null | undefined): string {
+    return sanitizeUrl(url, ['http:', 'https:', 'blob:'])
+}
